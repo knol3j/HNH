@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Whitepaper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <a href="../index.html" class="text-4xl font-bold hover:opacity-80 transition">HashNHedge</a>
+                <p class="text-gray-200">Whitepaper v1.0</p>
+            </div>
+            <a href="../index.html" class="bg-white text-purple-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Home
+            </a>
+        </div>
+    </header>
+
+    <!-- Whitepaper Content -->
+    <main class="container mx-auto px-6 py-12 max-w-4xl">
+        <h1 class="text-5xl font-bold mb-12 text-center">HashNHedge Whitepaper</h1>        
+        <!-- Executive Summary -->
+        <section class="bg-gray-800 p-8 rounded-lg mb-6">
+            <h2 class="text-3xl font-bold mb-4">Executive Summary</h2>
+            <p class="text-gray-300 leading-relaxed mb-4">
+                HashNHedge represents a paradigm shift in distributed computing infrastructure, leveraging blockchain technology and federated GPU farms to democratize access to high-performance computing resources. Our platform enables anyone to contribute computational power and earn rewards while providing affordable, scalable compute resources to AI researchers, data scientists, and developers worldwide.
+            </p>
+            <p class="text-gray-300 leading-relaxed">
+                Built on Solana's high-performance blockchain, we combine smart contract orchestration with proof-of-compute verification to ensure fair, transparent, and efficient resource allocation across our decentralized network.
+            </p>
+        </section>
+
+        <!-- Problem Statement -->
+        <section class="bg-gray-800 p-8 rounded-lg mb-6">
+            <h2 class="text-3xl font-bold mb-4">Problem Statement</h2>
+            <ul class="space-y-3 text-gray-300">
+                <li class="flex items-start">
+                    <span class="text-indigo-400 mr-2">•</span>
+                    <span>Cloud computing costs have increased 300% over the past 5 years, creating barriers for innovation</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-indigo-400 mr-2">•</span>
+                    <span>90% of consumer GPUs sit idle 20+ hours per day, representing massive underutilized resources</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-indigo-400 mr-2">•</span>
+                    <span>Centralized providers create vendor lock-in and single points of failure</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-indigo-400 mr-2">•</span>
+                    <span>Small-scale miners lack profitable alternatives post-Ethereum merge</span>
+                </li>
+            </ul>
+        </section>
+        <!-- Solution Architecture -->
+        <section class="bg-gray-800 p-8 rounded-lg mb-6">
+            <h2 class="text-3xl font-bold mb-4">Solution Architecture</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-2xl font-semibold mb-2 text-indigo-400">1. Federated GPU Farm Integration</h3>
+                    <p class="text-gray-300">Our platform seamlessly integrates existing GPU farms through standardized APIs and smart contract bridges, creating a unified compute marketplace.</p>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-semibold mb-2 text-indigo-400">2. Solana-Based Orchestration Layer</h3>
+                    <p class="text-gray-300">Leveraging Solana's sub-second finality and low fees, our orchestration layer efficiently matches compute requests with available resources in real-time.</p>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-semibold mb-2 text-indigo-400">3. Proof-of-Compute Verification</h3>
+                    <p class="text-gray-300">Using zk-SNARKs and cryptographic attestation, we ensure all computational work is performed honestly and accurately.</p>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-semibold mb-2 text-indigo-400">4. Dynamic Incentive System</h3>
+                    <p class="text-gray-300">Stake-weighted rewards and reputation scoring ensure reliable nodes receive priority workloads and higher compensation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tokenomics -->
+        <section class="bg-gray-800 p-8 rounded-lg mb-6">
+            <h2 class="text-3xl font-bold mb-4">Tokenomics</h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold mb-3">Token Distribution</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li>• Node Operators: 30%</li>
+                    <li>• Public Sale: 20%</li>
+                    <li>• Team: 15%</li>
+                    <li>• Treasury: 25%</li>
+                    <li>• Marketing & Partnerships: 10%</li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-xl font-semibold mb-3">Key Metrics</h3>
+                <ul class="space-y-2 text-gray-300">
+                    <li>• Total Supply: 1,000,000,000 HNH</li>
+                    <li>• Initial Circulating Supply: 350,000,000 HNH</li>
+                    <li>• Node Operator Rewards: 70% of platform revenue</li>
+                </ul>
+            </div>
+        </section>
+        <!-- Roadmap -->
+        <section class="bg-gray-800 p-8 rounded-lg mb-6">
+            <h2 class="text-3xl font-bold mb-4">Development Roadmap</h2>
+            <div class="space-y-4">
+                <div class="flex items-center">
+                    <div class="bg-indigo-600 w-4 h-4 rounded-full mr-4"></div>
+                    <div>
+                        <p class="font-semibold">Q1 2025 - Foundation</p>
+                        <p class="text-sm text-gray-400">Smart contract deployment, initial node network</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-indigo-600 w-4 h-4 rounded-full mr-4"></div>
+                    <div>
+                        <p class="font-semibold">Q2 2025 - Beta Launch</p>
+                        <p class="text-sm text-gray-400">Public beta, 100+ nodes, first compute tasks</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                    <div>
+                        <p class="font-semibold">Q3 2025 - Token Launch</p>
+                        <p class="text-sm text-gray-400">HNH token public sale, DEX listings</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                    <div>
+                        <p class="font-semibold">Q4 2025 - Scale</p>
+                        <p class="text-sm text-gray-400">1000+ nodes, enterprise partnerships</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                    <div>
+                        <p class="font-semibold">Q4 2026 - GPU Farm Integration</p>
+                        <p class="text-sm text-gray-400">Major mining farm partnerships, 100+ PFLOPS capacity</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download Section -->
+        <div class="text-center mt-12 mb-12">
+            <button onclick="downloadPDF()" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-lg font-semibold text-lg transition">
+                <i class="fas fa-download mr-2"></i> Download Full PDF
+            </button>
+        </div>
+    </main>
+
+    <script>
+        function downloadPDF() {
+            alert('PDF download will be implemented. For now, you can print this page to PDF.');
+            window.print();
+        }
+    </script>
+</body>
+</html>

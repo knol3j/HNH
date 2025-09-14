@@ -27,7 +27,7 @@ if %ERRORLEVEL% EQU 3 (
   FOR /L %%G IN (1,1,30) DO (
     IF EXIST %UPDATEFILE% (
       echo "Update finished successfully."
-      del %FILE%
+      del %UPDATEFILE%
       exit /b 1
     )
     ping 127.0.0.1 -n 2 -w 1000 >NUL

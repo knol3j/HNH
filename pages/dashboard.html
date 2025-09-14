@@ -129,36 +129,7 @@
                 </div>
             </div>
         </div>
-
-        <!-- GPU Farm Tab -->
-        <div id="farm" class="tab-content">
-            <h2 class="text-3xl font-bold mb-6">GPU Farm Management</h2>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Farm Registration -->
-                <div class="bg-gray-800 p-6 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4">Register New Farm</h3>
-                    <form onsubmit="registerFarm(event)">
-                        <div class="space-y-4">
-                            <input type="text" placeholder="Farm Name" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <input type="text" placeholder="Location" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <input type="number" placeholder="Number of GPUs" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <select class="w-full p-3 bg-gray-700 rounded-lg">
-                                <option>RTX 3090</option>
-                                <option>RTX 4090</option>
-                                <option>A100</option>
-                                <option>H100</option>
-                            </select>
-                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
-                                Register Farm
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Active Farms -->
-                <div class="bg-gray-800 p-6 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4">Active Farms</h3>
+    </main>
                     <div class="space-y-3" id="farmList">
                         <div class="bg-gray-700 p-4 rounded-lg">
                             <div class="flex justify-between items-center">
@@ -779,3 +750,32 @@ contract HashNHedgeOrchestrator {
     </script>
 </body>
 </html>
+        <!-- GPU Farm Tab -->
+        <div id="farm" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">GPU Farm Management</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Farm Registration -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Register New Farm</h3>
+                    <form onsubmit="registerFarm(event)">
+                        <div class="space-y-4">
+                            <input type="text" placeholder="Farm Name" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <input type="text" placeholder="Location" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <input type="number" placeholder="Number of GPUs" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <select class="w-full p-3 bg-gray-700 rounded-lg">
+                                <option>RTX 3090</option>
+                                <option>RTX 4090</option>
+                                <option>A100</option>
+                                <option>H100</option>
+                            </select>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
+                                Register Farm
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Active Farms -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Active Farms</h3>

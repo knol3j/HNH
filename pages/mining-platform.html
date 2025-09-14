@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge - Dynamic Mining & Security Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .mining-active {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .gradient-security {
+            background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+        }
+        
+        .gradient-mining {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hash-display {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header with Mode Switcher -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold">HashNHedge</h1>
+                    <div class="flex bg-gray-700 rounded-lg p-1">
+                        <button onclick="switchMode('mining')" id="miningModeBtn" class="px-4 py-2 rounded-md bg-green-600 text-white transition">
+                            ⛏️ Mining
+                        </button>
+                        <button onclick="switchMode('security')" id="securityModeBtn" class="px-4 py-2 rounded-md text-gray-300 hover:text-white transition">
+                            🔓 Security
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-400">Network Status:</span>
+                    <span class="text-green-400 font-semibold">● Online</span>
+                    <button onclick="openWhiteLabel()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition">
+                        🏷️ White Label
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-gray-800 shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-1">
+                <button onclick="switchTab('control')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition bg-gray-700" data-tab="control">
+                    Control Center
+                </button>
+                <button onclick="switchTab('tasks')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="tasks">
+                    Task Manager
+                </button>
+                <button onclick="switchTab('revenue')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="revenue">
+                    Revenue Share
+                </button>
+                <button onclick="switchTab('security')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="security">
+                    Security Tools
+                </button>
+                <button onclick="switchTab('nodes')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="nodes">
+                    Node Monitor
+                </button>
+            </div>
+        </div>
+    </nav>

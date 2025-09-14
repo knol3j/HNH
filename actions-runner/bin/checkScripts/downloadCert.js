@@ -3,7 +3,7 @@ const fs = require('fs')
 const http = require('http')
 const hostname = process.env['HOSTNAME'] || ''
 const port = process.env['PORT'] || ''
-const path = process.env['PATH'] || ''
+const requestPath = process.env['PATH'] || ''
 const pat = process.env['PAT'] || ''
 const proxyHost = process.env['PROXYHOST'] || ''
 const proxyPort = process.env['PROXYPORT'] || ''
@@ -16,7 +16,7 @@ if (proxyHost === '') {
     const options = {
         hostname: hostname,
         port: port,
-        path: path,
+        path: requestPath,
         method: 'GET',
         headers: {
             'User-Agent': 'GitHubActionsRunnerCheck/1.0',
@@ -26,7 +26,7 @@ if (proxyHost === '') {
     const req = https.request(options, res => {
         console.log(`statusCode: ${res.statusCode}`)
         console.log(`headers: ${JSON.stringify(res.headers)}`)
-        let cert = socket.getPeerCertificate(true)
+        let cert = res.socket.getPeerCertificate(true)
         let certPEM = ''
         let fingerprints = {}
         while (cert != null && fingerprints[cert.fingerprint] != '1') {
