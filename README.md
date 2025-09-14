@@ -37,7 +37,7 @@ To deploy to hashnhedge.com:
 
 ## Links
 - **Website**: [hashnhedge.com](https://hashnhedge.com)
-- **GitHub**: [knol3j/hashnhedge](https://github.com/knol3j/hashnhedge)
+- **GitHub**: [knol3j/HNH](https://github.com/knol3j/HNH)
 
 ## License
 Copyright 2024 HashNHedge. All rights reserved.

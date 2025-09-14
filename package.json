@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/knol3j/hashnhedge.git"
+    "url": "git+https://github.com/knol3j/HNH.git"
   },
   "keywords": [
     "blockchain",
@@ -22,7 +22,7 @@
   "author": "HashNHedge Team",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/knol3j/hashnhedge/issues"
+    "url": "https://github.com/knol3j/HNH/issues"
   },
   "homepage": "https://hashnhedge.com"
 }

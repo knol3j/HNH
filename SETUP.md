@@ -17,7 +17,7 @@ git init
 git add .
 git commit -m "Initial HashNHedge platform consolidation"
 git branch -M main
-git remote add origin https://github.com/knol3j/hashnhedge.git
+git remote add origin https://github.com/knol3j/HNH.git
 git push -u origin main
 ```
 
