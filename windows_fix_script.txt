@@ -1,0 +1,304 @@
+@echo off
+REM Quick Fix Script for Hash & Hedge GitHub Actions (Windows)
+REM Run this from your hashnhedge repository root
+
+echo 🔧 Starting Hash & Hedge GitHub Actions Fix...
+
+REM Change to the repo directory
+cd /d "C:\Users\gnul\hashnhedge"
+
+REM Backup existing workflows
+echo 📦 Backing up existing workflows...
+if not exist .backup mkdir .backup
+if not exist .backup\workflows mkdir .backup\workflows
+if exist .github\workflows xcopy .github\workflows .backup\workflows /E /I /Y > nul
+
+REM Ensure directories exist
+if not exist .github mkdir .github
+if not exist .github\workflows mkdir .github\workflows
+
+REM Update site.yml
+echo 🔨 Updating site.yml workflow...
+(
+echo name: Build and Deploy ^(Pages^)
+echo.
+echo on:
+echo   push:
+echo     branches: [ main ]
+echo   workflow_dispatch: {}
+echo.
+echo permissions:
+echo   contents: write
+echo   pages: write
+echo   id-token: write
+echo.
+echo jobs:
+echo   build:
+echo     runs-on: ubuntu-latest
+echo     steps:
+echo       - name: Checkout
+echo         uses: actions/checkout@v4
+echo         with:
+echo           fetch-depth: 0
+echo           submodules: recursive
+echo.
+echo       - name: Setup Hugo
+echo         uses: peaceiris/actions-hugo@v3
+echo         with:
+echo           hugo-version: '0.135.0'
+echo           extended: true
+echo.
+echo       - name: Install Go ^(for Hugo Modules^)
+echo         uses: actions/setup-go@v5
+echo         with:
+echo           go-version: '1.22.x'
+echo.
+echo       - name: Setup Node.js ^(for theme dependencies^)
+echo         uses: actions/setup-node@v4
+echo         with:
+echo           node-version: '18'
+echo.
+echo       - name: Initialize Hugo Modules and Install Theme
+echo         run: ^|
+echo           cd site
+echo           if [ ! -f go.mod ]; then
+echo             hugo mod init hashnhedge.com
+echo           fi
+echo           hugo mod clean
+echo           hugo mod get -u github.com/onweru/newsroom@latest
+echo           hugo mod vendor
+echo.
+echo       - name: Build
+echo         env:
+echo           GITHUB_WORKSPACE: ${{ github.workspace }}
+echo           HUGO_ENVIRONMENT: production
+echo         run: ^|
+echo           cd site
+echo           hugo --gc --minify -d "$GITHUB_WORKSPACE/public"
+echo           test -d "$GITHUB_WORKSPACE/public" ^&^& echo "Public dir exists" ^|^| ^(echo "Public dir missing" ^&^& ls -la ^&^& exit 1^)
+echo.
+echo       - name: Upload artifact
+echo         uses: actions/upload-pages-artifact@v3
+echo         with:
+echo           path: public
+echo.
+echo   deploy:
+echo     needs: build
+echo     runs-on: ubuntu-latest
+echo     environment:
+echo       name: github-pages
+echo       url: ${{ steps.deployment.outputs.page_url }}
+echo     steps:
+echo       - name: Deploy to GitHub Pages
+echo         id: deployment
+echo         uses: actions/deploy-pages@v4
+) > .github\workflows\site.yml
+
+REM Update config.toml for newsroom theme
+echo ⚙️ Updating Hugo configuration for newsroom theme...
+(
+echo baseURL = "https://hashnhedge.com"
+echo languageCode = "en-us"
+echo title = "Hash & Hedge"
+echo theme = ["github.com/onweru/newsroom"]
+echo.
+echo [module]
+echo   [[module.imports]]
+echo     path = "github.com/onweru/newsroom"
+echo.
+echo [params]
+echo   description = "life in the grey makes you appreciate color in everything."
+echo   author = "Hash & Hedge"
+echo   defaultMode = "light"
+echo.
+echo [[menu.main]]
+echo   name = "Home"
+echo   url = "/"
+echo   weight = 10
+echo.
+echo [[menu.main]]
+echo   name = "Posts"
+echo   url = "/posts/"
+echo   weight = 20
+echo.
+echo [markup]
+echo   [markup.highlight]
+echo     style = "github"
+echo     lineNos = true
+echo     codeFences = true
+echo     guessSyntax = true
+echo.
+echo [outputs]
+echo   home = ["HTML", "RSS", "JSON"]
+echo   page = ["HTML"]
+echo.
+echo [permalinks]
+echo   posts = "/posts/:year/:month/:slug/"
+) > site\config.toml
+
+REM Create go.mod for Hugo modules
+echo 📝 Creating Hugo modules configuration...
+(
+echo module hashnhedge.com
+echo.
+echo go 1.22
+echo.
+echo require github.com/onweru/newsroom v0.0.0-20241201000000-000000000000 // indirect
+) > site\go.mod
+
+REM Update health check with reduced frequency
+echo ❤️ Updating health-check.yml workflow...
+(
+echo name: Site Health Check
+echo.
+echo on:
+echo   schedule:
+echo     - cron: "*/30 * * * *"   # every 30 minutes
+echo   workflow_dispatch: {}
+echo.
+echo permissions:
+echo   contents: write
+echo   issues: write
+echo.
+echo jobs:
+echo   check:
+echo     runs-on: ubuntu-latest
+echo     steps:
+echo       - name: Check homepage status and content
+echo         id: probe
+echo         shell: bash
+echo         run: ^|
+echo           set -e
+echo           URL="https://hashnhedge.com"
+echo           for i in {1..3}; do
+echo             STATUS=$^(curl -A "health-check-bot" -sS -o /tmp/body.html -w "%%{http_code}" --max-time 30 --connect-timeout 15 "$URL" ^|^| echo "000"^)
+echo             if [ "$STATUS" = "200" ]; then
+echo               break
+echo             fi
+echo             echo "Attempt $i failed with status $STATUS, retrying..."
+echo             sleep 10
+echo           done
+echo.
+echo           echo "status=$STATUS" ^>^> $GITHUB_OUTPUT
+echo           if [ "$STATUS" != "200" ]; then
+echo             echo "Homepage returned status $STATUS after 3 attempts" ^>^&2
+echo             exit 2
+echo           fi
+echo.
+echo           if ! grep -qi -E "^(Hash.*Hedge^|hashnhedge^)" /tmp/body.html; then
+echo             echo "Expected content marker not found in page" ^>^&2
+echo             exit 3
+echo           fi
+echo.
+echo           SIZE=$^(wc -c ^</tmp/body.html^)
+echo           echo "bytes=$SIZE" ^>^> $GITHUB_OUTPUT
+echo           if [ "$SIZE" -lt 512 ]; then
+echo             echo "Page too small: $SIZE bytes" ^>^&2
+echo             exit 4
+echo           fi
+echo           echo "Site healthy: $STATUS, $SIZE bytes"
+echo.
+echo       - name: Create or update incident issue on failure
+echo         if: failure^(^)
+echo         uses: actions/github-script@v7
+echo         with:
+echo           script: ^|
+echo             const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+echo             const title = `INCIDENT: hashnhedge.com health check failed`;
+echo             const body = `Automated health check failed.
+echo.
+echo             - Workflow run: ${runUrl}
+echo             - Status: ${{ steps.probe.outputs.status ^|^| 'unknown' }}
+echo             - Notes: Homepage did not meet health criteria.
+echo.
+echo             This issue was opened automatically. It will be closed by the next successful health check.`;
+echo.
+echo             const { data: issues } = await github.rest.issues.listForRepo^({ 
+echo               owner: context.repo.owner, 
+echo               repo: context.repo.repo, 
+echo               state: 'open', 
+echo               per_page: 50 
+echo             }^);
+echo             const existing = issues.find^(i =^> i.title === title^);
+echo             if ^(existing^) {
+echo               await github.rest.issues.createComment^({ 
+echo                 owner: context.repo.owner, 
+echo                 repo: context.repo.repo, 
+echo                 issue_number: existing.number, 
+echo                 body 
+echo               }^);
+echo             } else {
+echo               await github.rest.issues.create^({ 
+echo                 owner: context.repo.owner, 
+echo                 repo: context.repo.repo, 
+echo                 title, 
+echo                 body 
+echo               }^);
+echo             }
+) > .github\workflows\health-check.yml
+
+REM Test Hugo setup locally
+echo 🧪 Testing Hugo setup locally...
+cd site
+
+REM Check if Hugo is installed
+hugo version > nul 2>&1
+if errorlevel 1 (
+    echo ❌ Hugo not found! Please install Hugo extended version first.
+    echo Download from: https://github.com/gohugoio/hugo/releases
+    pause
+    exit /b 1
+)
+
+REM Initialize Hugo modules if go.mod doesn't exist
+echo 📦 Initializing Hugo modules...
+if not exist go.mod (
+    hugo mod init hashnhedge.com
+)
+
+REM Get the newsroom theme
+echo 🎨 Getting newsroom theme...
+hugo mod get github.com/onweru/newsroom@latest
+hugo mod vendor
+
+REM Quick test build
+echo 🔨 Testing build...
+hugo --minify -d ..\test-build
+if errorlevel 0 (
+    echo ✅ Local build successful!
+    if exist ..\test-build rmdir /s /q ..\test-build
+) else (
+    echo ❌ Local build failed - check config
+)
+
+cd ..
+
+echo.
+echo 🎉 Quick fix completed!
+echo.
+echo Next steps:
+echo 1. Review the changes:
+echo    git status
+echo    git diff
+echo.
+echo 2. Commit and push:
+echo    git add -A
+echo    git commit -m "fix: update GitHub Actions and switch to newsroom theme"
+echo    git push
+echo.
+echo 3. Check GitHub Actions at:
+echo    https://github.com/knol3j/hashnhedge/actions
+echo.
+echo 4. Your site will be available at:
+echo    https://hashnhedge.com
+echo.
+echo 🔧 Changes made:
+echo - ✅ Updated main build workflow
+echo - ✅ Switched to newsroom theme
+echo - ✅ Added Hugo modules support
+echo - ✅ Reduced health check frequency
+echo - ✅ Updated Hugo to v0.135.0
+echo.
+echo If you see any issues, check the backup in .backup\workflows\
+echo.
+pause
