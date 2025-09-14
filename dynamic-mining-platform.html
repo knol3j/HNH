@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge - Dynamic Mining & Security Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .mining-active {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .gradient-security {
+            background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+        }
+        
+        .gradient-mining {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hash-display {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header with Mode Switcher -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold">HashNHedge</h1>
+                    <div class="flex bg-gray-700 rounded-lg p-1">
+                        <button onclick="switchMode('mining')" id="miningModeBtn" class="px-4 py-2 rounded-md bg-green-600 text-white transition">
+                            ⛏️ Mining
+                        </button>
+                        <button onclick="switchMode('security')" id="securityModeBtn" class="px-4 py-2 rounded-md text-gray-300 hover:text-white transition">
+                            🔓 Security
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-400">Network Status:</span>
+                    <span class="text-green-400 font-semibold">● Online</span>
+                    <button onclick="openWhiteLabel()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition">
+                        🏷️ White Label
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-gray-800 shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-1">
+                <button onclick="switchTab('control')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition bg-gray-700" data-tab="control">
+                    Control Center
+                </button>
+                <button onclick="switchTab('tasks')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="tasks">
+                    Task Manager
+                </button>
+                <button onclick="switchTab('revenue')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="revenue">
+                    Revenue Share
+                </button>
+                <button onclick="switchTab('security')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="security">
+                    Security Tools
+                </button>
+                <button onclick="switchTab('nodes')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="nodes">
+                    Node Monitor
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Control Center Tab -->
+        <div id="control" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Current Operation Status -->
+                <div class="glass-effect p-6 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4">Current Operation</h3>
+                    <div id="currentOperation" class="text-center py-4">
+                        <div class="text-3xl font-bold text-green-400 mining-active">MINING ACTIVE</div>
+                        <p class="text-sm text-gray-400 mt-2">Bitcoin @ Block 812,543</p>
+                        <div class="mt-4">
+                            <div class="text-xs text-gray-500">Current Difficulty</div>
+                            <div class="hash-display text-xs text-green-400">0x000000000000000000052d...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hash Rate Monitor -->
+                <div class="glass-effect p-6 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4">Network Hash Rate</h3>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-blue-400">847.3</div>
+                        <div class="text-sm text-gray-400">TH/s</div>
+                        <div class="mt-4 space-y-2">
+                            <div class="flex justify-between text-xs">
+                                <span>GPU Nodes:</span>
+                                <span class="text-green-400">3,892</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span>CPU Nodes:</span>
+                                <span class="text-yellow-400">1,247</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Statistics -->
+                <div class="glass-effect p-6 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4">24h Revenue</h3>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-yellow-400">$12,847</div>
+                        <div class="text-sm text-gray-400">Total Earned</div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-xs mb-2">
+                                <span>Node Operators (70%):</span>
+                                <span class="text-green-400">$8,993</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span>Platform Fee (30%):</span>
+                                <span class="text-blue-400">$3,854</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Hash Target Configuration -->
+            <div class="glass-effect p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4">🎯 Dynamic Hash Target Configuration</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm mb-2">Algorithm Selection</label>
+                        <select id="algorithmSelect" onchange="updateHashTarget()" class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <option value="sha256">SHA-256 (Bitcoin)</option>
+                            <option value="ethash">Ethash (Ethereum Classic)</option>
+                            <option value="kawpow">KawPow (Ravencoin)</option>
+                            <option value="scrypt">Scrypt (Litecoin)</option>
+                            <option value="md5">MD5 (Hashcat)</option>
+                            <option value="ntlm">NTLM (Windows)</option>
+                            <option value="wpa2">WPA2 (WiFi)</option>
+                            <option value="custom">Custom Hash</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Target Difficulty</label>
+                        <input type="text" id="targetDifficulty" value="0x00000000000000000000" class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 hash-display" placeholder="Enter target hash prefix">
+                    </div>
+                </div>
+                <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm mb-2">Hash Rate Distribution</label>
+                        <input type="range" id="hashDistribution" min="0" max="100" value="100" class="w-full" onchange="updateDistribution(this.value)">
+                        <div class="flex justify-between text-xs mt-1">
+                            <span>Mining: <span id="miningPercent">100</span>%</span>
+                            <span>Security: <span id="securityPercent">0</span>%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Auto-Switch Threshold</label>
+                        <input type="number" value="500" class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700" placeholder="$ per task">
+                    </div>
+                    <div>
+                        <button onclick="applyHashConfig()" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-semibold transition mt-6">
+                            Apply Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Hash Monitor -->
+            <div class="glass-effect p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">⚡ Real-time Hash Stream</h3>
+                <div class="bg-black p-4 rounded-lg h-48 overflow-y-auto" id="hashStream">
+                    <div class="hash-display text-xs text-green-400"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Manager Tab -->
+        <div id="tasks" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Task Queue Manager</h2>
+            
+            <!-- Active Tasks -->
+            <div class="glass-effect p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4">Active Tasks</h3>
+                <div class="space-y-4" id="activeTasks">
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <span class="text-sm font-semibold">Bitcoin Mining</span>
+                                <span class="ml-2 px-2 py-1 bg-green-600 text-xs rounded">ACTIVE</span>
+                            </div>
+                            <span class="text-sm text-gray-400">Priority: High</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full progress-bar" style="width: 67%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                            <span>3,892 nodes active</span>
+                            <span>Est. reward: $847/hour</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <span class="text-sm font-semibold">WPA2 Crack - Client #2847</span>
+                                <span class="ml-2 px-2 py-1 bg-orange-600 text-xs rounded">PROCESSING</span>
+                            </div>
+                            <span class="text-sm text-gray-400">Priority: Medium</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-orange-500 h-2 rounded-full progress-bar" style="width: 34%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                            <span>500 nodes active</span>
+                            <span>Fixed: $2,500 on completion</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Tasks Queue -->
+            <div class="glass-effect p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Pending Queue</h3>
+                <div class="space-y-2">
+                    <div class="bg-gray-800 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <span class="text-sm">NTLM Hash Recovery</span>
+                            <span class="text-xs text-gray-400 ml-2">Client #2848</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-yellow-400">$3,000</span>
+                            <button class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs">Assign</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <span class="text-sm">MD5 Database (10M hashes)</span>
+                            <span class="text-xs text-gray-400 ml-2">Client #2849</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-yellow-400">$5,000</span>
+                            <button class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs">Assign</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Share Tab -->
+        <div id="revenue" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Revenue Sharing Dashboard</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Revenue Configuration -->
+                <div class="glass-effect p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">💰 Revenue Split Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-2">Node Operator Share</label>
+                            <div class="flex items-center space-x-4">
+                                <input type="range" id="operatorShare" min="50" max="90" value="70" class="flex-1" onchange="updateRevenueSplit(this.value)">
+                                <span id="operatorPercent" class="text-xl font-bold text-green-400">70%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-2">Platform Fee</label>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-1 bg-gray-700 rounded-full h-8 flex items-center justify-center">
+                                    <span id="platformPercent" class="text-xl font-bold text-blue-400">30%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-700 pt-4">
+                            <label class="block text-sm mb-2">Bonus Multipliers</label>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Uptime > 99%:</span>
+                                    <span class="text-green-400">+5% bonus</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>GPU Nodes:</span>
+                                    <span class="text-green-400">+10% bonus</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Priority Tasks:</span>
+                                    <span class="text-green-400">+15% bonus</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Earnings Calculator -->
+                <div class="glass-effect p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">📊 Earnings Calculator</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-2">Your Hash Rate (TH/s)</label>
+                            <input type="number" id="userHashRate" value="1.5" class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700" onchange="calculateEarnings()">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-2">Hours per Day</label>
+                            <input type="number" id="hoursPerDay" value="24" class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700" onchange="calculateEarnings()">
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <div class="text-center">
+                                <div class="text-sm text-gray-400">Estimated Daily Earnings</div>
+                                <div class="text-3xl font-bold text-yellow-400" id="dailyEarnings">$127.45</div>
+                                <div class="text-sm text-gray-400 mt-2">Monthly: <span class="text-green-400" id="monthlyEarnings">$3,823.50</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payout History -->
+            <div class="glass-effect p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">💳 Recent Payouts</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left p-3">Date</th>
+                                <th class="text-left p-3">Node ID</th>
+                                <th class="text-left p-3">Task Type</th>
+                                <th class="text-left p-3">Hash Rate</th>
+                                <th class="text-left p-3">Earnings</th>
+                                <th class="text-left p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-800">
+                                <td class="p-3 text-sm">2024-01-15</td>
+                                <td class="p-3 text-sm font-mono">NODE-4829</td>
+                                <td class="p-3 text-sm">Bitcoin Mining</td>
+                                <td class="p-3 text-sm">2.3 TH/s</td>
+                                <td class="p-3 text-sm text-green-400">$184.72</td>
+                                <td class="p-3"><span class="px-2 py-1 bg-green-600 text-xs rounded">Paid</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-800">
+                                <td class="p-3 text-sm">2024-01-15</td>
+                                <td class="p-3 text-sm font-mono">NODE-2847</td>
+                                <td class="p-3 text-sm">WPA2 Crack</td>
+                                <td class="p-3 text-sm">1.8 TH/s</td>
+                                <td class="p-3 text-sm text-green-400">$525.00</td>
+                                <td class="p-3"><span class="px-2 py-1 bg-green-600 text-xs rounded">Paid</span></td>
+                            </tr>
+                            <tr class="border-b border-gray-800">
+                                <td class="p-3 text-sm">2024-01-14</td>
+                                <td class="p-3 text-sm font-mono">NODE-9182</td>
+                                <td class="p-3 text-sm">NTLM Recovery</td>
+                                <td class="p-3 text-sm">3.1 TH/s</td>
+                                <td class="p-3 text-sm text-yellow-400">$750.00</td>
+                                <td class="p-3"><span class="px-2 py-1 bg-yellow-600 text-xs rounded">Pending</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Tools Tab -->
+        <div id="security" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">🔓 Security & Pentesting Tools</h2>
+            
+            <!-- Hashcat Interface -->
+            <div class="glass-effect p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4">Hashcat Configuration</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm mb-2">Attack Mode</label>
+                        <select class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <option value="0">Straight (Dictionary)</option>
+                            <option value="1">Combination</option>
+                            <option value="3">Brute-force</option>
+                            <option value="6">Hybrid Wordlist + Mask</option>
+                            <option value="7">Hybrid Mask + Wordlist</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Hash Type</label>
+                        <select class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <option value="0">MD5</option>
+                            <option value="100">SHA1</option>
+                            <option value="1400">SHA256</option>
+                            <option value="1000">NTLM</option>
+                            <option value="2500">WPA/WPA2</option>
+                            <option value="3000">LM</option>
+                            <option value="5600">NetNTLMv2</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm mb-2">Hash Input</label>
+                    <textarea class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 hash-display" rows="4" placeholder="Paste hashes here..."></textarea>
+                </div>
+                <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm mb-2">Wordlist</label>
+                        <select class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <option>rockyou.txt</option>
+                            <option>SecLists Common</option>
+                            <option>Custom Upload</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Rules</label>
+                        <select class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <option>best64.rule</option>
+                            <option>d3ad0ne.rule</option>
+                            <option>dive.rule</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button onclick="startHashcatJob()" class="w-full bg-orange-600 hover:bg-orange-700 p-3 rounded-lg font-semibold transition mt-6">
+                            Start Attack
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Job Templates -->
+            <div class="glass-effect p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Quick Templates</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer" onclick="loadTemplate('wifi')">
+                        <div class="text-lg font-semibold mb-2">📶 WiFi Audit</div>
+                        <p class="text-sm text-gray-400">WPA2 handshake cracking</p>
+                        <p class="text-xs text-green-400 mt-2">Avg. time: 2-6 hours</p>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer" onclick="loadTemplate('windows')">
+                        <div class="text-lg font-semibold mb-2">🪟 Windows AD</div>
+                        <p class="text-sm text-gray-400">NTLM/NetNTLM recovery</p>
+                        <p class="text-xs text-green-400 mt-2">Avg. time: 1-3 hours</p>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer" onclick="loadTemplate('web')">
+                        <div class="text-lg font-semibold mb-2">🌐 Web Apps</div>
+                        <p class="text-sm text-gray-400">MD5/SHA database dumps</p>
+                        <p class="text-xs text-green-400 mt-2">Avg. time: 30-90 min</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node Monitor Tab -->
+        <div id="nodes" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Node Network Monitor</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+                <div class="glass-effect p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-green-400">5,139</div>
+                    <div class="text-sm text-gray-400">Total Nodes</div>
+                </div>
+                <div class="glass-effect p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-blue-400">3,892</div>
+                    <div class="text-sm text-gray-400">GPU Nodes</div>
+                </div>
+                <div class="glass-effect p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-yellow-400">98.7%</div>
+                    <div class="text-sm text-gray-400">Uptime</div>
+                </div>
+                <div class="glass-effect p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-purple-400">847 TH/s</div>
+                    <div class="text-sm text-gray-400">Total Power</div>
+                </div>
+            </div>
+
+            <!-- Node List -->
+            <div class="glass-effect p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Top Performing Nodes</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left p-3">Node ID</th>
+                                <th class="text-left p-3">Type</th>
+                                <th class="text-left p-3">Hash Rate</th>
+                                <th class="text-left p-3">Uptime</th>
+                                <th class="text-left p-3">Tasks</th>
+                                <th class="text-left p-3">Earnings (24h)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nodeList">
+                            <tr class="border-b border-gray-800">
+                                <td class="p-3 text-sm font-mono">NODE-8472</td>
+                                <td class="p-3 text-sm"><span class="px-2 py-1 bg-purple-600 text-xs rounded">RTX 4090</span></td>
+                                <td class="p-3 text-sm">12.4 TH/s</td>
+                                <td class="p-3 text-sm text-green-400">99.9%</td>
+                                <td class="p-3 text-sm">847</td>
+                                <td class="p-3 text-sm text-yellow-400">$1,247.82</td>
+                            </tr>
+                            <tr class="border-b border-gray-800">
+                                <td class="p-3 text-sm font-mono">NODE-3921</td>
+                                <td class="p-3 text-sm"><span class="px-2 py-1 bg-blue-600 text-xs rounded">RTX 3090</span></td>
+                                <td class="p-3 text-sm">8.7 TH/s</td>
+                                <td class="p-3 text-sm text-green-400">99.7%</td>
+                                <td class="p-3 text-sm">724</td>
+                                <td class="p-3 text-sm text-yellow-400">$982.45</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- White Label Modal -->
+    <div id="whiteLabelModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
+                <h3 class="text-2xl font-bold mb-4">🏷️ White Label Configuration</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm mb-2">Brand Name</label>
+                        <input type="text" class="w-full p-3 bg-gray-700 rounded-lg" placeholder="Your Company Name">
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Logo URL</label>
+                        <input type="text" class="w-full p-3 bg-gray-700 rounded-lg" placeholder="https://yourlogo.com/logo.png">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm mb-2">Primary Color</label>
+                            <input type="color" class="w-full p-3 bg-gray-700 rounded-lg h-12" value="#667eea">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-2">Secondary Color</label>
+                            <input type="color" class="w-full p-3 bg-gray-700 rounded-lg h-12" value="#764ba2">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-2">Revenue Share Override</label>
+                        <input type="number" class="w-full p-3 bg-gray-700 rounded-lg" placeholder="30" min="10" max="50">
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-sm text-gray-400 mb-2">White Label Package: <span class="text-green-400 font-bold">$2,000 one-time</span></p>
+                        <p class="text-xs text-gray-500">Includes custom branding, dedicated subdomain, and priority support</p>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button onclick="generateWhiteLabel()" class="flex-1 bg-purple-600 hover:bg-purple-700 p-3 rounded-lg font-semibold transition">
+                            Generate Package
+                        </button>
+                        <button onclick="closeWhiteLabel()" class="flex-1 bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-semibold transition">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentMode = 'mining';
+        let hashInterval;
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-gray-700');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('bg-gray-700');
+        }
+
+        // Mode switching
+        function switchMode(mode) {
+            currentMode = mode;
+            const miningBtn = document.getElementById('miningModeBtn');
+            const securityBtn = document.getElementById('securityModeBtn');
+            const operation = document.getElementById('currentOperation');
+            
+            if (mode === 'mining') {
+                miningBtn.classList.add('bg-green-600');
+                miningBtn.classList.remove('text-gray-300');
+                securityBtn.classList.remove('bg-orange-600');
+                securityBtn.classList.add('text-gray-300');
+                
+                operation.innerHTML = `
+                    <div class="text-3xl font-bold text-green-400 mining-active">MINING ACTIVE</div>
+                    <p class="text-sm text-gray-400 mt-2">Bitcoin @ Block 812,543</p>
+                    <div class="mt-4">
+                        <div class="text-xs text-gray-500">Current Difficulty</div>
+                        <div class="hash-display text-xs text-green-400">0x000000000000000000052d...</div>
+                    </div>
+                `;
+            } else {
+                securityBtn.classList.add('bg-orange-600');
+                securityBtn.classList.remove('text-gray-300');
+                miningBtn.classList.remove('bg-green-600');
+                miningBtn.classList.add('text-gray-300');
+                
+                operation.innerHTML = `
+                    <div class="text-3xl font-bold text-orange-400 mining-active">SECURITY MODE</div>
+                    <p class="text-sm text-gray-400 mt-2">Hashcat Ready</p>
+                    <div class="mt-4">
+                        <div class="text-xs text-gray-500">Active Job</div>
+                        <div class="hash-display text-xs text-orange-400">WPA2 Handshake Analysis</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Update hash target
+        function updateHashTarget() {
+            const algorithm = document.getElementById('algorithmSelect').value;
+            const targetField = document.getElementById('targetDifficulty');
+            
+            const targets = {
+                'sha256': '0x00000000000000000000',
+                'ethash': '0x00000000ffff0000000000',
+                'kawpow': '0x00000fffffffffff',
+                'scrypt': '0x0000ffff00000000',
+                'md5': '0xffffffff',
+                'ntlm': '0xffffffff',
+                'wpa2': '0xffffffff',
+                'custom': ''
+            };
+            
+            targetField.value = targets[algorithm] || '';
+        }
+
+        // Update distribution
+        function updateDistribution(value) {
+            document.getElementById('miningPercent').textContent = value;
+            document.getElementById('securityPercent').textContent = 100 - value;
+        }
+
+        // Update revenue split
+        function updateRevenueSplit(value) {
+            document.getElementById('operatorPercent').textContent = value + '%';
+            document.getElementById('platformPercent').textContent = (100 - value) + '%';
+        }
+
+        // Calculate earnings
+        function calculateEarnings() {
+            const hashRate = parseFloat(document.getElementById('userHashRate').value) || 0;
+            const hours = parseFloat(document.getElementById('hoursPerDay').value) || 0;
+            
+            // Simplified calculation (actual would be more complex)
+            const hourlyRate = hashRate * 5.67; // Example rate
+            const daily = hourlyRate * hours;
+            const monthly = daily * 30;
+            
+            document.getElementById('dailyEarnings').textContent = '$' + daily.toFixed(2);
+            document.getElementById('monthlyEarnings').textContent = '$' + monthly.toFixed(2);
+        }
+
+        // Apply hash configuration
+        function applyHashConfig() {
+            alert('Hash configuration applied successfully!');
+            startHashStream();
+        }
+
+        // Start hashcat job
+        function startHashcatJob() {
+            alert('Hashcat job submitted to network!\nEstimated completion: 2-3 hours');
+            switchTab('tasks');
+        }
+
+        // Load template
+        function loadTemplate(type) {
+            alert(`Loading ${type} template...`);
+        }
+
+        // White label functions
+        function openWhiteLabel() {
+            document.getElementById('whiteLabelModal').classList.remove('hidden');
+        }
+
+        function closeWhiteLabel() {
+            document.getElementById('whiteLabelModal').classList.add('hidden');
+        }
+
+        function generateWhiteLabel() {
+            alert('White label package generated! Download link sent to your email.');
+            closeWhiteLabel();
+        }
+
+        // Start hash stream simulation
+        function startHashStream() {
+            const stream = document.getElementById('hashStream');
+            clearInterval(hashInterval);
+            
+            hashInterval = setInterval(() => {
+                const hash = '0x' + Math.random().toString(16).substr(2, 64);
+                const line = document.createElement('div');
+                line.className = 'hash-display text-xs text-green-400';
+                line.textContent = new Date().toISOString() + ' | ' + hash;
+                stream.insertBefore(line, stream.firstChild);
+                
+                // Keep only last 20 lines
+                while (stream.children.length > 20) {
+                    stream.removeChild(stream.lastChild);
+                }
+            }, 1000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            calculateEarnings();
+            startHashStream();
+        });
+    </script>
+</body>
+</html>

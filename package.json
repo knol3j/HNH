@@ -1,0 +1,28 @@
+{
+  "name": "hashnhedge",
+  "version": "1.0.0",
+  "description": "HashNHedge - Decentralized GPU Computing Network",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8080",
+    "build": "echo 'No build step required for static site'",
+    "deploy": "echo 'Deploy to your hosting provider'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/knol3j/hashnhedge.git"
+  },
+  "keywords": [
+    "blockchain",
+    "gpu",
+    "mining",
+    "cryptocurrency",
+    "distributed-computing"
+  ],
+  "author": "HashNHedge Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/knol3j/hashnhedge/issues"
+  },
+  "homepage": "https://hashnhedge.com"
+}

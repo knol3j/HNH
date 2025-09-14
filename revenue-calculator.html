@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Revenue Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-900 to-blue-900 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-5xl font-bold text-center mb-4">💰 Revenue Calculator</h1>
+            <p class="text-xl text-center mb-8 text-gray-300">See how much you can earn with HashNHedge</p>
+            
+            <!-- Calculator Card -->
+            <div class="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Input Section -->
+                    <div class="space-y-6">
+                        <h3 class="text-2xl font-bold mb-4">Your Setup</h3>
+                        
+                        <div>
+                            <label class="block text-sm mb-2">GPU Type</label>
+                            <select id="gpuType" onchange="calculate()" class="w-full p-3 bg-gray-700 rounded-lg">
+                                <option value="4090">RTX 4090 (150 MH/s)</option>
+                                <option value="3090">RTX 3090 (120 MH/s)</option>
+                                <option value="3080">RTX 3080 (100 MH/s)</option>
+                                <option value="3070">RTX 3070 (60 MH/s)</option>
+                                <option value="3060ti">RTX 3060 Ti (45 MH/s)</option>
+                                <option value="cpu">CPU Only (0.5 MH/s)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm mb-2">Number of GPUs</label>
+                            <input type="number" id="gpuCount" value="1" min="1" max="100" onchange="calculate()" 
+                                   class="w-full p-3 bg-gray-700 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm mb-2">Hours per Day</label>
+                            <input type="range" id="hoursPerDay" min="1" max="24" value="24" onchange="calculate()" 
+                                   class="w-full">
+                            <div class="text-center text-xl font-bold" id="hoursDisplay">24 hours</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm mb-2">Electricity Cost ($/kWh)</label>
+                            <input type="number" id="electricityCost" value="0.12" step="0.01" onchange="calculate()" 
+                                   class="w-full p-3 bg-gray-700 rounded-lg">
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div class="space-y-6">
+                        <h3 class="text-2xl font-bold mb-4">Your Earnings</h3>
+                        
+                        <div class="bg-gradient-to-r from-green-600 to-green-500 p-6 rounded-xl">
+                            <div class="text-sm opacity-90">Daily Revenue</div>
+                            <div class="text-4xl font-bold" id="dailyRevenue">$127.45</div>
+                            <div class="text-sm mt-2 opacity-90">After electricity: <span id="dailyProfit">$119.21</span></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-700 p-4 rounded-lg">
+                                <div class="text-sm text-gray-400">Weekly</div>
+                                <div class="text-2xl font-bold text-yellow-400" id="weeklyRevenue">$892.15</div>
+                            </div>
+                            <div class="bg-gray-700 p-4 rounded-lg">
+                                <div class="text-sm text-gray-400">Monthly</div>
+                                <div class="text-2xl font-bold text-yellow-400" id="monthlyRevenue">$3,823.50</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="text-sm text-gray-400">Yearly Income</div>
+                            <div class="text-3xl font-bold text-green-400" id="yearlyRevenue">$45,882.00</div>
+                            <div class="text-xs text-gray-500 mt-2">Based on 70% revenue share</div>
+                        </div>
+                        
+                        <div class="bg-purple-700 p-4 rounded-lg">
+                            <div class="text-sm">🚀 Bonus Opportunity</div>
+                            <div class="text-xs mt-2">Security tasks can earn 2-5x regular mining!</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chart Section -->
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold mb-4">Projected Earnings Over Time</h3>
+                    <canvas id="earningsChart" height="100"></canvas>
+                </div>
+                
+                <!-- CTA Section -->
+                <div class="mt-8 text-center">
+                    <button onclick="startMining()" class="bg-gradient-to-r from-green-600 to-blue-600 px-8 py-4 rounded-xl text-xl font-bold hover:scale-105 transition-transform">
+                        Start Earning Now!
+                    </button>
+                    <p class="text-sm text-gray-400 mt-4">No upfront costs • Start in 5 minutes • Daily payouts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const hashRates = {
+            '4090': 150,
+            '3090': 120,
+            '3080': 100,
+            '3070': 60,
+            '3060ti': 45,
+            'cpu': 0.5
+        };
+        
+        const powerUsage = {
+            '4090': 450,
+            '3090': 350,
+            '3080': 320,
+            '3070': 220,
+            '3060ti': 200,
+            'cpu': 100
+        };
+        
+        let chart;
+        
+        function calculate() {
+            const gpuType = document.getElementById('gpuType').value;
+            const gpuCount = parseInt(document.getElementById('gpuCount').value);
+            const hoursPerDay = parseInt(document.getElementById('hoursPerDay').value);
+            const electricityCost = parseFloat(document.getElementById('electricityCost').value);
+            
+            document.getElementById('hoursDisplay').textContent = hoursPerDay + ' hours';
+            
+            // Calculate hash rate
+            const totalHashRate = hashRates[gpuType] * gpuCount;
+            
+            // Revenue calculation (simplified)
+            const revenuePerMH = 0.85; // $ per MH/s per day
+            const dailyRevenue = totalHashRate * revenuePerMH * (hoursPerDay / 24) * 0.7; // 70% share
+            
+            // Electricity cost
+            const totalPower = (powerUsage[gpuType] * gpuCount) / 1000; // Convert to kW
+            const dailyElectricity = totalPower * hoursPerDay * electricityCost;
+            const dailyProfit = dailyRevenue - dailyElectricity;
+            
+            // Update display
+            document.getElementById('dailyRevenue').textContent = '$' + dailyRevenue.toFixed(2);
+            document.getElementById('dailyProfit').textContent = '$' + dailyProfit.toFixed(2);
+            document.getElementById('weeklyRevenue').textContent = '$' + (dailyProfit * 7).toFixed(2);
+            document.getElementById('monthlyRevenue').textContent = '$' + (dailyProfit * 30).toFixed(2);
+            document.getElementById('yearlyRevenue').textContent = '$' + (dailyProfit * 365).toFixed(2);
+            
+            updateChart(dailyProfit);
+        }
+        
+        function updateChart(dailyProfit) {
+            const ctx = document.getElementById('earningsChart').getContext('2d');
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const earnings = months.map((_, i) => dailyProfit * 30 * (i + 1));
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Cumulative Earnings',
+                        data: earnings,
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                },
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function startMining() {
+            window.open('mining-platform.html', '_blank');
+        }
+        
+        // Initialize
+        calculate();
+    </script>
+</body>
+</html>

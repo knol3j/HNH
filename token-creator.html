@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HNH Token Creator - Deploy on Solana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-5xl font-bold gradient-text mb-4">HNH Token Creator</h1>
+                <p class="text-xl text-gray-400">Deploy Your Token on Solana in Minutes</p>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="flex justify-between mb-12">
+                <div class="flex-1 text-center">
+                    <div id="step1" class="w-12 h-12 bg-purple-600 rounded-full mx-auto mb-2 flex items-center justify-center">1</div>
+                    <p class="text-sm">Configure</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step2" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">2</div>
+                    <p class="text-sm">Deploy</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step3" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">3</div>
+                    <p class="text-sm">Distribute</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step4" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">4</div>
+                    <p class="text-sm">List</p>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column - Configuration -->
+                <div class="space-y-6">
+                    <!-- Token Configuration -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Token Configuration</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm mb-2">Token Name</label>
+                                <input type="text" id="tokenName" value="HashNHedge Token" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Token Symbol</label>
+                                <input type="text" id="tokenSymbol" value="HNH" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Total Supply</label>
+                                <input type="number" id="totalSupply" value="1000000000" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Decimals</label>
+                                <input type="number" id="decimals" value="9" min="0" max="9"
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
