@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 2,
+  "agentName": "DESKTOP-8ONRA0V",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus10.actions.githubusercontent.com/zpnWarUuzRBi83jGf4aLLU5CcKbRaVssz5796EZDvRJLlzoJ40/",
+  "gitHubUrl": "https://github.com/knol3j/HNH",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}
