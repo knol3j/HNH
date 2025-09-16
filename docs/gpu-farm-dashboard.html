@@ -556,6 +556,9 @@ contract HashNHedgeOrchestrator {
     </main>
 
     <script>
+        // API Base URL
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api';
+
         // Tab switching
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -564,9 +567,50 @@ contract HashNHedgeOrchestrator {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('bg-gray-700');
             });
-            
+
             document.getElementById(tabName).classList.add('active');
             document.querySelector(`[data-tab="${tabName}"]`).classList.add('bg-gray-700');
+        }
+
+        // Load real network data
+        async function loadNetworkStats() {
+            try {
+                const response = await fetch(`${API_BASE}/network-stats`);
+                const data = await response.json();
+
+                // Update dashboard metrics
+                document.querySelector('.metric-card:nth-child(1) p').textContent = data.totalNodes.toLocaleString();
+                document.querySelector('.metric-card:nth-child(2) p').textContent = data.activeGPUs.toLocaleString();
+                document.querySelector('.metric-card:nth-child(3) p').textContent = data.totalTFLOPS.toFixed(1);
+                document.querySelector('.metric-card:nth-child(4) p').textContent = data.networkUtilization.toFixed(1) + '%';
+            } catch (error) {
+                console.error('Failed to load network stats:', error);
+            }
+        }
+
+        // Load farms data
+        async function loadFarms() {
+            try {
+                const response = await fetch(`${API_BASE}/farms`);
+                const farms = await response.json();
+
+                const farmList = document.getElementById('farmList');
+                farmList.innerHTML = farms.map(farm => `
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold">${farm.name}</p>
+                                <p class="text-sm text-gray-400">${farm.gpus} GPUs • ${farm.location}</p>
+                            </div>
+                            <span class="bg-${farm.status === 'online' ? 'green' : 'red'}-500 px-3 py-1 rounded-full text-sm">
+                                ${farm.status.charAt(0).toUpperCase() + farm.status.slice(1)}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load farms:', error);
+            }
         }
 
         // Initialize Charts
@@ -719,15 +763,49 @@ contract HashNHedgeOrchestrator {
             document.getElementById('roiResult').textContent = `$${annualReturn.toFixed(2)}`;
         }
 
-        // Mock Functions
-        function connectWallet() {
-            document.getElementById('walletStatus').textContent = '0x742d...bEb7';
-            alert('Wallet connected successfully!');
+        // Wallet Functions
+        async function connectWallet() {
+            try {
+                const response = await fetch(`${API_BASE}/connect-wallet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('walletStatus').textContent = result.address;
+                    alert(`Wallet connected successfully!\nAddress: ${result.address}\nSOL Balance: ${result.balance.SOL}\nHNH Balance: ${result.balance.HNH}`);
+                }
+            } catch (error) {
+                alert('Failed to connect wallet. Please try again.');
+            }
         }
 
-        function registerFarm(event) {
+        async function registerFarm(event) {
             event.preventDefault();
-            alert('Farm registration submitted! Pending approval...');
+            const formData = new FormData(event.target);
+
+            try {
+                const response = await fetch(`${API_BASE}/farms`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: formData.get('farmName') || event.target.querySelector('input[placeholder="Farm Name"]').value,
+                        location: formData.get('location') || event.target.querySelector('input[placeholder="Location"]').value,
+                        gpuCount: formData.get('gpuCount') || event.target.querySelector('input[placeholder="Number of GPUs"]').value,
+                        gpuType: formData.get('gpuType') || event.target.querySelector('select').value,
+                        wallet: document.getElementById('walletStatus').textContent
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Farm "${result.farm.name}" registered successfully! Status: ${result.farm.status}`);
+                    loadFarms(); // Refresh farms list
+                }
+            } catch (error) {
+                alert('Farm registration failed. Please try again.');
+            }
         }
 
         function nodeSetupStep(step) {
@@ -775,6 +853,14 @@ contract HashNHedgeOrchestrator {
         window.addEventListener('load', () => {
             initCharts();
             calculateROI();
+            loadNetworkStats();
+            loadFarms();
+
+            // Auto-refresh data every 30 seconds
+            setInterval(() => {
+                loadNetworkStats();
+                loadFarms();
+            }, 30000);
         });
     </script>
 </body>

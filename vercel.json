@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "deploy.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/deploy.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/deploy.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "deploy.js": {
+      "maxDuration": 30
+    }
+  }
+}

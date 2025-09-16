@@ -104,53 +104,65 @@
     </div>
     
     <script>
-        const hashRates = {
-            '4090': 150,
-            '3090': 120,
-            '3080': 100,
-            '3070': 60,
-            '3060ti': 45,
-            'cpu': 0.5
-        };
-        
-        const powerUsage = {
-            '4090': 450,
-            '3090': 350,
-            '3080': 320,
-            '3070': 220,
-            '3060ti': 200,
-            'cpu': 100
-        };
-        
+        // API Base URL
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api';
+
         let chart;
-        
-        function calculate() {
+
+        async function calculate() {
+            const gpuType = document.getElementById('gpuType').value;
+            const gpuCount = parseInt(document.getElementById('gpuCount').value);
+            const hoursPerDay = parseInt(document.getElementById('hoursPerDay').value);
+
+            document.getElementById('hoursDisplay').textContent = hoursPerDay + ' hours';
+
+            try {
+                // Get real revenue data from API
+                const response = await fetch(`${API_BASE}/revenue-data?gpuType=${gpuType}&gpuCount=${gpuCount}&hoursPerDay=${hoursPerDay}`);
+                const data = await response.json();
+
+                // Update display with real data
+                document.getElementById('dailyRevenue').textContent = '$' + data.dailyRevenue;
+                document.getElementById('dailyProfit').textContent = '$' + data.dailyProfit;
+                document.getElementById('weeklyRevenue').textContent = '$' + data.weeklyRevenue;
+                document.getElementById('monthlyRevenue').textContent = '$' + data.monthlyRevenue;
+                document.getElementById('yearlyRevenue').textContent = '$' + data.yearlyRevenue;
+
+                updateChart(parseFloat(data.dailyProfit));
+            } catch (error) {
+                console.error('Failed to calculate revenue:', error);
+                // Fallback to client-side calculation
+                calculateOffline();
+            }
+        }
+
+        function calculateOffline() {
+            // Fallback calculation if API is unavailable
+            const hashRates = {
+                '4090': 150, '3090': 120, '3080': 100, '3070': 60, '3060ti': 45, 'cpu': 0.5
+            };
+            const powerUsage = {
+                '4090': 450, '3090': 350, '3080': 320, '3070': 220, '3060ti': 200, 'cpu': 100
+            };
+
             const gpuType = document.getElementById('gpuType').value;
             const gpuCount = parseInt(document.getElementById('gpuCount').value);
             const hoursPerDay = parseInt(document.getElementById('hoursPerDay').value);
             const electricityCost = parseFloat(document.getElementById('electricityCost').value);
-            
-            document.getElementById('hoursDisplay').textContent = hoursPerDay + ' hours';
-            
-            // Calculate hash rate
+
             const totalHashRate = hashRates[gpuType] * gpuCount;
-            
-            // Revenue calculation (simplified)
-            const revenuePerMH = 0.85; // $ per MH/s per day
-            const dailyRevenue = totalHashRate * revenuePerMH * (hoursPerDay / 24) * 0.7; // 70% share
-            
-            // Electricity cost
-            const totalPower = (powerUsage[gpuType] * gpuCount) / 1000; // Convert to kW
+            const revenuePerMH = 0.85;
+            const dailyRevenue = totalHashRate * revenuePerMH * (hoursPerDay / 24) * 0.7;
+            const totalPower = (powerUsage[gpuType] * gpuCount) / 1000;
             const dailyElectricity = totalPower * hoursPerDay * electricityCost;
             const dailyProfit = dailyRevenue - dailyElectricity;
-            
-            // Update display
+
             document.getElementById('dailyRevenue').textContent = '$' + dailyRevenue.toFixed(2);
             document.getElementById('dailyProfit').textContent = '$' + dailyProfit.toFixed(2);
             document.getElementById('weeklyRevenue').textContent = '$' + (dailyProfit * 7).toFixed(2);
             document.getElementById('monthlyRevenue').textContent = '$' + (dailyProfit * 30).toFixed(2);
             document.getElementById('yearlyRevenue').textContent = '$' + (dailyProfit * 365).toFixed(2);
-            
+
             updateChart(dailyProfit);
         }
         
@@ -211,7 +223,7 @@
         }
         
         function startMining() {
-            window.open('mining-platform.html', '_blank');
+            window.open('gpu-farm-dashboard.html', '_blank');
         }
         
         // Initialize

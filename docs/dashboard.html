@@ -129,7 +129,6 @@
                 </div>
             </div>
         </div>
-    </main>
                     <div class="space-y-3" id="farmList">
                         <div class="bg-gray-700 p-4 rounded-lg">
                             <div class="flex justify-between items-center">
@@ -742,40 +741,45 @@ contract HashNHedgeOrchestrator {
             alert('Generating PDF whitepaper...');
         }
 
-        // Initialize on load
+        // Pagination for Active Farms
+        const farms = [
+            { name: 'Alpha Farm Node', gpus: 32, location: 'California', status: 'Online' },
+            { name: 'Beta Mining Cluster', gpus: 64, location: 'Texas', status: 'Online' },
+            { name: 'Gamma Compute Grid', gpus: 48, location: 'New York', status: 'Offline' },
+            { name: 'Delta AI Pool', gpus: 80, location: 'Nevada', status: 'Online' },
+            { name: 'Epsilon Render Farm', gpus: 20, location: 'Florida', status: 'Online' }
+        ];
+        let farmPage = 1;
+        const farmsPerPage = 2;
+        function renderFarms() {
+            const start = (farmPage - 1) * farmsPerPage;
+            const end = start + farmsPerPage;
+            const pageFarms = farms.slice(start, end);
+            const list = document.getElementById('activeFarmsList');
+            list.innerHTML = pageFarms.map(farm => `
+                <div class="bg-gray-700 p-4 rounded-lg mb-2 flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold">${farm.name}</p>
+                        <p class="text-sm text-gray-400">${farm.gpus} GPUs • ${farm.location}</p>
+                    </div>
+                    <span class="${farm.status === 'Online' ? 'bg-green-500' : 'bg-red-500'} px-3 py-1 rounded-full text-sm">${farm.status}</span>
+                </div>
+            `).join('');
+            document.getElementById('farmPageInfo').textContent = `Page ${farmPage} of ${Math.ceil(farms.length / farmsPerPage)}`;
+            document.getElementById('prevFarmPage').disabled = farmPage === 1;
+            document.getElementById('nextFarmPage').disabled = farmPage === Math.ceil(farms.length / farmsPerPage);
+        }
+        document.getElementById('prevFarmPage').onclick = function() {
+            if (farmPage > 1) { farmPage--; renderFarms(); }
+        };
+        document.getElementById('nextFarmPage').onclick = function() {
+            if (farmPage < Math.ceil(farms.length / farmsPerPage)) { farmPage++; renderFarms(); }
+        };
         window.addEventListener('load', () => {
             initCharts();
             calculateROI();
+            renderFarms();
         });
     </script>
 </body>
 </html>
-        <!-- GPU Farm Tab -->
-        <div id="farm" class="tab-content">
-            <h2 class="text-3xl font-bold mb-6">GPU Farm Management</h2>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Farm Registration -->
-                <div class="bg-gray-800 p-6 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4">Register New Farm</h3>
-                    <form onsubmit="registerFarm(event)">
-                        <div class="space-y-4">
-                            <input type="text" placeholder="Farm Name" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <input type="text" placeholder="Location" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <input type="number" placeholder="Number of GPUs" class="w-full p-3 bg-gray-700 rounded-lg">
-                            <select class="w-full p-3 bg-gray-700 rounded-lg">
-                                <option>RTX 3090</option>
-                                <option>RTX 4090</option>
-                                <option>A100</option>
-                                <option>H100</option>
-                            </select>
-                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
-                                Register Farm
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Active Farms -->
-                <div class="bg-gray-800 p-6 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4">Active Farms</h3>

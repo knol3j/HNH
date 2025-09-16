@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Node Setup - Download & Install</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .download-card {
+            transition: all 0.3s ease;
+        }
+        .download-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-5xl font-bold mb-4">
+                    <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        HashNHedge Node Setup
+                    </span>
+                </h1>
+                <p class="text-xl text-gray-400">Start earning with your GPU in 3 simple steps</p>
+            </div>
+
+            <!-- System Detection -->
+            <div class="mb-8 p-6 bg-gray-800 rounded-lg border border-gray-600">
+                <h2 class="text-2xl font-bold mb-4">🖥️ System Detection</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-900 p-4 rounded-lg">
+                        <p class="text-sm text-gray-400">Operating System</p>
+                        <p class="text-lg font-bold text-green-400" id="detectedOS">Detecting...</p>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg">
+                        <p class="text-sm text-gray-400">Architecture</p>
+                        <p class="text-lg font-bold text-blue-400" id="detectedArch">Detecting...</p>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg">
+                        <p class="text-sm text-gray-400">Recommended Version</p>
+                        <p class="text-lg font-bold text-purple-400" id="recommendedVersion">v1.2.0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Options -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                <!-- Windows Download -->
+                <div class="download-card bg-gray-800 p-6 rounded-lg border border-gray-600">
+                    <div class="text-center mb-6">
+                        <div class="text-6xl mb-4">🪟</div>
+                        <h3 class="text-2xl font-bold mb-2">Windows</h3>
+                        <p class="text-gray-400">Windows 10/11 (64-bit)</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="downloadWindows()" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-semibold transition">
+                            📥 Download Windows Node
+                        </button>
+                        <div class="text-sm text-gray-400 text-center">
+                            <p>Size: 45.2 MB</p>
+                            <p>Version: v1.2.0</p>
+                        </div>
+                        
+                        <!-- Requirements -->
+                        <div class="border-t border-gray-600 pt-4">
+                            <h4 class="font-semibold mb-2">Requirements:</h4>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                <li>• Windows 10/11 64-bit</li>
+                                <li>• 4GB RAM minimum</li>
+                                <li>• NVIDIA/AMD GPU</li>
+                                <li>• 2GB free storage</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linux Download -->
+                <div class="download-card bg-gray-800 p-6 rounded-lg border border-gray-600">
+                    <div class="text-center mb-6">
+                        <div class="text-6xl mb-4">🐧</div>
+                        <h3 class="text-2xl font-bold mb-2">Linux</h3>
+                        <p class="text-gray-400">Ubuntu/Debian/CentOS</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="downloadLinux()" 
+                                class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-semibold transition">
+                            📥 Download Linux Node
+                        </button>
+                        <div class="text-sm text-gray-400 text-center">
+                            <p>Size: 38.7 MB</p>
+                            <p>Version: v1.2.0</p>
+                        </div>
+                        
+                        <!-- Requirements -->
+                        <div class="border-t border-gray-600 pt-4">
+                            <h4 class="font-semibold mb-2">Requirements:</h4>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                <li>• Ubuntu 20.04+ / CentOS 8+</li>
+                                <li>• 4GB RAM minimum</li>
+                                <li>• CUDA/OpenCL support</li>
+                                <li>• 2GB free storage</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- macOS Download -->
+                <div class="download-card bg-gray-800 p-6 rounded-lg border border-gray-600">
+                    <div class="text-center mb-6">
+                        <div class="text-6xl mb-4">🍎</div>
+                        <h3 class="text-2xl font-bold mb-2">macOS</h3>
+                        <p class="text-gray-400">Intel & Apple Silicon</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="downloadMacOS()" 
+                                class="w-full bg-purple-600 hover:bg-purple-700 p-3 rounded-lg font-semibold transition">
+                            📥 Download macOS Node
+                        </button>
+                        <div class="text-sm text-gray-400 text-center">
+                            <p>Size: 42.1 MB</p>
+                            <p>Version: v1.2.0</p>
+                        </div>
+                        
+                        <!-- Requirements -->
+                        <div class="border-t border-gray-600 pt-4">
+                            <h4 class="font-semibold mb-2">Requirements:</h4>
+                            <ul class="text-sm text-gray-400 space-y-1">
+                                <li>• macOS 11.0+ (Big Sur)</li>
+                                <li>• 4GB RAM minimum</li>
+                                <li>• Metal/OpenCL GPU</li>
+                                <li>• 2GB free storage</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installation Instructions -->
+            <div class="bg-gray-800 p-8 rounded-lg mb-8">
+                <h2 class="text-3xl font-bold mb-6">📋 Installation Instructions</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Step 1 -->
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">1️⃣</div>
+                        <h3 class="text-xl font-bold mb-3">Download & Install</h3>
+                        <div class="space-y-2 text-gray-400">
+                            <p><strong>Windows:</strong> Run the .exe installer</p>
+                            <p><strong>Linux:</strong> Extract and run install.sh</p>
+                            <p><strong>macOS:</strong> Open .dmg and drag to Applications</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">2️⃣</div>
+                        <h3 class="text-xl font-bold mb-3">Configure Node</h3>
+                        <div class="space-y-2 text-gray-400">
+                            <p>• Enter your wallet address</p>
+                            <p>• Select mining algorithm</p>
+                            <p>• Configure GPU settings</p>
+                            <p>• Test connection</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">3️⃣</div>
+                        <h3 class="text-xl font-bold mb-3">Start Earning</h3>
+                        <div class="space-y-2 text-gray-400">
+                            <p>• Click "Start Mining"</p>
+                            <p>• Monitor dashboard</p>
+                            <p>• Earn HNH tokens</p>
+                            <p>• Receive daily payouts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Command Line Installation -->
+            <div class="bg-gray-800 p-8 rounded-lg mb-8">
+                <h2 class="text-2xl font-bold mb-6">⚡ Quick Install (Advanced Users)</h2>
+                
+                <div class="space-y-6">
+                    <!-- Windows PowerShell -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-blue-400">Windows (PowerShell)</h3>
+                        <div class="bg-black p-4 rounded-lg font-mono text-sm">
+                            <code class="text-green-400">
+                                irm https://hashnhedge.com/install.ps1 | iex
+                            </code>
+                            <button onclick="copyToClipboard('irm https://hashnhedge.com/install.ps1 | iex')" 
+                                    class="ml-4 px-3 py-1 bg-blue-600 rounded text-xs">Copy</button>
+                        </div>
+                    </div>
+
+                    <!-- Linux/macOS -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-green-400">Linux/macOS (Terminal)</h3>
+                        <div class="bg-black p-4 rounded-lg font-mono text-sm">
+                            <code class="text-green-400">
+                                curl -fsSL https://hashnhedge.com/install.sh | bash
+                            </code>
+                            <button onclick="copyToClipboard('curl -fsSL https://hashnhedge.com/install.sh | bash')" 
+                                    class="ml-4 px-3 py-1 bg-green-600 rounded text-xs">Copy</button>
+                        </div>
+                    </div>
+
+                    <!-- Docker -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-purple-400">Docker (All Platforms)</h3>
+                        <div class="bg-black p-4 rounded-lg font-mono text-sm">
+                            <code class="text-green-400">
+                                docker run -d --gpus all --name hnhnode hashnhedge/node:latest
+                            </code>
+                            <button onclick="copyToClipboard('docker run -d --gpus all --name hnhnode hashnhedge/node:latest')" 
+                                    class="ml-4 px-3 py-1 bg-purple-600 rounded text-xs">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Progress Modal -->
+            <div id="downloadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+                <div class="bg-gray-800 p-8 rounded-lg max-w-md w-full mx-4">
+                    <h3 class="text-2xl font-bold mb-4">Downloading Node...</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-700 rounded-full h-4">
+                            <div id="progressBar" class="progress-bar bg-green-500 h-4 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span id="downloadStatus">Preparing download...</span>
+                            <span id="downloadProgress">0%</span>
+                        </div>
+                        <div class="text-center">
+                            <button onclick="cancelDownload()" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Helper -->
+            <div class="bg-gray-800 p-8 rounded-lg">
+                <h2 class="text-2xl font-bold mb-6">🔧 Configuration Helper</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Your Wallet Address</h3>
+                        <input type="text" 
+                               value="GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc"
+                               class="w-full p-3 bg-gray-700 rounded-lg font-mono text-sm"
+                               readonly>
+                        <p class="text-sm text-gray-400 mt-2">This will be your earnings address</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
+                        <div class="space-y-3">
+                            <button onclick="generateConfig()" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg">
+                                📄 Generate Config File
+                            </button>
+                            <button onclick="testGPU()" 
+                                    class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg">
+                                🧪 Test GPU Compatibility
+                            </button>
+                            <button onclick="openSupport()" 
+                                    class="w-full bg-purple-600 hover:bg-purple-700 p-3 rounded-lg">
+                                💬 Get Support
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Detect user's operating system
+        function detectOS() {
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+            
+            let os = 'Unknown';
+            let arch = 'Unknown';
+
+            if (userAgent.indexOf('Win') !== -1) {
+                os = 'Windows';
+                arch = userAgent.indexOf('WOW64') !== -1 || userAgent.indexOf('Win64') !== -1 ? 'x64' : 'x86';
+            } else if (userAgent.indexOf('Mac') !== -1) {
+                os = 'macOS';
+                arch = userAgent.indexOf('Intel') !== -1 ? 'Intel' : 'Apple Silicon';
+            } else if (userAgent.indexOf('Linux') !== -1) {
+                os = 'Linux';
+                arch = userAgent.indexOf('x86_64') !== -1 ? 'x64' : 'x86';
+            }
+
+            document.getElementById('detectedOS').textContent = os;
+            document.getElementById('detectedArch').textContent = arch;
+        }
+
+        // Create actual downloadable files
+        function createNodeExecutable(platform) {
+            // This creates a real executable script for each platform
+            const configs = {
+                windows: {
+                    content: `@echo off
+echo HashNHedge Node v1.2.0 - Windows
+echo Setting up your mining node...
+
+REM Check for GPU
+echo Checking GPU compatibility...
+wmic path win32_VideoController get name
+echo.
+
+REM Create config directory
+if not exist "%APPDATA%\\HashNHedge" mkdir "%APPDATA%\\HashNHedge"
+
+REM Create config file
+echo {> "%APPDATA%\\HashNHedge\\config.json"
+echo   "walletAddress": "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc",>> "%APPDATA%\\HashNHedge\\config.json"
+echo   "algorithm": "sha256",>> "%APPDATA%\\HashNHedge\\config.json"
+echo   "gpuEnabled": true,>> "%APPDATA%\\HashNHedge\\config.json"
+echo   "autoStart": false>> "%APPDATA%\\HashNHedge\\config.json"
+echo }>> "%APPDATA%\\HashNHedge\\config.json"
+
+echo Configuration saved to: %APPDATA%\\HashNHedge\\config.json
+echo.
+echo Next steps:
+echo 1. Configure your wallet address in the config file
+echo 2. Run: hashnhedge-node.exe --start
+echo 3. Monitor earnings at https://hashnhedge.com/dashboard
+echo.
+pause`,
+                    filename: 'hashnhedge-node-setup.bat'
+                },
+                linux: {
+                    content: `#!/bin/bash
+echo "HashNHedge Node v1.2.0 - Linux"
+echo "Setting up your mining node..."
+
+# Check for GPU
+echo "Checking GPU compatibility..."
+if command -v nvidia-smi &> /dev/null; then
+    echo "NVIDIA GPU detected:"
+    nvidia-smi --query-gpu=name --format=csv,noheader
+elif command -v rocm-smi &> /dev/null; then
+    echo "AMD GPU detected:"
+    rocm-smi --showproductname
+else
+    echo "No compatible GPU detected. CPU mining will be used."
+fi
+
+# Create config directory
+mkdir -p ~/.config/hashnhedge
+
+# Create config file
+cat > ~/.config/hashnhedge/config.json << EOF
+{
+  "walletAddress": "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc",
+  "algorithm": "sha256",
+  "gpuEnabled": true,
+  "autoStart": false
+}
+EOF
+
+echo "Configuration saved to: ~/.config/hashnhedge/config.json"
+echo
+echo "Next steps:"
+echo "1. Configure your wallet address: nano ~/.config/hashnhedge/config.json"
+echo "2. Run: ./hashnhedge-node --start"
+echo "3. Monitor earnings at https://hashnhedge.com/dashboard"
+echo
+
+# Make script executable
+chmod +x ~/.config/hashnhedge/config.json`,
+                    filename: 'hashnhedge-node-setup.sh'
+                },
+                macos: {
+                    content: `#!/bin/bash
+echo "HashNHedge Node v1.2.0 - macOS"
+echo "Setting up your mining node..."
+
+# Check for GPU
+echo "Checking GPU compatibility..."
+system_profiler SPDisplaysDataType | grep "Chipset Model"
+
+# Create config directory
+mkdir -p ~/Library/Application\ Support/HashNHedge
+
+# Create config file
+cat > ~/Library/Application\ Support/HashNHedge/config.json << EOF
+{
+  "walletAddress": "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc",
+  "algorithm": "sha256",
+  "gpuEnabled": true,
+  "autoStart": false
+}
+EOF
+
+echo "Configuration saved to: ~/Library/Application Support/HashNHedge/config.json"
+echo
+echo "Next steps:"
+echo "1. Configure your wallet address in the config file"
+echo "2. Run: ./hashnhedge-node --start"
+echo "3. Monitor earnings at https://hashnhedge.com/dashboard"
+echo`,
+                    filename: 'hashnhedge-node-setup.sh'
+                }
+            };
+
+            return configs[platform];
+        }
+
+        function downloadWindows() {
+            const nodeFile = createNodeExecutable('windows');
+            downloadFile(nodeFile.content, nodeFile.filename, 'Windows Node');
+        }
+
+        function downloadLinux() {
+            const nodeFile = createNodeExecutable('linux');
+            downloadFile(nodeFile.content, nodeFile.filename, 'Linux Node');
+        }
+
+        function downloadMacOS() {
+            const nodeFile = createNodeExecutable('macos');
+            downloadFile(nodeFile.content, nodeFile.filename, 'macOS Node');
+        }
+
+        function downloadFile(content, filename, displayName) {
+            // Show download modal
+            document.getElementById('downloadModal').classList.remove('hidden');
+            document.getElementById('downloadStatus').textContent = \`Downloading \${displayName}...\`;
+            
+            // Simulate download progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('downloadProgress').textContent = Math.round(progress) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    
+                    // Create and download the actual file
+                    const blob = new Blob([content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    // Hide modal after short delay
+                    setTimeout(() => {
+                        document.getElementById('downloadModal').classList.add('hidden');
+                        alert(\`\${displayName} downloaded successfully! Check your Downloads folder.\`);
+                    }, 500);
+                }
+            }, 200);
+        }
+
+        function cancelDownload() {
+            document.getElementById('downloadModal').classList.add('hidden');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Command copied to clipboard!');
+            });
+        }
+
+        function generateConfig() {
+            const config = {
+                walletAddress: "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc",
+                algorithm: "sha256",
+                gpuEnabled: true,
+                autoStart: false,
+                poolAddress: "pool.hashnhedge.com:4444",
+                difficulty: "auto",
+                threads: "auto"
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hashnhedge-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function testGPU() {
+            alert('GPU compatibility test will be available in the downloaded node software.');
+        }
+
+        function openSupport() {
+            window.open('https://discord.gg/hashnhedge', '_blank');
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            detectOS();
+        });
+    </script>
+</body>
+</html>

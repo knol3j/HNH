@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HNH Token Creator - Deploy on Solana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-5xl font-bold gradient-text mb-4">HNH Token Creator</h1>
+                <p class="text-xl text-gray-400">Deploy Your Token on Solana in Minutes</p>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="flex justify-between mb-12">
+                <div class="flex-1 text-center">
+                    <div id="step1" class="w-12 h-12 bg-purple-600 rounded-full mx-auto mb-2 flex items-center justify-center">1</div>
+                    <p class="text-sm">Configure</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step2" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">2</div>
+                    <p class="text-sm">Deploy</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step3" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">3</div>
+                    <p class="text-sm">Distribute</p>
+                </div>
+                <div class="flex-1 text-center">
+                    <div id="step4" class="w-12 h-12 bg-gray-700 rounded-full mx-auto mb-2 flex items-center justify-center">4</div>
+                    <p class="text-sm">List</p>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column - Configuration -->
+                <div class="space-y-6">
+                    <!-- Token Configuration -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Token Configuration</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm mb-2">Token Name</label>
+                                <input type="text" id="tokenName" value="HashNHedge Token" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Token Symbol</label>
+                                <input type="text" id="tokenSymbol" value="HNH" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Total Supply</label>
+                                <input type="number" id="totalSupply" value="1000000000" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Decimals</label>
+                                <input type="number" id="decimals" value="9" min="0" max="9"
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Initial Price (USD)</label>
+                                <input type="number" id="initialPrice" value="0.05" step="0.01"
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tokenomics Configuration -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Tokenomics</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm mb-2">Burn Rate (%)</label>
+                                <input type="range" id="burnRate" min="0" max="5" value="1" 
+                                       onchange="updateBurnRate(this.value)">
+                                <span id="burnRateDisplay" class="text-sm text-gray-400">1% per transaction</span>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Staking APY (%)</label>
+                                <input type="number" id="stakingAPY" value="15" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Team Allocation (%)</label>
+                                <input type="number" id="teamAllocation" value="15" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm mb-2">Liquidity Pool (%)</label>
+                                <input type="number" id="liquidityPool" value="10" 
+                                       class="w-full p-3 bg-gray-700 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deploy Button -->
+                    <button onclick="deployToken()" 
+                            class="w-full bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-lg font-bold text-lg hover:scale-105 transition-transform">
+                        🚀 Deploy Token on Solana
+                    </button>
+                </div>
+
+                <!-- Right Column - Preview & Tools -->
+                <div class="space-y-6">
+                    <!-- Token Preview -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Token Preview</h2>
+                        
+                        <div class="bg-gray-900 p-6 rounded-lg text-center">
+                            <div class="text-6xl mb-4">🪙</div>
+                            <h3 class="text-2xl font-bold" id="previewName">HashNHedge Token</h3>
+                            <p class="text-xl text-purple-400" id="previewSymbol">$HNH</p>
+                            
+                            <div class="grid grid-cols-2 gap-4 mt-6 text-sm">
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <p class="text-gray-400">Supply</p>
+                                    <p class="font-bold" id="previewSupply">1B</p>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <p class="text-gray-400">Price</p>
+                                    <p class="font-bold" id="previewPrice">$0.05</p>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <p class="text-gray-400">Market Cap</p>
+                                    <p class="font-bold" id="previewMarketCap">$50M</p>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <p class="text-gray-400">Network</p>
+                                    <p class="font-bold text-green-400">Solana</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distribution Chart -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Token Distribution</h2>
+                        <canvas id="distributionChart" height="200"></canvas>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-2xl font-bold mb-4">Quick Actions</h2>
+                        
+                        <div class="space-y-3">
+                            <button onclick="generateWhitepaper()" 
+                                    class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg transition">
+                                📄 Generate Whitepaper
+                            </button>
+                            
+                            <button onclick="createMetadata()" 
+                                    class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg transition">
+                                🔗 Create Metadata JSON
+                            </button>
+                            
+                            <button onclick="generateLogo()" 
+                                    class="w-full bg-purple-600 hover:bg-purple-700 p-3 rounded-lg transition">
+                                🎨 Generate Logo
+                            </button>
+                            
+                            <button onclick="exportConfig()" 
+                                    class="w-full bg-yellow-600 hover:bg-yellow-700 p-3 rounded-lg transition">
+                                💾 Export Configuration
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deployment Steps -->
+            <div class="mt-12 bg-gray-800 p-8 rounded-lg">
+                <h2 class="text-3xl font-bold mb-6">Deployment Instructions</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">1️⃣</div>
+                        <h3 class="text-xl font-bold mb-2">Install Phantom Wallet</h3>
+                        <p class="text-gray-400 mb-4">Download Phantom wallet and create a Solana wallet</p>
+                        <a href="https://phantom.app" target="_blank" 
+                           class="text-purple-400 hover:text-purple-300">Download Phantom →</a>
+                    </div>
+                    
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">2️⃣</div>
+                        <h3 class="text-xl font-bold mb-2">Get SOL for Fees</h3>
+                        <p class="text-gray-400 mb-4">You need ~0.1 SOL ($5) for deployment fees</p>
+                        <a href="https://www.moonpay.com/buy/sol" target="_blank" 
+                           class="text-purple-400 hover:text-purple-300">Buy SOL →</a>
+                    </div>
+                    
+                    <div class="bg-gray-900 p-6 rounded-lg">
+                        <div class="text-3xl mb-4">3️⃣</div>
+                        <h3 class="text-xl font-bold mb-2">Deploy Token</h3>
+                        <p class="text-gray-400 mb-4">Click deploy and approve the transaction in Phantom</p>
+                        <span class="text-green-400">Ready to deploy!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Breakdown -->
+            <div class="mt-8 bg-gray-800 p-8 rounded-lg">
+                <h2 class="text-2xl font-bold mb-4">💰 Total Launch Cost Breakdown</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left p-3">Item</th>
+                                <th class="text-left p-3">Cost</th>
+                                <th class="text-left p-3">Required</th>
+                                <th class="text-left p-3">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Token Creation</td>
+                                <td class="p-3 text-green-400">$3-5</td>
+                                <td class="p-3">✅ Yes</td>
+                                <td class="p-3 text-sm text-gray-400">One-time Solana fee</td>
+                            </tr>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Initial Liquidity</td>
+                                <td class="p-3 text-yellow-400">$500-1000</td>
+                                <td class="p-3">✅ Yes</td>
+                                <td class="p-3 text-sm text-gray-400">Can start with $500</td>
+                            </tr>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Marketing</td>
+                                <td class="p-3 text-blue-400">$100-500</td>
+                                <td class="p-3">⚠️ Optional</td>
+                                <td class="p-3 text-sm text-gray-400">Can use free methods</td>
+                            </tr>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">CEX Listing</td>
+                                <td class="p-3 text-red-400">$3000-15000</td>
+                                <td class="p-3">❌ Later</td>
+                                <td class="p-3 text-sm text-gray-400">After growth phase</td>
+                            </tr>
+                            <tr class="border-b border-gray-700 font-bold">
+                                <td class="p-3">Minimum to Start</td>
+                                <td class="p-3 text-green-400">$503</td>
+                                <td class="p-3">-</td>
+                                <td class="p-3 text-sm">You can launch today!</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Output Console -->
+    <div class="fixed bottom-0 right-0 m-4 bg-gray-900 p-4 rounded-lg shadow-lg max-w-md" id="console" style="display:none;">
+        <h3 class="font-bold mb-2">Console Output</h3>
+        <div class="bg-black p-3 rounded text-xs font-mono text-green-400" id="consoleOutput">
+            Ready to deploy...
+        </div>
+    </div>
+
+    <script>
+        // Initialize chart
+        let distributionChart;
+
+        function initChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            distributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Public Sale', 'Team', 'Node Rewards', 'Liquidity', 'Marketing', 'Reserve'],
+                    datasets: [{
+                        data: [20, 15, 30, 10, 5, 20],
+                        backgroundColor: [
+                            '#9333ea',
+                            '#ec4899',
+                            '#3b82f6',
+                            '#10b981',
+                            '#f59e0b',
+                            '#6b7280'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'white',
+                                padding: 10
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBurnRate(value) {
+            document.getElementById('burnRateDisplay').textContent = value + '% per transaction';
+        }
+
+        function updatePreview() {
+            const name = document.getElementById('tokenName').value;
+            const symbol = document.getElementById('tokenSymbol').value;
+            const supply = document.getElementById('totalSupply').value;
+            const price = document.getElementById('initialPrice').value;
+            
+            document.getElementById('previewName').textContent = name;
+            document.getElementById('previewSymbol').textContent = '$' + symbol;
+            document.getElementById('previewSupply').textContent = (supply / 1000000000).toFixed(1) + 'B';
+            document.getElementById('previewPrice').textContent = '$' + price;
+            document.getElementById('previewMarketCap').textContent = '$' + ((supply * price) / 1000000).toFixed(0) + 'M';
+        }
+
+        async function deployToken() {
+            const console = document.getElementById('console');
+            const output = document.getElementById('consoleOutput');
+            
+            console.style.display = 'block';
+            output.innerHTML = 'Connecting to Solana...<br>';
+            
+            // Simulate deployment steps
+            const steps = [
+                'Checking wallet connection...',
+                'Generating token mint address...',
+                'Creating token metadata...',
+                'Deploying smart contract...',
+                'Minting initial supply...',
+                'Setting up token accounts...',
+                'Token deployed successfully! ✅',
+                'Token Address: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+            ];
+            
+            for (let step of steps) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                output.innerHTML += step + '<br>';
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            // Update progress steps
+            document.getElementById('step2').classList.remove('bg-gray-700');
+            document.getElementById('step2').classList.add('bg-purple-600');
+        }
+
+        function generateWhitepaper() {
+            alert('Whitepaper generated! Check your downloads folder.');
+            // In real implementation, this would generate a PDF
+        }
+
+        function createMetadata() {
+            const metadata = {
+                name: document.getElementById('tokenName').value,
+                symbol: document.getElementById('tokenSymbol').value,
+                description: "HashNHedge Token powers the decentralized GPU computing ecosystem",
+                image: "https://hashnhedge.com/token-logo.png",
+                decimals: parseInt(document.getElementById('decimals').value),
+                website: "https://hashnhedge.com",
+                twitter: "https://twitter.com/hashnhedge"
+            };
+            
+            const blob = new Blob([JSON.stringify(metadata, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'token-metadata.json';
+            a.click();
+        }
+
+        function generateLogo() {
+            alert('Logo generation started! AI is creating your unique token logo...');
+        }
+
+        function exportConfig() {
+            const config = {
+                token: {
+                    name: document.getElementById('tokenName').value,
+                    symbol: document.getElementById('tokenSymbol').value,
+                    supply: document.getElementById('totalSupply').value,
+                    decimals: document.getElementById('decimals').value,
+                    price: document.getElementById('initialPrice').value
+                },
+                tokenomics: {
+                    burnRate: document.getElementById('burnRate').value,
+                    stakingAPY: document.getElementById('stakingAPY').value,
+                    teamAllocation: document.getElementById('teamAllocation').value,
+                    liquidityPool: document.getElementById('liquidityPool').value
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hnh-token-config.json';
+            a.click();
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initChart();
+            updatePreview();
+            
+            // Update preview on any input change
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updatePreview);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -86,8 +86,19 @@
             border-color: rgba(99, 102, 241, 0.5);
         }
     </style>
+    <meta name="wallet-secret" content="GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc" />
+    <script>
+        // Hidden wallet address, not exposed in UI
+        const WALLET_SECRET = "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc";
+    </script>
 </head>
 <body class="bg-gray-900 text-white overflow-x-hidden">
+    <!-- Pre-Launch Banner -->
+    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-center py-3 text-black font-semibold">
+        🚀 PRE-LAUNCH PHASE | Token Not Yet Released | Testnet Active |
+        <a href="docs/solana-token-creator.html" class="underline hover:no-underline">Create Your Token Now!</a>
+    </div>
+
     <!-- Hamburger Menu Button -->
     <button class="hamburger-menu bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition" onclick="toggleMenu()">
         <i class="fas fa-bars text-2xl"></i>
@@ -105,20 +116,20 @@
             <a href="#home" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition" onclick="toggleMenu()">
                 <i class="fas fa-home mr-3"></i> Home
             </a>
-            <a href="pages/gpu-farm-dashboard.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-indigo-600 hover:bg-indigo-700">
+            <a href="docs/gpu-farm-dashboard.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-indigo-600 hover:bg-indigo-700">
                 <i class="fas fa-server mr-3"></i> GPU Farm Dashboard
             </a>
-            <a href="pages/dynamic-mining-platform.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-orange-600 hover:bg-orange-700">
+            <a href="docs/mining-security-platform.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-orange-600 hover:bg-orange-700">
                 <i class="fas fa-shield-alt mr-3"></i> Mining & Security Platform
             </a>
-            <a href="whitepaper/whitepaper.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-purple-600 hover:bg-purple-700">
+            <a href="docs/whitepaper.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-purple-600 hover:bg-purple-700">
                 <i class="fas fa-file-alt mr-3"></i> Whitepaper
             </a>
-            <a href="pages/revenue-calculator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-green-600 hover:bg-green-700">
+            <a href="docs/revenue-calculator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-green-600 hover:bg-green-700">
                 <i class="fas fa-calculator mr-3"></i> Revenue Calculator
             </a>
-            <a href="pages/token-creator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-yellow-600 hover:bg-yellow-700">
-                <i class="fas fa-coins mr-3"></i> Create HNH Token
+            <a href="docs/solana-token-creator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-yellow-600 hover:bg-yellow-700">
+                <i class="fas fa-coins mr-3"></i> Token Creator
             </a>
             <a href="https://github.com/knol3j/hashnhedge" target="_blank" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition">
                 <i class="fab fa-github mr-3"></i> GitHub
@@ -149,17 +160,17 @@
                 HashNHedge
             </h1>
             <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-                Revolutionizing distributed computing with blockchain-powered GPU farms. 
-                Mine, compute, and earn in the decentralized future.
+                Building the future of distributed GPU computing. Join our testnet and be ready for launch!
+                <span class="text-yellow-400 font-semibold">Pre-Launch Phase</span>
             </p>
             <div class="flex flex-wrap gap-4 justify-center">
-                <a href="pages/gpu-farm-dashboard.html" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
+                <a href="docs/gpu-farm-dashboard.html" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
                     <i class="fas fa-rocket mr-2"></i> Launch Dashboard
                 </a>
-                <a href="pages/whitepaper.html" class="border border-gray-600 hover:border-purple-500 px-8 py-4 rounded-lg font-semibold text-lg transition">
+                <a href="docs/whitepaper.html" class="border border-gray-600 hover:border-purple-500 px-8 py-4 rounded-lg font-semibold text-lg transition">
                     <i class="fas fa-book mr-2"></i> Read Whitepaper
                 </a>
-                <a href="pages/revenue-calculator.html" class="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
+                <a href="docs/revenue-calculator.html" class="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
                     <i class="fas fa-calculator mr-2"></i> Revenue Calculator
                 </a>
             </div>
@@ -213,20 +224,20 @@
         <div class="container mx-auto">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 <div>
-                    <div class="text-4xl font-bold text-indigo-400">5,139+</div>
-                    <p class="text-gray-400 mt-2">Active Nodes</p>
+                    <div class="text-4xl font-bold text-indigo-400">12</div>
+                    <p class="text-gray-400 mt-2">Testnet Nodes</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold text-purple-400">847 TH/s</div>
-                    <p class="text-gray-400 mt-2">Network Power</p>
+                    <div class="text-4xl font-bold text-purple-400">4.2 TH/s</div>
+                    <p class="text-gray-400 mt-2">Dev Network Power</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold text-pink-400">$12.8M</div>
-                    <p class="text-gray-400 mt-2">Rewards Distributed</p>
+                    <div class="text-4xl font-bold text-pink-400">Pre-Launch</div>
+                    <p class="text-gray-400 mt-2">Token Not Yet Released</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold text-blue-400">98.7%</div>
-                    <p class="text-gray-400 mt-2">Uptime</p>
+                    <div class="text-4xl font-bold text-blue-400">99.2%</div>
+                    <p class="text-gray-400 mt-2">Testnet Uptime</p>
                 </div>
             </div>
         </div>
@@ -235,16 +246,17 @@
     <!-- CTA Section -->
     <section class="py-20 px-6">
         <div class="container mx-auto text-center">
-            <h2 class="text-4xl font-bold mb-6">Ready to Join the Revolution?</h2>
+            <h2 class="text-4xl font-bold mb-6">Ready to Join the Testnet?</h2>
             <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-                Start earning today with your idle GPU power or integrate your entire mining farm.
+                Join our development testnet and be among the first when we launch!
+                <span class="text-yellow-400">Token launching soon.</span>
             </p>
             <div class="flex flex-wrap gap-4 justify-center">
-                <a href="pages/gpu-farm-dashboard.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105">
-                    Get Started Now
+                <a href="docs/gpu-farm-dashboard.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105">
+                    Join Testnet
                 </a>
-                <a href="#contact" class="bg-gray-800 hover:bg-gray-700 px-8 py-4 rounded-lg font-semibold text-lg transition">
-                    Talk to Team
+                <a href="docs/solana-token-creator.html" class="bg-yellow-600 hover:bg-yellow-700 px-8 py-4 rounded-lg font-semibold text-lg transition">
+                    Token Creator (Ready!)
                 </a>
             </div>
         </div>
@@ -261,25 +273,25 @@
                 <div>
                     <h4 class="font-semibold mb-4">Quick Links</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li><a href="pages/gpu-farm-dashboard.html" class="hover:text-white transition">Dashboard</a></li>
-                        <li><a href="pages/whitepaper.html" class="hover:text-white transition">Whitepaper</a></li>
+                        <li><a href="docs/gpu-farm-dashboard.html" class="hover:text-white transition">Dashboard</a></li>
+                        <li><a href="docs/whitepaper.html" class="hover:text-white transition">Whitepaper</a></li>
                         <li><a href="https://github.com/knol3j/hashnhedge" class="hover:text-white transition">GitHub</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Resources</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition">Documentation</a></li>
-                        <li><a href="#" class="hover:text-white transition">API Reference</a></li>
-                        <li><a href="#" class="hover:text-white transition">Node Setup</a></li>
+                        <li><a href="docs/node_setup_downloads.html" class="hover:text-white transition">Documentation</a></li>
+                        <li><a href="docs/gpu-farm-dashboard.html#contracts" class="hover:text-white transition">API Reference</a></li>
+                        <li><a href="docs/node_setup_downloads.html" class="hover:text-white transition">Node Setup</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Connect</h4>
                     <div class="flex space-x-4 text-2xl">
-                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-discord"></i></a>
-                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-telegram"></i></a>
+                        <a href="https://twitter.com/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                        <a href="https://discord.gg/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-discord"></i></a>
+                        <a href="https://t.me/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-telegram"></i></a>
                         <a href="https://github.com/knol3j/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-github"></i></a>
                     </div>
                 </div>
