@@ -104,8 +104,8 @@
     </div>
     
     <script>
-        // API Base URL
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api';
+        // API Base URL - Updated for Netlify deployment
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/.netlify/functions/api';
 
         let chart;
 

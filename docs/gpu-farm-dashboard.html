@@ -556,8 +556,9 @@ contract HashNHedgeOrchestrator {
     </main>
 
     <script>
-        // API Base URL
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/api';
+        // API Base URL - Updated for Netlify deployment with your wallet
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3001/api' : '/.netlify/functions/api';
+        const OWNER_WALLET = 'GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc';
 
         // Tab switching
         function switchTab(tabName) {

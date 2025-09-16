@@ -1,0 +1,26 @@
+[build]
+  command = "npm install"
+  functions = "netlify/functions"
+  publish = "."
+
+[build.environment]
+  NODE_ENV = "production"
+  WALLET_ADDRESS = "GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  node_bundler = "nft"
+  external_node_modules = ["cors"]
+
+[dev]
+  command = "npm start"
+  port = 3001
