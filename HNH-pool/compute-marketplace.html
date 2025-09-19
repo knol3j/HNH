@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Compute Marketplace - GPU/CPU Power On Demand</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold">🔥 HashNHedge</h1>
+                    <span class="text-gray-400">Compute Marketplace</span>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="index.html" class="text-gray-300 hover:text-white">Pool</a>
+                    <a href="start-mining.html" class="text-gray-300 hover:text-white">Mining</a>
+                    <a href="security-dashboard.html" class="text-gray-300 hover:text-white">Security</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="gradient-bg py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mb-6">
+                💻 Dynamic Compute Marketplace
+            </h1>
+            <p class="text-xl mb-8">Rent GPU/CPU power for Mining, AI Training, Hashcat, or Any Computing Task</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="openJobModal()" class="bg-white text-purple-700 px-8 py-4 rounded-lg font-bold text-lg hover:scale-105 transition-transform">
+                    🚀 Create Job
+                </button>
+                <button onclick="refreshMarketplace()" class="bg-transparent border-2 border-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white hover:text-purple-700 transition">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Stats -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-gray-400 text-sm">Available GPUs</h3>
+                        <p class="text-3xl font-bold mt-2" id="availableGPUs">0</p>
+                    </div>
+                    <i class="fas fa-microchip text-3xl text-blue-500"></i>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-gray-400 text-sm">Available CPUs</h3>
+                        <p class="text-3xl font-bold mt-2" id="availableCPUs">0</p>
+                    </div>
+                    <i class="fas fa-cpu text-3xl text-green-500"></i>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-gray-400 text-sm">Active Jobs</h3>
+                        <p class="text-3xl font-bold mt-2" id="activeJobs">0</p>
+                    </div>
+                    <i class="fas fa-tasks text-3xl text-yellow-500"></i>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-gray-400 text-sm">Total Workers</h3>
+                        <p class="text-3xl font-bold mt-2" id="totalWorkers">0</p>
+                    </div>
+                    <i class="fas fa-users text-3xl text-purple-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource Allocation Pools -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h3 class="text-xl font-bold mb-4">🎯 Resource Allocation Pools</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gray-700 p-4 rounded">
+                    <h4 class="font-semibold text-blue-400">💰 Mining Pool</h4>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Allocated:</span>
+                            <span id="miningAllocated">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Available:</span>
+                            <span id="miningAvailable">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <h4 class="font-semibold text-red-400">🔐 Hashcat Pool</h4>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Allocated:</span>
+                            <span id="hashcatAllocated">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Available:</span>
+                            <span id="hashcatAvailable">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <h4 class="font-semibold text-green-400">🤖 AI Training Pool</h4>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Allocated:</span>
+                            <span id="aiTrainingAllocated">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Available:</span>
+                            <span id="aiTrainingAvailable">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <h4 class="font-semibold text-purple-400">⚡ General Compute</h4>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Allocated:</span>
+                            <span id="generalAllocated">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Available:</span>
+                            <span id="generalAvailable">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing Table -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h3 class="text-xl font-bold mb-4">💲 Marketplace Pricing</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gray-700 p-4 rounded text-center">
+                    <i class="fas fa-microchip text-2xl text-blue-500 mb-2"></i>
+                    <h4 class="font-semibold">GPU Hour</h4>
+                    <p class="text-2xl font-bold text-blue-400" id="gpuPrice">$0.50</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded text-center">
+                    <i class="fas fa-cpu text-2xl text-green-500 mb-2"></i>
+                    <h4 class="font-semibold">CPU Hour</h4>
+                    <p class="text-2xl font-bold text-green-400" id="cpuPrice">$0.10</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded text-center">
+                    <i class="fas fa-lock text-2xl text-red-500 mb-2"></i>
+                    <h4 class="font-semibold">Hashcat Job</h4>
+                    <p class="text-2xl font-bold text-red-400" id="hashcatPrice">$5.00</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded text-center">
+                    <i class="fas fa-brain text-2xl text-purple-500 mb-2"></i>
+                    <h4 class="font-semibold">AI Training/Hour</h4>
+                    <p class="text-2xl font-bold text-purple-400" id="aiPrice">$2.00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Jobs -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h3 class="text-xl font-bold mb-4">📋 Available Computing Jobs</h3>
+            <div id="jobsList" class="space-y-4">
+                <div class="text-center text-gray-400 py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Loading jobs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Job Modal -->
+    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg max-w-2xl w-full mx-4">
+            <h3 class="text-2xl font-bold mb-6">🚀 Create Computing Job</h3>
+            <form id="jobForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Job Type</label>
+                        <select id="jobType" class="w-full p-3 bg-gray-700 rounded" required>
+                            <option value="">Select job type</option>
+                            <option value="mining">💰 Mining</option>
+                            <option value="hashcat">🔐 Hashcat/Password Recovery</option>
+                            <option value="ai-training">🤖 AI Training</option>
+                            <option value="general-compute">⚡ General Computing</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Estimated Hours</label>
+                        <input type="number" id="estimatedHours" class="w-full p-3 bg-gray-700 rounded" min="1" value="1" required>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Job Description</label>
+                    <textarea id="jobDescription" class="w-full p-3 bg-gray-700 rounded h-20" placeholder="Describe your computing task..."></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">GPUs Required</label>
+                        <input type="number" id="gpusRequired" class="w-full p-3 bg-gray-700 rounded" min="0" value="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">CPUs Required</label>
+                        <input type="number" id="cpusRequired" class="w-full p-3 bg-gray-700 rounded" min="0" value="4">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Budget (USD)</label>
+                    <input type="number" id="jobBudget" class="w-full p-3 bg-gray-700 rounded" step="0.01" min="0">
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded font-semibold hover:bg-blue-700">
+                        Create Job
+                    </button>
+                    <button type="button" onclick="closeJobModal()" class="flex-1 bg-gray-600 text-white py-3 rounded font-semibold hover:bg-gray-700">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let marketplaceData = null;
+
+        // Load marketplace data
+        async function loadMarketplace() {
+            try {
+                const response = await fetch(`${API_BASE}/.netlify/functions/marketplace/jobs`);
+                marketplaceData = await response.json();
+                updateDashboard();
+            } catch (error) {
+                console.error('Error loading marketplace:', error);
+                showError('Failed to load marketplace data');
+            }
+        }
+
+        // Update dashboard with marketplace data
+        function updateDashboard() {
+            if (!marketplaceData) return;
+
+            // Update resource stats
+            document.getElementById('availableGPUs').textContent = marketplaceData.marketplaceStats?.totalGPUs || 0;
+            document.getElementById('availableCPUs').textContent = marketplaceData.marketplaceStats?.totalCPUs || 0;
+            document.getElementById('activeJobs').textContent = marketplaceData.availableJobs?.length || 0;
+            document.getElementById('totalWorkers').textContent = marketplaceData.marketplaceStats?.activeWorkers || 0;
+
+            // Update resource pools
+            const pools = marketplaceData.resourcePools || {};
+            document.getElementById('miningAllocated').textContent = pools.mining?.allocated || 0;
+            document.getElementById('miningAvailable').textContent = pools.mining?.available || 0;
+            document.getElementById('hashcatAllocated').textContent = pools.hashcat?.allocated || 0;
+            document.getElementById('hashcatAvailable').textContent = pools.hashcat?.available || 0;
+            document.getElementById('aiTrainingAllocated').textContent = pools.aiTraining?.allocated || 0;
+            document.getElementById('aiTrainingAvailable').textContent = pools.aiTraining?.available || 0;
+            document.getElementById('generalAllocated').textContent = pools.general?.allocated || 0;
+            document.getElementById('generalAvailable').textContent = pools.general?.available || 0;
+
+            // Update pricing
+            const pricing = marketplaceData.pricing || {};
+            document.getElementById('gpuPrice').textContent = `$${pricing.gpu_hour || '0.50'}`;
+            document.getElementById('cpuPrice').textContent = `$${pricing.cpu_hour || '0.10'}`;
+            document.getElementById('hashcatPrice').textContent = `$${pricing.hashcat_job || '5.00'}`;
+            document.getElementById('aiPrice').textContent = `$${pricing.ai_training_hour || '2.00'}`;
+
+            // Update jobs list
+            updateJobsList();
+        }
+
+        // Update jobs list
+        function updateJobsList() {
+            const jobsList = document.getElementById('jobsList');
+            const jobs = marketplaceData.availableJobs || [];
+
+            if (jobs.length === 0) {
+                jobsList.innerHTML = `
+                    <div class="text-center text-gray-400 py-8">
+                        <i class="fas fa-inbox text-4xl mb-4"></i>
+                        <p class="text-lg">No active jobs in the marketplace</p>
+                        <p class="text-sm">Create a job to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            jobsList.innerHTML = jobs.map(job => `
+                <div class="bg-gray-700 p-6 rounded-lg">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="text-lg font-semibold">${getJobIcon(job.type)} ${job.description}</h4>
+                            <p class="text-gray-400 text-sm">Type: ${job.type} • Created: ${new Date(job.createdAt).toLocaleString()}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-bold text-green-400">$${job.reward}</p>
+                            <p class="text-sm text-gray-400">${job.estimatedTime}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm">
+                            <span class="bg-gray-600 px-2 py-1 rounded mr-2">GPUs: ${job.requirements.gpus || 0}</span>
+                            <span class="bg-gray-600 px-2 py-1 rounded">CPUs: ${job.requirements.cpus || 0}</span>
+                        </div>
+                        <button onclick="acceptJob('${job.id}')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            Accept Job
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get job icon
+        function getJobIcon(type) {
+            const icons = {
+                'mining': '💰',
+                'hashcat': '🔐',
+                'ai-training': '🤖',
+                'general-compute': '⚡'
+            };
+            return icons[type] || '💻';
+        }
+
+        // Create new job
+        async function createJob(jobData) {
+            try {
+                const response = await fetch(`${API_BASE}/.netlify/functions/marketplace/jobs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jobData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showSuccess('Job created successfully!');
+                    closeJobModal();
+                    refreshMarketplace();
+                } else {
+                    showError(result.error || 'Failed to create job');
+                }
+            } catch (error) {
+                console.error('Error creating job:', error);
+                showError('Failed to create job');
+            }
+        }
+
+        // Accept job
+        async function acceptJob(jobId) {
+            showSuccess(`Job ${jobId} accepted! (Demo mode - integration pending)`);
+        }
+
+        // Modal functions
+        function openJobModal() {
+            document.getElementById('jobModal').classList.remove('hidden');
+        }
+
+        function closeJobModal() {
+            document.getElementById('jobModal').classList.add('hidden');
+            document.getElementById('jobForm').reset();
+        }
+
+        // Form submission
+        document.getElementById('jobForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const jobData = {
+                type: document.getElementById('jobType').value,
+                description: document.getElementById('jobDescription').value,
+                estimatedHours: parseInt(document.getElementById('estimatedHours').value),
+                budget: parseFloat(document.getElementById('jobBudget').value),
+                requirements: {
+                    gpus: parseInt(document.getElementById('gpusRequired').value) || 0,
+                    cpus: parseInt(document.getElementById('cpusRequired').value) || 0
+                }
+            };
+
+            await createJob(jobData);
+        });
+
+        // Utility functions
+        function refreshMarketplace() {
+            loadMarketplace();
+        }
+
+        function showSuccess(message) {
+            // Simple alert for now - could be replaced with toast notification
+            alert('✅ ' + message);
+        }
+
+        function showError(message) {
+            // Simple alert for now - could be replaced with toast notification
+            alert('❌ ' + message);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMarketplace();
+            setInterval(refreshMarketplace, 30000); // Refresh every 30 seconds
+        });
+    </script>
+</body>
+</html>

@@ -42,7 +42,7 @@ exports.handler = async (event, context) => {
 
 async function handleMinerConnect(event) {
   const body = JSON.parse(event.body || '{}');
-  const { walletAddress, gpuInfo, hashrate, workerName } = body;
+  const { walletAddress, gpuInfo, hashrate, workerName, capabilities, cpuInfo } = body;
 
   // Input validation
   if (!walletAddress || !validateInput(walletAddress, 'string', 50)) {
@@ -68,17 +68,27 @@ async function handleMinerConnect(event) {
     return createResponse(400, { error: 'Invalid Solana wallet address' });
   }
 
-  // Register miner
+  // Register miner with marketplace capabilities
   globalStorage.miners.set(walletAddress, {
     walletAddress,
     workerName: workerName || 'unknown',
     gpuInfo: gpuInfo || {},
+    cpuInfo: cpuInfo || {},
     hashrate: hashrate || 0,
     shares: 0,
     totalEarnings: 0,
     lastSeen: Date.now(),
     connectedAt: Date.now(),
-    isActive: true
+    isActive: true,
+    capabilities: {
+      mining: true,
+      hashcat: capabilities?.hashcat || false,
+      aiTraining: capabilities?.aiTraining || false,
+      generalCompute: capabilities?.generalCompute || false,
+      ...capabilities
+    },
+    currentJob: null,
+    jobHistory: []
   });
 
   console.log(`🔗 New miner connected: ${walletAddress} (${workerName || 'unknown'})`);

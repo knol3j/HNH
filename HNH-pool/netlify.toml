@@ -11,6 +11,16 @@
   status = 200
 
 [[redirects]]
+  from = "/marketplace/*"
+  to = "/.netlify/functions/marketplace/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/external-api/*"
+  to = "/.netlify/functions/external-api/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
