@@ -2,10 +2,11 @@
   "name": "hashnhedge-pool",
   "version": "1.0.0",
   "description": "HashNHedge Mining Pool Server with Security Dashboard",
-  "main": "index.html",
+  "main": "onrender-server.js",
   "scripts": {
+    "start": "node onrender-server.js",
     "dev": "netlify dev",
-    "build": "echo 'Static site - no build required'",
+    "build": "npm install",
     "serve": "netlify dev",
     "deploy": "netlify deploy --prod"
   },
@@ -28,7 +29,11 @@
   "homepage": "https://hashnhedge.com",
   "dependencies": {
     "@solana/spl-token": "^0.3.9",
-    "@solana/web3.js": "^1.87.6"
+    "@solana/web3.js": "^1.87.6",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "crypto": "^1.0.1"
   },
   "devDependencies": {
     "netlify-cli": "^17.38.1"

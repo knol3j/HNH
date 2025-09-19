@@ -375,7 +375,7 @@ class AdaptiveMinerClient {
 
 // Usage example
 const config = {
-    poolUrl: 'https://hashnhedge.netlify.app',
+    poolUrl: 'http://localhost:3001',
     walletAddress: 'CB9tPfNgfxsTZpNkVWaohabFqWUCNd5RH6w8bvzZemVd',
     workerName: 'adaptive_worker_001',
     capabilities: {
