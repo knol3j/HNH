@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Mining Pool - Live Stats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 gradient-text">
+            HashNHedge Mining Pool
+        </h1>
+
+        <!-- Live Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-gray-400 text-sm">Active Miners</h3>
+                <p class="text-3xl font-bold mt-2" id="activeMiners">0</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-gray-400 text-sm">Total Hashrate</h3>
+                <p class="text-3xl font-bold mt-2" id="totalHashrate">0 H/s</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-gray-400 text-sm">Total Shares</h3>
+                <p class="text-3xl font-bold mt-2" id="totalShares">0</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-gray-400 text-sm">HNH Distributed</h3>
+                <p class="text-3xl font-bold mt-2" id="hnhDistributed">0</p>
+            </div>
+        </div>
+
+        <!-- Pool Connection Info -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-bold mb-4">🔗 Connect Your Miner</h2>
+            <div class="bg-black p-4 rounded-lg font-mono text-sm">
+                <p class="text-green-400">Pool URL: https://hashnhedge-pool.onrender.com</p>
+                <p class="text-blue-400">Algorithm: SHA256</p>
+                <p class="text-yellow-400">Reward: 1 HNH per share</p>
+                <p class="text-purple-400">Pool Fee: 3%</p>
+            </div>
+        </div>
+
+        <!-- Active Miners Table -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4">👥 Active Miners</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full" id="minersTable">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left p-3">Wallet</th>
+                            <th class="text-left p-3">Hashrate</th>
+                            <th class="text-left p-3">Shares</th>
+                            <th class="text-left p-3">Earnings</th>
+                        </tr>
+                    </thead>
+                    <tbody id="minersList">
+                        <!-- Miners will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your pool API URL
+        const POOL_API = window.location.origin;
+
+        // Fetch and update stats
+        async function updateStats() {
+            try {
+                const response = await fetch(`${POOL_API}/.netlify/functions/stats`);
+                const data = await response.json();
+
+                document.getElementById('activeMiners').textContent = data.activeMiners || 0;
+                document.getElementById('totalHashrate').textContent = formatHashrate(data.totalHashrate || 0);
+                document.getElementById('totalShares').textContent = data.totalShares || 0;
+                document.getElementById('hnhDistributed').textContent = data.totalHNHDistributed || 0;
+
+                // Update miners table
+                const minersList = document.getElementById('minersList');
+                minersList.innerHTML = '';
+
+                if (data.miners && data.miners.length > 0) {
+                    data.miners.forEach(miner => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-gray-700';
+                        row.innerHTML = `
+                            <td class="p-3 font-mono">${miner.wallet}</td>
+                            <td class="p-3">${formatHashrate(miner.hashrate)}</td>
+                            <td class="p-3">${miner.shares}</td>
+                            <td class="p-3">${miner.earnings} HNH</td>
+                        `;
+                        minersList.appendChild(row);
+                    });
+                } else {
+                    minersList.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-500">No active miners</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        function formatHashrate(hashrate) {
+            if (hashrate >= 1000000) return `${(hashrate / 1000000).toFixed(2)} MH/s`;
+            if (hashrate >= 1000) return `${(hashrate / 1000).toFixed(2)} KH/s`;
+            return `${hashrate} H/s`;
+        }
+
+        // Update stats every 5 seconds
+        updateStats();
+        setInterval(updateStats, 5000);
+    </script>
+</body>
+</html>

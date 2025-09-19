@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Mining - HashNHedge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .pulse-ring {
+            animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.33); }
+            80%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-gem text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold">HashNHedge Miner</h1>
+                </div>
+                <a href="index.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-home mr-2"></i>Back to Home
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Connection Status -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Pool Connection Status</h2>
+                <div id="connectionStatus" class="flex items-center space-x-2">
+                    <div class="w-3 h-3 bg-gray-500 rounded-full pulse-ring"></div>
+                    <span id="statusText" class="text-gray-400">Checking...</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                    <p class="text-2xl font-bold text-green-400" id="poolMiners">-</p>
+                    <p class="text-xs text-gray-400">Active Miners</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-blue-400" id="poolHashrate">-</p>
+                    <p class="text-xs text-gray-400">Pool Hashrate</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-yellow-400" id="poolRewards">-</p>
+                    <p class="text-xs text-gray-400">HNH Distributed</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-purple-400">3%</p>
+                    <p class="text-xs text-gray-400">Pool Fee</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Start Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Browser Miner -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <i class="fas fa-globe text-blue-400 text-2xl"></i>
+                    <h3 class="text-xl font-bold">Browser Miner</h3>
+                    <span class="bg-green-600 text-xs px-2 py-1 rounded">EASY</span>
+                </div>
+                <p class="text-gray-400 mb-4">Start mining directly in your browser! No downloads required.</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Solana Wallet Address</label>
+                        <input type="text" id="walletAddress"
+                               placeholder="Enter your Solana wallet address..."
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Worker Name (Optional)</label>
+                        <input type="text" id="workerName"
+                               placeholder="my-miner-1"
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500">
+                    </div>
+
+                    <button id="startMining"
+                            class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-play mr-2"></i>Start Mining
+                    </button>
+                </div>
+
+                <!-- Mining Stats -->
+                <div id="miningStats" class="hidden mt-6 p-4 bg-gray-900 rounded-lg">
+                    <h4 class="font-semibold mb-3">Mining Statistics</h4>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-400">Status:</span>
+                            <span id="minerStatus" class="text-green-400 ml-2">-</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Hashrate:</span>
+                            <span id="minerHashrate" class="ml-2">-</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Shares:</span>
+                            <span id="minerShares" class="ml-2">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Earnings:</span>
+                            <span id="minerEarnings" class="text-yellow-400 ml-2">0 HNH</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Miner -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <i class="fas fa-download text-green-400 text-2xl"></i>
+                    <h3 class="text-xl font-bold">Download Miner</h3>
+                    <span class="bg-blue-600 text-xs px-2 py-1 rounded">ADVANCED</span>
+                </div>
+                <p class="text-gray-400 mb-4">Download the native miner for better performance and 24/7 mining.</p>
+
+                <div class="space-y-3">
+                    <button onclick="downloadMinerFile('windows')"
+                            class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition flex items-center justify-center">
+                        <i class="fab fa-windows mr-2"></i>Windows Miner
+                    </button>
+                    <button onclick="downloadMinerFile('linux')"
+                            class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition flex items-center justify-center">
+                        <i class="fab fa-linux mr-2"></i>Linux Miner
+                    </button>
+                    <button onclick="downloadMinerFile('mac')"
+                            class="w-full bg-gray-600 hover:bg-gray-700 py-3 rounded-lg font-semibold transition flex items-center justify-center">
+                        <i class="fab fa-apple mr-2"></i>macOS Miner
+                    </button>
+                </div>
+
+                <div class="mt-4 p-3 bg-yellow-900 rounded-lg">
+                    <p class="text-yellow-300 text-sm">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Remember to edit the config file with your wallet address before running!
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pool Information -->
+        <div class="mt-8 bg-gray-800 rounded-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Pool Information</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <p class="text-gray-400 text-sm">Pool URL</p>
+                    <p class="font-mono text-sm bg-gray-900 p-2 rounded">https://hashnhedge-pool.onrender.com</p>
+                </div>
+                <div>
+                    <p class="text-gray-400 text-sm">Algorithm</p>
+                    <p class="font-mono text-sm bg-gray-900 p-2 rounded">SHA256</p>
+                </div>
+                <div>
+                    <p class="text-gray-400 text-sm">Reward per Share</p>
+                    <p class="font-mono text-sm bg-gray-900 p-2 rounded">1 HNH Token</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="mt-8 bg-gray-800 rounded-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Need Help?</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-semibold mb-2">Getting a Wallet</h4>
+                    <p class="text-gray-400 text-sm mb-2">You need a Solana wallet to receive HNH tokens:</p>
+                    <a href="https://phantom.app" target="_blank"
+                       class="inline-flex items-center bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm transition">
+                        <i class="fas fa-wallet mr-2"></i>Get Phantom Wallet
+                    </a>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-2">Troubleshooting</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>• Make sure your wallet address is correct</li>
+                        <li>• Check your internet connection</li>
+                        <li>• Try refreshing the page</li>
+                        <li>• Contact support if issues persist</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const POOL_URL = window.location.origin;
+        let miner = null;
+        let isConnected = false;
+
+        // Check pool connection on load
+        async function checkPoolConnection() {
+            try {
+                const response = await fetch(`${POOL_URL}/.netlify/functions/stats`);
+                const data = await response.json();
+
+                // Update connection status
+                document.getElementById('connectionStatus').innerHTML = `
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="text-green-400">Connected</span>
+                `;
+
+                // Update pool stats
+                document.getElementById('poolMiners').textContent = data.activeMiners || 0;
+                document.getElementById('poolHashrate').textContent = formatHashrate(data.totalHashrate || 0);
+                document.getElementById('poolRewards').textContent = data.totalHNHDistributed || 0;
+
+                isConnected = true;
+                return true;
+            } catch (error) {
+                console.error('Pool connection failed:', error);
+                document.getElementById('connectionStatus').innerHTML = `
+                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span class="text-red-400">Disconnected</span>
+                `;
+                return false;
+            }
+        }
+
+        function formatHashrate(hashrate) {
+            if (hashrate >= 1000000000) return `${(hashrate / 1000000000).toFixed(2)} GH/s`;
+            if (hashrate >= 1000000) return `${(hashrate / 1000000).toFixed(2)} MH/s`;
+            if (hashrate >= 1000) return `${(hashrate / 1000).toFixed(2)} KH/s`;
+            return `${hashrate} H/s`;
+        }
+
+        // Simple browser-based miner
+        class BrowserMiner {
+            constructor(walletAddress, workerName) {
+                this.walletAddress = walletAddress;
+                this.workerName = workerName || 'browser-miner';
+                this.isRunning = false;
+                this.shares = 0;
+                this.hashrate = 0;
+                this.earnings = 0;
+            }
+
+            async connect() {
+                try {
+                    const response = await fetch(`${POOL_URL}/.netlify/functions/miner/connect`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            walletAddress: this.walletAddress,
+                            workerName: this.workerName,
+                            hashrate: 1000 // Estimated browser hashrate
+                        })
+                    });
+                    const data = await response.json();
+                    return data.success;
+                } catch (error) {
+                    console.error('Connection failed:', error);
+                    return false;
+                }
+            }
+
+            async start() {
+                if (!isConnected) {
+                    alert('Pool is not connected. Please try again later.');
+                    return false;
+                }
+
+                const connected = await this.connect();
+                if (!connected) {
+                    alert('Failed to connect to mining pool. Check your wallet address.');
+                    return false;
+                }
+
+                this.isRunning = true;
+                this.mine();
+                return true;
+            }
+
+            stop() {
+                this.isRunning = false;
+            }
+
+            async mine() {
+                while (this.isRunning) {
+                    const startTime = Date.now();
+                    let attempts = 0;
+                    const maxAttempts = 10000;
+
+                    // Simple mining simulation
+                    while (attempts < maxAttempts && this.isRunning) {
+                        const nonce = attempts;
+                        const data = `${Date.now()}-${nonce}-${this.walletAddress}`;
+                        const hash = await this.sha256(data);
+
+                        attempts++;
+
+                        // Check if we found a share (simplified)
+                        if (hash.startsWith('0000')) {
+                            await this.submitShare(nonce, hash);
+                            break;
+                        }
+
+                        // Yield control to prevent browser freezing
+                        if (attempts % 1000 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1));
+                        }
+                    }
+
+                    // Calculate hashrate
+                    const duration = (Date.now() - startTime) / 1000;
+                    this.hashrate = Math.round(attempts / duration);
+                    this.updateStats();
+                }
+            }
+
+            async submitShare(nonce, hash) {
+                try {
+                    const response = await fetch(`${POOL_URL}/.netlify/functions/miner/submit-share`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            walletAddress: this.walletAddress,
+                            nonce,
+                            hash,
+                            timestamp: Date.now()
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        this.shares++;
+                        this.earnings = data.totalEarnings || 0;
+                        console.log(`Share accepted! Earned ${data.hnhReward} HNH`);
+                    }
+                } catch (error) {
+                    console.error('Share submission failed:', error);
+                }
+            }
+
+            async sha256(message) {
+                const msgBuffer = new TextEncoder().encode(message);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return hashHex;
+            }
+
+            updateStats() {
+                document.getElementById('minerHashrate').textContent = formatHashrate(this.hashrate);
+                document.getElementById('minerShares').textContent = this.shares;
+                document.getElementById('minerEarnings').textContent = `${this.earnings} HNH`;
+            }
+        }
+
+        // Start mining button handler
+        document.getElementById('startMining').addEventListener('click', async () => {
+            const walletAddress = document.getElementById('walletAddress').value.trim();
+            const workerName = document.getElementById('workerName').value.trim();
+            const button = document.getElementById('startMining');
+
+            if (!walletAddress) {
+                alert('Please enter your Solana wallet address');
+                return;
+            }
+
+            if (miner && miner.isRunning) {
+                // Stop mining
+                miner.stop();
+                button.innerHTML = '<i class="fas fa-play mr-2"></i>Start Mining';
+                button.className = button.className.replace('from-red-600 to-red-700', 'from-purple-600 to-blue-600');
+                document.getElementById('minerStatus').textContent = 'Stopped';
+                document.getElementById('miningStats').classList.add('hidden');
+                miner = null;
+            } else {
+                // Start mining
+                button.disabled = true;
+                button.textContent = 'Connecting...';
+
+                miner = new BrowserMiner(walletAddress, workerName);
+                const started = await miner.start();
+
+                if (started) {
+                    button.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Mining';
+                    button.className = button.className.replace('from-purple-600 to-blue-600', 'from-red-600 to-red-700');
+                    document.getElementById('minerStatus').textContent = 'Mining';
+                    document.getElementById('miningStats').classList.remove('hidden');
+                } else {
+                    button.innerHTML = '<i class="fas fa-play mr-2"></i>Start Mining';
+                    miner = null;
+                }
+
+                button.disabled = false;
+            }
+        });
+
+        // Download miner files
+        function downloadMinerFile(platform) {
+            // For demo purposes, download the configuration template
+            const config = {
+                poolUrl: POOL_URL,
+                walletAddress: "YOUR_SOLANA_WALLET_ADDRESS_HERE",
+                workerName: `${platform}-miner-1`,
+                algorithm: "sha256",
+                intensity: 75,
+                instructions: [
+                    "1. Replace YOUR_SOLANA_WALLET_ADDRESS_HERE with your actual wallet address",
+                    "2. Save this file as config.json",
+                    "3. Run the miner executable in the same directory",
+                    "4. The miner will automatically connect to the pool"
+                ]
+            };
+
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hashnhedge-${platform}-config.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert(`Downloaded ${platform} miner configuration! Remember to edit the config file with your wallet address.`);
+        }
+
+        // Initialize
+        checkPoolConnection();
+        setInterval(checkPoolConnection, 30000); // Check connection every 30 seconds
+    </script>
+</body>
+</html>

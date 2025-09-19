@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:hashnhedge.com)",
+      "WebFetch(domain:www.githubstatus.com)",
+      "WebFetch(domain:hashnhedge-pool.onrender.com)",
+      "Bash(chmod:*)",
+      "Read(//c/Users/gnul/**)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

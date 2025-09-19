@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: hashnhedge-pool
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/stats
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: SOLANA_NETWORK
+        value: devnet
+      - key: POOL_FEE
+        value: 3
+      - key: REWARD_PER_SHARE
+        value: 1
+    autoDeploy: true
+    rootDir: ./

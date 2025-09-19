@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge - Distributed GPU Farm Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.8); }
+        }
+        
+        .glow-effect {
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold">HashNHedge</h1>
+                <p class="text-gray-200">Decentralized GPU Computing Network</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="connectWallet()" class="bg-white text-purple-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                    Connect Wallet
+                </button>
+                <span id="walletStatus" class="text-sm mt-2"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-gray-800 shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto">
+            <div class="flex space-x-1">
+                <button onclick="switchTab('dashboard')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition active" data-tab="dashboard">
+                    Dashboard
+                </button>
+                <button onclick="switchTab('farm')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="farm">
+                    GPU Farm
+                </button>
+                <button onclick="switchTab('nodes')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="nodes">
+                    Node Operations
+                </button>
+                <button onclick="switchTab('tokenomics')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="tokenomics">
+                    Tokenomics
+                </button>
+                <button onclick="switchTab('whitepaper')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="whitepaper">
+                    Whitepaper
+                </button>
+                <button onclick="switchTab('contracts')" class="tab-btn px-6 py-3 hover:bg-gray-700 transition" data-tab="contracts">
+                    Smart Contracts
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-6">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <h2 class="text-3xl font-bold mb-6">Network Overview</h2>
+            
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="metric-card p-6 rounded-lg card-hover">
+                    <h3 class="text-gray-400 text-sm">Total Nodes</h3>
+                    <p class="text-3xl font-bold mt-2">1,247</p>
+                    <span class="text-green-400 text-sm">↑ 12% this week</span>
+                </div>
+                <div class="metric-card p-6 rounded-lg card-hover">
+                    <h3 class="text-gray-400 text-sm">Active GPUs</h3>
+                    <p class="text-3xl font-bold mt-2">3,892</p>
+                    <span class="text-green-400 text-sm">↑ 8% this week</span>
+                </div>
+                <div class="metric-card p-6 rounded-lg card-hover">
+                    <h3 class="text-gray-400 text-sm">Total TFLOPS</h3>
+                    <p class="text-3xl font-bold mt-2">847.3</p>
+                    <span class="text-green-400 text-sm">↑ 15% this week</span>
+                </div>
+                <div class="metric-card p-6 rounded-lg card-hover">
+                    <h3 class="text-gray-400 text-sm">Network Utilization</h3>
+                    <p class="text-3xl font-bold mt-2">76.4%</p>
+                    <span class="text-yellow-400 text-sm">Optimal Range</span>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Network Growth</h3>
+                    <canvas id="growthChart"></canvas>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Compute Distribution</h3>
+                    <canvas id="computeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GPU Farm Tab -->
+        <div id="farm" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">GPU Farm Management</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Farm Registration -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Register New Farm</h3>
+                    <form onsubmit="registerFarm(event)">
+                        <div class="space-y-4">
+                            <input type="text" placeholder="Farm Name" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <input type="text" placeholder="Location" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <input type="number" placeholder="Number of GPUs" class="w-full p-3 bg-gray-700 rounded-lg">
+                            <select class="w-full p-3 bg-gray-700 rounded-lg">
+                                <option>RTX 3090</option>
+                                <option>RTX 4090</option>
+                                <option>A100</option>
+                                <option>H100</option>
+                            </select>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
+                                Register Farm
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Active Farms -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Active Farms</h3>
+                    <div class="space-y-3" id="farmList">
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold">Alpha Farm Node</p>
+                                    <p class="text-sm text-gray-400">32 GPUs • California</p>
+                                </div>
+                                <span class="bg-green-500 px-3 py-1 rounded-full text-sm">Online</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold">Beta Mining Cluster</p>
+                                    <p class="text-sm text-gray-400">64 GPUs • Texas</p>
+                                </div>
+                                <span class="bg-green-500 px-3 py-1 rounded-full text-sm">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Farm Performance Metrics -->
+            <div class="mt-8 bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Farm Performance</h3>
+                <canvas id="farmPerformanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Node Operations Tab -->
+        <div id="nodes" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Node Operations</h2>
+            
+            <!-- Node Setup Wizard -->
+            <div class="bg-gray-800 p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4">Quick Node Setup</h3>
+                <div class="flex space-x-4 mb-6">
+                    <button onclick="nodeSetupStep(1)" class="flex-1 bg-indigo-600 p-3 rounded-lg">
+                        1. Install Client
+                    </button>
+                    <button onclick="nodeSetupStep(2)" class="flex-1 bg-gray-700 p-3 rounded-lg">
+                        2. Configure
+                    </button>
+                    <button onclick="nodeSetupStep(3)" class="flex-1 bg-gray-700 p-3 rounded-lg">
+                        3. Start Mining
+                    </button>
+                </div>
+                <div id="nodeSetupContent" class="bg-gray-700 p-4 rounded-lg">
+                    <p>Download the HashNHedge node client for your operating system:</p>
+                    <div class="flex gap-4 mt-4">
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Windows</button>
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Linux</button>
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">MacOS</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Node Monitoring -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h4 class="font-semibold mb-3">Your Nodes</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span>Node #001</span>
+                            <span class="text-green-400">Active</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Node #002</span>
+                            <span class="text-yellow-400">Syncing</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h4 class="font-semibold mb-3">Compute Tasks</h4>
+                    <p class="text-3xl font-bold">47</p>
+                    <p class="text-sm text-gray-400">Completed today</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h4 class="font-semibold mb-3">Earnings</h4>
+                    <p class="text-3xl font-bold">1,247 HNH</p>
+                    <p class="text-sm text-gray-400">This month</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tokenomics Tab -->
+        <div id="tokenomics" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Tokenomics Calculator</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Token Distribution -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Token Distribution</h3>
+                    <canvas id="tokenDistChart"></canvas>
+                    <div class="mt-4 space-y-2">
+                        <div class="flex justify-between">
+                            <span>Total Supply:</span>
+                            <span class="font-bold">1,000,000,000 HNH</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Circulating Supply:</span>
+                            <span class="font-bold">350,000,000 HNH</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROI Calculator -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">ROI Calculator</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-2">Investment Amount (USD)</label>
+                            <input type="number" id="investmentAmount" value="1000" class="w-full p-3 bg-gray-700 rounded-lg" onchange="calculateROI()">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-2">Token Price (USD)</label>
+                            <input type="number" id="tokenPrice" value="0.05" step="0.01" class="w-full p-3 bg-gray-700 rounded-lg" onchange="calculateROI()">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-2">Expected APY (%)</label>
+                            <input type="number" id="apyRate" value="120" class="w-full p-3 bg-gray-700 rounded-lg" onchange="calculateROI()">
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <p class="text-sm text-gray-400">Estimated Annual Return</p>
+                            <p class="text-2xl font-bold text-green-400" id="roiResult">$1,200</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vesting Schedule -->
+            <div class="mt-6 bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Vesting Schedule</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left p-3">Category</th>
+                                <th class="text-left p-3">Allocation</th>
+                                <th class="text-left p-3">Vesting Period</th>
+                                <th class="text-left p-3">Cliff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Team</td>
+                                <td class="p-3">15%</td>
+                                <td class="p-3">36 months</td>
+                                <td class="p-3">12 months</td>
+                            </tr>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Node Operators</td>
+                                <td class="p-3">30%</td>
+                                <td class="p-3">48 months</td>
+                                <td class="p-3">None</td>
+                            </tr>
+                            <tr class="border-b border-gray-700">
+                                <td class="p-3">Public Sale</td>
+                                <td class="p-3">20%</td>
+                                <td class="p-3">Immediate</td>
+                                <td class="p-3">None</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Whitepaper Tab -->
+        <div id="whitepaper" class="tab-content">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-4xl font-bold mb-8 text-center">HashNHedge Whitepaper</h2>
+                
+                <!-- Executive Summary -->
+                <section class="bg-gray-800 p-8 rounded-lg mb-6">
+                    <h3 class="text-2xl font-bold mb-4">Executive Summary</h3>
+                    <p class="text-gray-300 leading-relaxed mb-4">
+                        HashNHedge represents a paradigm shift in distributed computing infrastructure, leveraging blockchain technology and federated GPU farms to democratize access to high-performance computing resources. Our platform enables anyone to contribute computational power and earn rewards while providing affordable, scalable compute resources to AI researchers, data scientists, and developers worldwide.
+                    </p>
+                    <p class="text-gray-300 leading-relaxed">
+                        Built on Solana's high-performance blockchain, we combine smart contract orchestration with proof-of-compute verification to ensure fair, transparent, and efficient resource allocation across our decentralized network.
+                    </p>
+                </section>
+
+                <!-- Problem Statement -->
+                <section class="bg-gray-800 p-8 rounded-lg mb-6">
+                    <h3 class="text-2xl font-bold mb-4">Problem Statement</h3>
+                    <ul class="space-y-3 text-gray-300">
+                        <li class="flex items-start">
+                            <span class="text-indigo-400 mr-2">•</span>
+                            <span>Cloud computing costs have increased 300% over the past 5 years, creating barriers for innovation</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-400 mr-2">•</span>
+                            <span>90% of consumer GPUs sit idle 20+ hours per day, representing massive underutilized resources</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-400 mr-2">•</span>
+                            <span>Centralized providers create vendor lock-in and single points of failure</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-400 mr-2">•</span>
+                            <span>Small-scale miners lack profitable alternatives post-Ethereum merge</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- Solution Architecture -->
+                <section class="bg-gray-800 p-8 rounded-lg mb-6">
+                    <h3 class="text-2xl font-bold mb-4">Solution Architecture</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-indigo-400">1. Federated GPU Farm Integration</h4>
+                            <p class="text-gray-300">Our platform seamlessly integrates existing GPU farms through standardized APIs and smart contract bridges, creating a unified compute marketplace.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-indigo-400">2. Solana-Based Orchestration Layer</h4>
+                            <p class="text-gray-300">Leveraging Solana's sub-second finality and low fees, our orchestration layer efficiently matches compute requests with available resources in real-time.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-indigo-400">3. Proof-of-Compute Verification</h4>
+                            <p class="text-gray-300">Using zk-SNARKs and cryptographic attestation, we ensure all computational work is performed honestly and accurately.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-indigo-400">4. Dynamic Incentive System</h4>
+                            <p class="text-gray-300">Stake-weighted rewards and reputation scoring ensure reliable nodes receive priority workloads and higher compensation.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Roadmap -->
+                <section class="bg-gray-800 p-8 rounded-lg mb-6">
+                    <h3 class="text-2xl font-bold mb-4">Development Roadmap</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center">
+                            <div class="bg-indigo-600 w-4 h-4 rounded-full mr-4"></div>
+                            <div>
+                                <p class="font-semibold">Q1 2025 - Foundation</p>
+                                <p class="text-sm text-gray-400">Smart contract deployment, initial node network</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="bg-indigo-600 w-4 h-4 rounded-full mr-4"></div>
+                            <div>
+                                <p class="font-semibold">Q2 2025 - Beta Launch</p>
+                                <p class="text-sm text-gray-400">Public beta, 100+ nodes, first compute tasks</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                            <div>
+                                <p class="font-semibold">Q3 2025 - Token Launch</p>
+                                <p class="text-sm text-gray-400">HNH token public sale, DEX listings</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                            <div>
+                                <p class="font-semibold">Q4 2025 - Scale</p>
+                                <p class="text-sm text-gray-400">1000+ nodes, enterprise partnerships</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="bg-gray-600 w-4 h-4 rounded-full mr-4"></div>
+                            <div>
+                                <p class="font-semibold">Q4 2026 - GPU Farm Integration</p>
+                                <p class="text-sm text-gray-400">Major mining farm partnerships, 100+ PFLOPS capacity</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Download Button -->
+                <div class="text-center mt-8">
+                    <button onclick="downloadWhitepaper()" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-lg font-semibold text-lg transition">
+                        Download Full Whitepaper (PDF)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart Contracts Tab -->
+        <div id="contracts" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Smart Contract Interface</h2>
+            
+            <!-- Contract Functions -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Submit Profile -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Submit Node Profile</h3>
+                    <div class="space-y-4">
+                        <input type="text" placeholder="Node Address" class="w-full p-3 bg-gray-700 rounded-lg" id="nodeAddress">
+                        <input type="number" placeholder="CPU Score (0-100)" class="w-full p-3 bg-gray-700 rounded-lg" id="cpuScore">
+                        <input type="number" placeholder="GPU Score (0-100)" class="w-full p-3 bg-gray-700 rounded-lg" id="gpuScore">
+                        <input type="number" placeholder="Latency (ms)" class="w-full p-3 bg-gray-700 rounded-lg" id="latency">
+                        <button onclick="submitProfile()" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
+                            Submit Profile
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Assign Task -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-4">Assign Compute Task</h3>
+                    <div class="space-y-4">
+                        <input type="text" placeholder="Task ID" class="w-full p-3 bg-gray-700 rounded-lg" id="taskId">
+                        <select class="w-full p-3 bg-gray-700 rounded-lg" id="taskType">
+                            <option>AI Training</option>
+                            <option>Rendering</option>
+                            <option>Data Processing</option>
+                            <option>Simulation</option>
+                        </select>
+                        <input type="number" placeholder="Compute Units Required" class="w-full p-3 bg-gray-700 rounded-lg" id="computeUnits">
+                        <button onclick="assignTask()" class="w-full bg-indigo-600 hover:bg-indigo-700 p-3 rounded-lg font-semibold transition">
+                            Assign Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contract Code Display -->
+            <div class="mt-6 bg-gray-800 p-6 rounded-lg">
+                <h3 class="text-xl font-semibold mb-4">Smart Contract Code</h3>
+                <div class="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+                    <pre class="text-sm text-green-400"><code>// HashNHedge Compute Orchestration Contract
+pragma solidity ^0.8.0;
+
+contract HashNHedgeOrchestrator {
+    struct Profile {
+        uint cpuScore;
+        uint gpuScore;
+        uint latency;
+        uint reliability;
+    }
+    
+    struct Task {
+        bytes32 taskId;
+        address assignedNode;
+        bool verified;
+        uint reward;
+    }
+    
+    mapping(address => Profile) public profiles;
+    mapping(bytes32 => Task) public tasks;
+    
+    function submitProfile(
+        address nodeId, 
+        uint cpuScore, 
+        uint gpuScore, 
+        uint latency, 
+        uint reliability
+    ) public {
+        profiles[nodeId] = Profile(
+            cpuScore, 
+            gpuScore, 
+            latency, 
+            reliability
+        );
+    }
+    
+    function assignTask(bytes32 taskId) public returns (address) {
+        address bestNode = selectOptimalNode(taskId);
+        tasks[taskId] = Task(taskId, bestNode, false, 0);
+        return bestNode;
+    }
+    
+    function verifyCompute(bytes32 taskId, bytes proof) public returns (bool) {
+        bool verified = verifyProof(taskId, proof);
+        if (verified) {
+            tasks[taskId].verified = true;
+        }
+        return verified;
+    }
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Contract Stats -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-800 p-6 rounded-lg text-center">
+                    <p class="text-gray-400 text-sm">Contract Address</p>
+                    <p class="font-mono text-xs mt-2">0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg text-center">
+                    <p class="text-gray-400 text-sm">Total Transactions</p>
+                    <p class="text-2xl font-bold mt-2">48,293</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg text-center">
+                    <p class="text-gray-400 text-sm">Contract Balance</p>
+                    <p class="text-2xl font-bold mt-2">1,247,892 HNH</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-gray-700');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('bg-gray-700');
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            // Network Growth Chart
+            const growthCtx = document.getElementById('growthChart').getContext('2d');
+            new Chart(growthCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Active Nodes',
+                        data: [120, 290, 450, 720, 980, 1247],
+                        borderColor: 'rgb(99, 102, 241)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Compute Distribution Chart
+            const computeCtx = document.getElementById('computeChart').getContext('2d');
+            new Chart(computeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['AI Training', 'Rendering', 'Data Processing', 'Idle'],
+                    datasets: [{
+                        data: [35, 25, 16.4, 23.6],
+                        backgroundColor: [
+                            'rgb(99, 102, 241)',
+                            'rgb(139, 92, 246)',
+                            'rgb(168, 85, 247)',
+                            'rgb(75, 85, 99)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Token Distribution Chart
+            const tokenCtx = document.getElementById('tokenDistChart');
+            if (tokenCtx) {
+                new Chart(tokenCtx.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: ['Node Operators', 'Public Sale', 'Team', 'Treasury', 'Marketing'],
+                        datasets: [{
+                            data: [30, 20, 15, 25, 10],
+                            backgroundColor: [
+                                'rgb(99, 102, 241)',
+                                'rgb(139, 92, 246)',
+                                'rgb(168, 85, 247)',
+                                'rgb(196, 181, 253)',
+                                'rgb(221, 214, 254)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: 'white'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Farm Performance Chart
+            const farmPerfCtx = document.getElementById('farmPerformanceChart');
+            if (farmPerfCtx) {
+                new Chart(farmPerfCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Alpha Farm', 'Beta Cluster', 'Gamma Node', 'Delta Pool', 'Epsilon Grid'],
+                        datasets: [{
+                            label: 'TFLOPS',
+                            data: [245, 189, 167, 143, 103],
+                            backgroundColor: 'rgba(99, 102, 241, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ROI Calculator
+        function calculateROI() {
+            const investment = parseFloat(document.getElementById('investmentAmount').value) || 0;
+            const price = parseFloat(document.getElementById('tokenPrice').value) || 0;
+            const apy = parseFloat(document.getElementById('apyRate').value) || 0;
+            
+            const tokens = investment / price;
+            const annualReturn = investment * (apy / 100);
+            
+            document.getElementById('roiResult').textContent = `$${annualReturn.toFixed(2)}`;
+        }
+
+        // Mock Functions
+        function connectWallet() {
+            document.getElementById('walletStatus').textContent = '0x742d...bEb7';
+            alert('Wallet connected successfully!');
+        }
+
+        function registerFarm(event) {
+            event.preventDefault();
+            alert('Farm registration submitted! Pending approval...');
+        }
+
+        function nodeSetupStep(step) {
+            const content = document.getElementById('nodeSetupContent');
+            const steps = {
+                1: `<p>Download the HashNHedge node client for your operating system:</p>
+                    <div class="flex gap-4 mt-4">
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Windows</button>
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Linux</button>
+                        <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">MacOS</button>
+                    </div>`,
+                2: `<p>Configure your node settings:</p>
+                    <div class="mt-4 space-y-2">
+                        <input type="text" placeholder="Node Name" class="w-full p-2 bg-gray-800 rounded">
+                        <input type="text" placeholder="Wallet Address" class="w-full p-2 bg-gray-800 rounded">
+                        <select class="w-full p-2 bg-gray-800 rounded">
+                            <option>Auto-detect GPU</option>
+                            <option>Manual Configuration</option>
+                        </select>
+                    </div>`,
+                3: `<p>Start earning rewards!</p>
+                    <div class="mt-4">
+                        <button class="bg-green-600 px-6 py-3 rounded hover:bg-green-700 w-full">
+                            Start Mining
+                        </button>
+                        <p class="text-sm text-gray-400 mt-2">Your node will begin accepting compute tasks immediately</p>
+                    </div>`
+            };
+            content.innerHTML = steps[step];
+        }
+
+        function submitProfile() {
+            alert('Node profile submitted to smart contract!');
+        }
+
+        function assignTask() {
+            alert('Task assigned! Finding optimal node...');
+        }
+
+        function downloadWhitepaper() {
+            alert('Generating PDF whitepaper...');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initCharts();
+            calculateROI();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Pool API Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl font-bold mb-8">🏊 HashNHedge Pool API</h1>
+
+        <!-- Status -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-4">System Status</h2>
+            <div class="flex items-center space-x-2">
+                <div id="statusIndicator" class="w-4 h-4 bg-gray-500 rounded-full"></div>
+                <span id="statusText">Checking...</span>
+            </div>
+        </div>
+
+        <!-- API Endpoints -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-4">API Endpoints</h2>
+            <div class="space-y-4">
+                <div class="bg-gray-900 p-4 rounded">
+                    <p class="font-mono text-sm text-blue-400">GET /api/stats</p>
+                    <p class="text-gray-400 text-sm mt-1">Get pool statistics</p>
+                </div>
+                <div class="bg-gray-900 p-4 rounded">
+                    <p class="font-mono text-sm text-green-400">POST /api/miner/connect</p>
+                    <p class="text-gray-400 text-sm mt-1">Connect a new miner</p>
+                </div>
+                <div class="bg-gray-900 p-4 rounded">
+                    <p class="font-mono text-sm text-yellow-400">POST /api/miner/submit-share</p>
+                    <p class="text-gray-400 text-sm mt-1">Submit mining share</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Connect -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">Quick Connect Example</h2>
+            <div class="bg-black p-4 rounded font-mono text-sm">
+                <p class="text-gray-400"># Connect with curl</p>
+                <p>curl -X POST https://hashnhedge-pool.onrender.com/api/miner/connect \</p>
+                <p>  -H "Content-Type: application/json" \</p>
+                <p>  -d '{"walletAddress": "YOUR_WALLET", "workerName": "test"}'</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const response = await fetch('/.netlify/functions/stats');
+                if (response.ok) {
+                    document.getElementById('statusIndicator').className = 'w-4 h-4 bg-green-500 rounded-full';
+                    document.getElementById('statusText').textContent = 'Pool is Online';
+                } else {
+                    document.getElementById('statusIndicator').className = 'w-4 h-4 bg-red-500 rounded-full';
+                    document.getElementById('statusText').textContent = 'Pool is Offline';
+                }
+            } catch (error) {
+                document.getElementById('statusIndicator').className = 'w-4 h-4 bg-red-500 rounded-full';
+                document.getElementById('statusText').textContent = 'Pool is Offline';
+            }
+        }
+
+        checkStatus();
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard - HashNHedge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .security-alert {
+            border-left: 4px solid #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .security-warning {
+            border-left: 4px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .security-safe {
+            border-left: 4px solid #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <header class="gradient-bg border-b border-red-800">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold">Security Dashboard</h1>
+                    <div id="securityStatus" class="flex items-center space-x-2 ml-4">
+                        <div class="w-3 h-3 bg-gray-500 rounded-full pulse-dot"></div>
+                        <span id="statusText" class="text-sm">Initializing...</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refreshBtn" class="bg-red-700 hover:bg-red-800 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                    <a href="index.html" class="text-red-200 hover:text-white transition">
+                        <i class="fas fa-home mr-2"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <i class="fas fa-shield-alt text-4xl text-red-400 mb-4"></i>
+                <h2 class="text-2xl font-bold">Security Access Required</h2>
+                <p class="text-gray-400 mt-2">Enter admin token to access security dashboard</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Admin Token</label>
+                    <input type="password" id="adminToken"
+                           placeholder="Enter your admin token..."
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-red-500">
+                </div>
+                <button id="loginBtn"
+                        class="w-full bg-red-600 hover:bg-red-700 py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Access Dashboard
+                </button>
+                <div id="loginError" class="hidden text-red-400 text-sm text-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden container mx-auto px-4 py-8">
+        <!-- Security Mode Control -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold">Security Mode Control</h2>
+                <div class="flex items-center space-x-4">
+                    <div id="securityModeStatus" class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                        <span class="text-sm">Unknown</span>
+                    </div>
+                    <button id="toggleSecurityMode"
+                            class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg font-semibold transition">
+                        <i class="fas fa-power-off mr-2"></i>Toggle Mode
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-red-400" id="threatLevel">LOW</p>
+                    <p class="text-xs text-gray-400">Threat Level</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-yellow-400" id="activeAlerts">0</p>
+                    <p class="text-xs text-gray-400">Active Alerts</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-2xl font-bold text-blue-400" id="blockedIPs">0</p>
+                    <p class="text-xs text-gray-400">Blocked IPs</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-bold mb-4">System Health</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Uptime:</span>
+                        <span id="systemUptime">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Memory Usage:</span>
+                        <span id="memoryUsage">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Active Connections:</span>
+                        <span id="activeConnections">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Shares Processed:</span>
+                        <span id="totalShares">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-bold mb-4">Network Statistics</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Total Miners:</span>
+                        <span id="totalMiners">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Active Miners:</span>
+                        <span id="activeMiners">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Network Hashrate:</span>
+                        <span id="networkHashrate">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Rejected Connections:</span>
+                        <span id="rejectedConnections">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Events -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Recent Security Events</h3>
+                <button id="clearEvents" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">
+                    Clear Events
+                </button>
+            </div>
+            <div id="securityEvents" class="space-y-2 max-h-96 overflow-y-auto">
+                <!-- Events will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = null;
+        let securityModeEnabled = false;
+
+        // API base URL
+        const API_BASE = window.location.origin;
+
+        // Login functionality
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const token = document.getElementById('adminToken').value.trim();
+            const errorDiv = document.getElementById('loginError');
+
+            if (!token) {
+                showError('Please enter admin token');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/.netlify/functions/admin/security`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    adminToken = token;
+                    document.getElementById('loginModal').classList.add('hidden');
+                    document.getElementById('mainContent').classList.remove('hidden');
+                    updateSecurityStatus('Connected', 'green');
+                    loadSecurityData();
+
+                    // Auto-refresh every 30 seconds
+                    setInterval(loadSecurityData, 30000);
+                } else {
+                    showError('Invalid admin token');
+                }
+            } catch (error) {
+                showError('Connection failed. Check if pool server is running.');
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function updateSecurityStatus(status, color) {
+            const statusEl = document.getElementById('statusText');
+            const dotEl = document.querySelector('.pulse-dot');
+
+            statusEl.textContent = status;
+            dotEl.className = `w-3 h-3 rounded-full pulse-dot bg-${color}-500`;
+        }
+
+        // Load security data
+        async function loadSecurityData() {
+            if (!adminToken) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/.netlify/functions/admin/security`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDashboard(data);
+                } else {
+                    updateSecurityStatus('Connection Error', 'red');
+                }
+            } catch (error) {
+                updateSecurityStatus('Connection Failed', 'red');
+                console.error('Failed to load security data:', error);
+            }
+        }
+
+        function updateDashboard(data) {
+            // System Health
+            document.getElementById('systemUptime').textContent = formatUptime(data.systemHealth.uptime);
+            document.getElementById('memoryUsage').textContent = formatMemory(data.systemHealth.memoryUsage.heapUsed);
+            document.getElementById('activeConnections').textContent = data.systemHealth.activeConnections;
+            document.getElementById('totalShares').textContent = data.systemHealth.totalShares;
+
+            // Network Stats
+            document.getElementById('totalMiners').textContent = data.networkStats.totalMiners;
+            document.getElementById('activeMiners').textContent = data.networkStats.activeMiners;
+            document.getElementById('networkHashrate').textContent = formatHashrate(data.networkStats.totalHashrate);
+            document.getElementById('rejectedConnections').textContent = data.securityLogs.rejectedConnections;
+
+            // Security Alerts
+            document.getElementById('activeAlerts').textContent = data.securityLogs.totalEvents;
+
+            // Threat Level Calculation
+            const threatLevel = calculateThreatLevel(data.securityLogs);
+            document.getElementById('threatLevel').textContent = threatLevel;
+
+            // Security Events
+            updateSecurityEvents(data.securityLogs.recentEvents);
+
+            updateSecurityStatus('Monitoring Active', 'green');
+        }
+
+        function calculateThreatLevel(logs) {
+            const recentEvents = logs.recentEvents.filter(event =>
+                Date.now() - new Date(event.timestamp).getTime() < 300000 // Last 5 minutes
+            );
+
+            if (recentEvents.length > 10) return 'HIGH';
+            if (recentEvents.length > 5) return 'MEDIUM';
+            return 'LOW';
+        }
+
+        function updateSecurityEvents(events) {
+            const container = document.getElementById('securityEvents');
+
+            if (events.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No security events recorded</p>';
+                return;
+            }
+
+            container.innerHTML = events.map(event => {
+                const alertClass = getAlertClass(event.eventType);
+                const timeAgo = getTimeAgo(new Date(event.timestamp));
+
+                return `
+                    <div class="${alertClass} p-3 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                                <div>
+                                    <p class="font-semibold">${event.eventType}</p>
+                                    <p class="text-sm text-gray-400">${event.details}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-400">${event.ip || 'Unknown IP'}</p>
+                                <p class="text-xs text-gray-500">${timeAgo}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getAlertClass(eventType) {
+            const highRisk = ['INVALID_HASH', 'SHARE_SPAM', 'UNAUTHORIZED_ACCESS'];
+            const mediumRisk = ['INVALID_WALLET', 'INVALID_NONCE', 'UNREGISTERED_MINER'];
+
+            if (highRisk.includes(eventType)) return 'security-alert';
+            if (mediumRisk.includes(eventType)) return 'security-warning';
+            return 'security-safe';
+        }
+
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function formatMemory(bytes) {
+            return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+        }
+
+        function formatHashrate(hashrate) {
+            if (hashrate >= 1000000000) return `${(hashrate / 1000000000).toFixed(2)} GH/s`;
+            if (hashrate >= 1000000) return `${(hashrate / 1000000).toFixed(2)} MH/s`;
+            if (hashrate >= 1000) return `${(hashrate / 1000).toFixed(2)} KH/s`;
+            return `${hashrate} H/s`;
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        }
+
+        // Security Mode Toggle
+        document.getElementById('toggleSecurityMode').addEventListener('click', async () => {
+            if (!adminToken) return;
+
+            const newMode = securityModeEnabled ? 'disable' : 'enable';
+
+            try {
+                const response = await fetch(`${API_BASE}/.netlify/functions/admin/security-mode`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({ mode: newMode })
+                });
+
+                if (response.ok) {
+                    securityModeEnabled = !securityModeEnabled;
+                    updateSecurityModeDisplay();
+                    loadSecurityData(); // Refresh data
+                }
+            } catch (error) {
+                console.error('Failed to toggle security mode:', error);
+            }
+        });
+
+        function updateSecurityModeDisplay() {
+            const statusEl = document.getElementById('securityModeStatus');
+            const toggleBtn = document.getElementById('toggleSecurityMode');
+
+            if (securityModeEnabled) {
+                statusEl.innerHTML = `
+                    <div class="w-3 h-3 bg-red-500 rounded-full pulse-dot"></div>
+                    <span class="text-sm text-red-400">Enhanced Mode Active</span>
+                `;
+                toggleBtn.innerHTML = '<i class="fas fa-power-off mr-2"></i>Disable Security Mode';
+            } else {
+                statusEl.innerHTML = `
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-green-400">Normal Mode</span>
+                `;
+                toggleBtn.innerHTML = '<i class="fas fa-power-off mr-2"></i>Enable Security Mode';
+            }
+        }
+
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', loadSecurityData);
+
+        // Clear events button
+        document.getElementById('clearEvents').addEventListener('click', () => {
+            if (confirm('Clear all security events? This action cannot be undone.')) {
+                document.getElementById('securityEvents').innerHTML =
+                    '<p class="text-gray-400 text-center py-4">Security events cleared</p>';
+            }
+        });
+
+        // Enter key for login
+        document.getElementById('adminToken').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('loginBtn').click();
+            }
+        });
+
+        // Initialize
+        updateSecurityModeDisplay();
+    </script>
+</body>
+</html>
