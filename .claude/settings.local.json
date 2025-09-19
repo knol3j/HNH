@@ -7,7 +7,17 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(git pull:*)",
-      "Bash(npx netlify db:*)"
+      "Bash(npx netlify db:*)",
+      "Bash(git commit:*)",
+      "Bash(start-server.cmd)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "WebFetch(domain:hashnhedge-pool.onrender.com)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

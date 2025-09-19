@@ -1,0 +1,34 @@
+@echo off
+echo Setting up HashNHedge Mining Pool...
+
+REM Navigate to your project folder
+cd /d C:\Users\gnul\hashnhedge
+
+REM Create package.json
+echo Creating package.json...
+(
+echo {
+echo   "name": "hashnhedge-mining-pool",
+echo   "version": "1.0.0",
+echo   "description": "HashNHedge Mining Pool with HNH Token Distribution",
+echo   "main": "mining-pool-server.js",
+echo   "scripts": {
+echo     "start": "node mining-pool-server.js",
+echo     "deploy-token": "node hnh-token-deploy.js",
+echo     "start-miner": "node hashnhedge-miner.js"
+echo   },
+echo   "dependencies": {
+echo     "@solana/web3.js": "^1.78.0",
+echo     "@solana/spl-token": "^0.3.8",
+echo     "express": "^4.18.2",
+echo     "cors": "^2.8.5",
+echo     "axios": "^1.4.0"
+echo   }
+echo }
+) > package.json
+
+echo Installing dependencies...
+npm install
+
+echo Setup complete! Files are ready in C:\Users\gnul\hashnhedge
+pause

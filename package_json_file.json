@@ -1,0 +1,36 @@
+{
+  "name": "hashnhedge-mining-pool",
+  "version": "1.0.0",
+  "description": "HashNHedge Mining Pool with HNH Token Distribution",
+  "main": "mining-pool-server.js",
+  "scripts": {
+    "start": "node mining-pool-server.js",
+    "deploy": "node hnh-token-deploy.js",
+    "mine": "node hashnhedge-miner.js",
+    "test": "echo \"Testing pool connection...\" && curl http://localhost:3001/api/stats"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.78.0",
+    "@solana/spl-token": "^0.3.8",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "mining",
+    "cryptocurrency", 
+    "solana",
+    "gpu",
+    "blockchain",
+    "defi"
+  ],
+  "author": "HashNHedge",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashnhedge/mining-pool"
+  }
+}

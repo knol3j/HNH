@@ -2,17 +2,24 @@
   "name": "hashnhedge",
   "version": "1.0.0",
   "description": "HashNHedge - Decentralized GPU Computing Network",
-  "main": "server.js",
+  "main": "pool_server_file.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "static": "npx http-server -p 8080",
+    "start": "node pool_server_file.js",
+    "dev": "nodemon pool_server_file.js",
+    "static": "npx http-server HNH-pool -p 8080",
+    "miner": "node miner_client_file.js",
+    "deploy-token": "node token_deploy_file.js",
     "build": "echo 'No build step required for static site'",
     "deploy": "echo 'Deploy to your hosting provider'"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.12.2",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

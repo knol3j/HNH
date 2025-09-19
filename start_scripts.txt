@@ -1,0 +1,52 @@
+REM =====================
+REM setup.bat
+REM =====================
+@echo off
+echo 🚀 HashNHedge Setup
+echo ==================
+
+echo Installing dependencies...
+npm install
+
+echo ✅ Setup complete!
+echo.
+echo Next steps:
+echo 1. Run: deploy.bat (to create HNH token)
+echo 2. Run: start-pool.bat (to start mining pool)
+echo 3. Edit hashnhedge-miner.js with your wallet
+echo 4. Run: start-miner.bat (to start mining)
+pause
+
+REM =====================
+REM deploy.bat  
+REM =====================
+@echo off
+echo 🪙 Deploying HNH Token...
+node hnh-token-deploy.js
+echo.
+echo ✅ Token deployed! Check hnh-deployment.json
+pause
+
+REM =====================
+REM start-pool.bat
+REM =====================
+@echo off
+echo 🏊 Starting HashNHedge Mining Pool...
+echo Press Ctrl+C to stop
+node mining-pool-server.js
+
+REM =====================
+REM start-miner.bat
+REM =====================
+@echo off
+echo ⛏️ Starting HashNHedge Miner...
+echo Press Ctrl+C to stop
+node hashnhedge-miner.js
+
+REM =====================
+REM check-stats.bat
+REM =====================
+@echo off
+echo 📊 Pool Statistics:
+curl http://localhost:3001/api/stats
+pause
