@@ -20,10 +20,8 @@
   node_bundler = "esbuild"
 
 [dev]
-  command = "npm run dev"
-  port = 3001
-  targetPort = 8080
   framework = "#static"
+  port = 8080
 
 [[headers]]
   for = "/api/*"

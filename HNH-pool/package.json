@@ -4,7 +4,6 @@
   "description": "HashNHedge Mining Pool Server with Security Dashboard",
   "main": "index.html",
   "scripts": {
-    "start": "netlify dev",
     "dev": "netlify dev",
     "build": "echo 'Static site - no build required'",
     "serve": "netlify dev",
