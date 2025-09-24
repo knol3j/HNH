@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhoneProof Dashboard | HashNHedge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .gradient-animate {
+            background: linear-gradient(-45deg, #10b981, #14b8a6, #06b6d4, #0ea5e9);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="min-h-screen">
+        <nav class="bg-gray-800 border-b border-gray-700">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="../index.html" class="text-gray-400 hover:text-white transition">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                        <h1 class="text-2xl font-bold gradient-animate bg-clip-text text-transparent">
+                            <i class="fas fa-mobile-alt mr-2"></i>PhoneProof
+                        </h1>
+                    </div>
+                    <button id="connectWalletBtn" class="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-teal-700 transition">
+                        Connect Wallet
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto px-6 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="stat-card rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-green-400 text-3xl">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Live</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-2">247,891</div>
+                    <div class="text-gray-400 text-sm">Verified Identities</div>
+                    <div class="mt-3 text-green-400 text-sm">
+                        <i class="fas fa-arrow-up mr-1"></i>12.3% this week
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-teal-400 text-3xl">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <div class="pulse-dot w-2 h-2 bg-teal-400 rounded-full"></div>
+                    </div>
+                    <div class="text-3xl font-bold mb-2">143</div>
+                    <div class="text-gray-400 text-sm">Active Validators</div>
+                    <div class="mt-3 text-teal-400 text-sm">
+                        99.8% uptime
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="text-blue-400 text-3xl">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">APY</span>
+                    </div>
+                    <div class="text-3xl font-bold mb-2">18.4%</div>
+                    <div class="text-gray-400 text-sm">Validator Rewards</div>
+                    <div class="mt-3 text-blue-400 text-sm">
+                        <i class="fas fa-info-circle mr-1"></i>Based on stake
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-shield-check text-green-400 mr-3"></i>
+                        Verify Your Identity
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div id="walletStatus" class="bg-gray-700 rounded-lg p-4 text-center">
+                            <i class="fas fa-wallet text-4xl text-gray-500 mb-3"></i>
+                            <p class="text-gray-400">Connect your wallet to get started</p>
+                        </div>
+
+                        <div id="verificationPanel" class="hidden">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Phone Number</label>
+                                    <div class="flex gap-2">
+                                        <select class="bg-gray-700 rounded-lg px-3 py-2 w-24">
+                                            <option>+1</option>
+                                            <option>+44</option>
+                                            <option>+91</option>
+                                            <option>+86</option>
+                                            <option>+81</option>
+                                        </select>
+                                        <input type="tel" placeholder="Enter phone number" class="bg-gray-700 rounded-lg px-4 py-2 flex-1">
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-lock mr-1"></i>Your number is never stored on-chain
+                                    </p>
+                                </div>
+
+                                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                                    <h3 class="font-semibold text-blue-400 mb-2">How it works:</h3>
+                                    <ol class="text-sm text-gray-300 space-y-1">
+                                        <li>1. Enter your phone number (hashed locally)</li>
+                                        <li>2. Receive SMS verification code</li>
+                                        <li>3. Generate zero-knowledge proof</li>
+                                        <li>4. Receive non-transferable Identity NFT</li>
+                                    </ol>
+                                </div>
+
+                                <button class="w-full bg-gradient-to-r from-green-600 to-teal-600 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-teal-700 transition">
+                                    <i class="fas fa-paper-plane mr-2"></i>Send Verification Code
+                                </button>
+
+                                <div class="text-center">
+                                    <p class="text-sm text-gray-400">Verification Fee: 0.5 PROOF (~$0.50)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-id-card text-teal-400 mr-3"></i>
+                        Your Identity
+                    </h2>
+
+                    <div id="identityStatus" class="text-center py-8">
+                        <i class="fas fa-user-slash text-6xl text-gray-600 mb-4"></i>
+                        <p class="text-gray-400 mb-2">No verified identity</p>
+                        <p class="text-sm text-gray-500">Complete verification to get started</p>
+                    </div>
+
+                    <div id="identityCard" class="hidden">
+                        <div class="bg-gradient-to-br from-green-600 to-teal-600 rounded-xl p-6 mb-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold">Verified Human</div>
+                                        <div class="text-xs text-white/80">Identity NFT #12847</div>
+                                    </div>
+                                </div>
+                                <i class="fas fa-fingerprint text-4xl text-white/20"></i>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="text-white/60">Reputation Score</div>
+                                    <div class="text-xl font-bold">847</div>
+                                </div>
+                                <div>
+                                    <div class="text-white/60">Valid Until</div>
+                                    <div class="text-xl font-bold">Jun 2025</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between bg-gray-700 rounded-lg p-3">
+                                <span class="text-sm">Phone Verified</span>
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            </div>
+                            <div class="flex items-center justify-between bg-gray-700 rounded-lg p-3">
+                                <span class="text-sm">Biometric Anchored</span>
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            </div>
+                            <div class="flex items-center justify-between bg-gray-700 rounded-lg p-3">
+                                <span class="text-sm">On-Chain Age</span>
+                                <span class="text-sm text-gray-400">143 days</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-server text-purple-400 mr-2"></i>
+                        Become a Validator
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Run a DVN node and earn rewards for honest verification</p>
+                    <div class="bg-gray-700 rounded-lg p-3 mb-4">
+                        <div class="text-sm text-gray-400 mb-1">Minimum Stake</div>
+                        <div class="text-xl font-bold text-purple-400">10,000 PROOF</div>
+                    </div>
+                    <button class="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg font-semibold transition">
+                        Learn More
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-book text-blue-400 mr-2"></i>
+                        Documentation
+                    </h3>
+                    <ul class="space-y-2 text-sm">
+                        <li>
+                            <a href="whitepaper.html" class="text-gray-400 hover:text-white transition flex items-center">
+                                <i class="fas fa-file-alt mr-2 text-blue-400"></i>Whitepaper
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition flex items-center">
+                                <i class="fas fa-code mr-2 text-blue-400"></i>Developer Docs
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition flex items-center">
+                                <i class="fas fa-plug mr-2 text-blue-400"></i>API Reference
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://github.com/knol3j/HNH" class="text-gray-400 hover:text-white transition flex items-center">
+                                <i class="fab fa-github mr-2 text-blue-400"></i>GitHub
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-green-400 mr-2"></i>
+                        Token Stats
+                    </h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Price</span>
+                            <span class="font-semibold">$1.02</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Market Cap</span>
+                            <span class="font-semibold">$42.8M</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">24h Volume</span>
+                            <span class="font-semibold">$3.2M</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Total Supply</span>
+                            <span class="font-semibold">100M PROOF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h2 class="text-2xl font-bold mb-6">Recent Verifications</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-gray-400 text-sm border-b border-gray-700">
+                                <th class="pb-3">Identity NFT</th>
+                                <th class="pb-3">Type</th>
+                                <th class="pb-3">Validator</th>
+                                <th class="pb-3">Fee</th>
+                                <th class="pb-3">Time</th>
+                                <th class="pb-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                            <tr class="border-b border-gray-700/50">
+                                <td class="py-3 font-mono text-gray-400">#28479</td>
+                                <td class="py-3">
+                                    <span class="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">Phone</span>
+                                </td>
+                                <td class="py-3 font-mono text-gray-400">0x4f...8a2c</td>
+                                <td class="py-3">0.5 PROOF</td>
+                                <td class="py-3 text-gray-500">2 min ago</td>
+                                <td class="py-3">
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-700/50">
+                                <td class="py-3 font-mono text-gray-400">#28478</td>
+                                <td class="py-3">
+                                    <span class="bg-teal-500/20 text-teal-400 px-2 py-1 rounded text-xs">Biometric</span>
+                                </td>
+                                <td class="py-3 font-mono text-gray-400">0x7c...1f9d</td>
+                                <td class="py-3">0.3 PROOF</td>
+                                <td class="py-3 text-gray-500">8 min ago</td>
+                                <td class="py-3">
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-700/50">
+                                <td class="py-3 font-mono text-gray-400">#28477</td>
+                                <td class="py-3">
+                                    <span class="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">Phone</span>
+                                </td>
+                                <td class="py-3 font-mono text-gray-400">0x2a...5e3b</td>
+                                <td class="py-3">0.5 PROOF</td>
+                                <td class="py-3 text-gray-500">15 min ago</td>
+                                <td class="py-3">
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-700/50">
+                                <td class="py-3 font-mono text-gray-400">#28476</td>
+                                <td class="py-3">
+                                    <span class="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">Phone</span>
+                                </td>
+                                <td class="py-3 font-mono text-gray-400">0x9f...c4d8</td>
+                                <td class="py-3">0.5 PROOF</td>
+                                <td class="py-3 text-gray-500">23 min ago</td>
+                                <td class="py-3">
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 font-mono text-gray-400">#28475</td>
+                                <td class="py-3">
+                                    <span class="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs">Renewal</span>
+                                </td>
+                                <td class="py-3 font-mono text-gray-400">0x6b...7a1f</td>
+                                <td class="py-3">0.25 PROOF</td>
+                                <td class="py-3 text-gray-500">34 min ago</td>
+                                <td class="py-3">
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const walletStatus = document.getElementById('walletStatus');
+        const verificationPanel = document.getElementById('verificationPanel');
+
+        connectWalletBtn.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    connectWalletBtn.textContent = 'Wallet Connected';
+                    connectWalletBtn.classList.remove('from-green-600', 'to-teal-600');
+                    connectWalletBtn.classList.add('bg-gray-700');
+
+                    walletStatus.classList.add('hidden');
+                    verificationPanel.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error connecting wallet:', error);
+                }
+            } else {
+                alert('Please install MetaMask or another Web3 wallet to continue');
+            }
+        });
+    </script>
+</body>
+</html>
