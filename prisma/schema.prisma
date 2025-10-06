@@ -1,0 +1,293 @@
+// HashNHedge GPU Mining Pool Database Schema
+// Multi-currency mining pool with auto-switching and compute marketplace
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NETLIFY_DATABASE_URL")
+}
+
+// User management
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  username    String    @unique
+  walletAddr  String?   @unique @map("wallet_address")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  role        UserRole  @default(MINER)
+  
+  // Relations
+  miners      Miner[]
+  payments    Payment[]
+  shares      Share[]
+  vendorProfile VendorProfile?
+  
+  @@map("users")
+}
+
+enum UserRole {
+  MINER
+  VENDOR
+  ADMIN
+}
+
+// Mining hardware and configuration
+model Miner {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  minerId     String    @unique @map("miner_id")
+  name        String
+  status      MinerStatus @default(OFFLINE)
+  lastSeen    DateTime? @map("last_seen")
+  hashrate    Float     @default(0)
+  power       Float     @default(0) // Watts
+  temperature Float?
+  gpuModel    String?   @map("gpu_model")
+  gpuCount    Int       @default(1) @map("gpu_count")
+  location    String?
+  version     String?
+  
+  // Current mining configuration
+  currentCoin   String?   @map("current_coin")
+  currentPool   String?   @map("current_pool")
+  autoSwitch    Boolean   @default(true) @map("auto_switch")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+  shares      Share[]
+  statistics  MinerStatistics[]
+  
+  @@map("miners")
+}
+
+enum MinerStatus {
+  ONLINE
+  OFFLINE
+  MINING
+  ERROR
+  MAINTENANCE
+}
+
+// Share submissions and tracking
+model Share {
+  id          String    @id @default(cuid())
+  minerId     String    @map("miner_id")
+  userId      String    @map("user_id")
+  coin        String
+  poolName    String    @map("pool_name")
+  difficulty  Float
+  shareType   ShareType @map("share_type")
+  timestamp   DateTime  @default(now())
+  blockHeight Int?      @map("block_height")
+  reward      Float     @default(0)
+  
+  // Relations
+  miner       Miner     @relation(fields: [minerId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+  
+  @@map("shares")
+}
+
+enum ShareType {
+  VALID
+  STALE
+  INVALID
+  DUPLICATE
+}
+
+// Supported cryptocurrencies and pools
+model Coin {
+  id            String    @id @default(cuid())
+  symbol        String    @unique
+  name          String
+  algorithm     String
+  blockTime     Float     @map("block_time") // seconds
+  blockReward   Float     @map("block_reward")
+  difficulty    Float     @default(0)
+  networkHash   Float     @default(0) @map("network_hash")
+  price         Float     @default(0) // USD
+  profitability Float     @default(0)
+  isActive      Boolean   @default(true) @map("is_active")
+  
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  pools         Pool[]
+  statistics    NetworkStatistics[]
+  
+  @@map("coins")
+}
+
+model Pool {
+  id          String    @id @default(cuid())
+  coinId      String    @map("coin_id")
+  name        String
+  url         String
+  port        Int
+  fee         Float     // Percentage
+  minPayout   Float     @map("min_payout")
+  isActive    Boolean   @default(true) @map("is_active")
+  priority    Int       @default(0) // Higher = preferred
+  
+  // Performance metrics
+  hashrate    Float     @default(0)
+  miners      Int       @default(0)
+  lastBlock   DateTime? @map("last_block")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  coin        Coin      @relation(fields: [coinId], references: [id])
+  
+  @@map("pools")
+}
+
+// Payment tracking and history
+model Payment {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  amount      Float
+  coin        String
+  txHash      String?     @map("tx_hash")
+  status      PaymentStatus @default(PENDING)
+  walletAddr  String      @map("wallet_address")
+  fee         Float       @default(0)
+  
+  createdAt   DateTime    @default(now()) @map("created_at")
+  paidAt      DateTime?   @map("paid_at")
+  
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+  
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Statistics and analytics
+model MinerStatistics {
+  id          String    @id @default(cuid())
+  minerId     String    @map("miner_id")
+  date        DateTime  @db.Date
+  avgHashrate Float     @map("avg_hashrate")
+  maxHashrate Float     @map("max_hashrate")
+  uptime      Float     // Percentage
+  sharesValid Int       @map("shares_valid")
+  sharesStale Int       @map("shares_stale")
+  sharesInvalid Int     @map("shares_invalid")
+  earnings    Float     @default(0)
+  powerUsage  Float?    @map("power_usage")
+  
+  // Relations
+  miner       Miner     @relation(fields: [minerId], references: [id])
+  
+  @@unique([minerId, date])
+  @@map("miner_statistics")
+}
+
+model NetworkStatistics {
+  id          String    @id @default(cuid())
+  coinId      String    @map("coin_id")
+  date        DateTime  @db.Date
+  difficulty  Float
+  hashrate    Float
+  price       Float
+  volume24h   Float     @map("volume_24h")
+  
+  // Relations
+  coin        Coin      @relation(fields: [coinId], references: [id])
+  
+  @@unique([coinId, date])
+  @@map("network_statistics")
+}
+
+// Compute marketplace for vendors
+model VendorProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique @map("user_id")
+  companyName   String?   @map("company_name")
+  description   String?
+  website       String?
+  contactEmail  String?   @map("contact_email")
+  isVerified    Boolean   @default(false) @map("is_verified")
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id])
+  computeOrders ComputeOrder[]
+  
+  @@map("vendor_profiles")
+}
+
+model ComputeOrder {
+  id            String    @id @default(cuid())
+  vendorId      String    @map("vendor_id")
+  title         String
+  description   String
+  requirements  Json      // GPU specs, memory, etc.
+  duration      Int       // hours
+  budget        Float     // USD
+  status        OrderStatus @default(PENDING)
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  
+  // Relations
+  vendor        VendorProfile @relation(fields: [vendorId], references: [id])
+  assignments   ComputeAssignment[]
+  
+  @@map("compute_orders")
+}
+
+enum OrderStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  PAUSED
+}
+
+model ComputeAssignment {
+  id          String    @id @default(cuid())
+  orderId     String    @map("order_id")
+  minerId     String    @map("miner_id")
+  allocatedAt DateTime  @default(now()) @map("allocated_at")
+  releasedAt  DateTime? @map("released_at")
+  earnings    Float     @default(0)
+  
+  // Relations
+  order       ComputeOrder @relation(fields: [orderId], references: [id])
+  
+  @@map("compute_assignments")
+}
+
+// System configuration and settings
+model SystemConfig {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String
+  description String?
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  @@map("system_config")
+}

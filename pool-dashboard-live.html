@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashNHedge Mining Pool - Live Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <img src="logo.png" alt="HashNHedge" class="w-10 h-10">
+                    <h1 class="text-2xl font-bold">HashNHedge Mining Pool</h1>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm opacity-80">Multi-Currency Auto-Switching Pool</div>
+                    <div class="text-xs opacity-60">Powered by PostgreSQL + Neon</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- Pool Statistics -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-chart-line mr-2 text-blue-400"></i>
+                Live Pool Statistics
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-400" id="totalMiners">-</div>
+                        <div class="text-sm text-gray-400">Active Miners</div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-400" id="totalHashrate">-</div>
+                        <div class="text-sm text-gray-400">Total Hashrate (MH/s)</div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="recentShares">-</div>
+                        <div class="text-sm text-gray-400">Shares (24h)</div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-lg card-hover">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-yellow-400" id="pendingPayments">$-</div>
+                        <div class="text-sm text-gray-400">Pending Payments</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Supported Coins -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-coins mr-2 text-yellow-400"></i>
+                Supported Cryptocurrencies & Pools
+            </h2>
+            <div class="bg-gray-800 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coin</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Algorithm</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Block Reward</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Available Pools</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coinsTable" class="divide-y divide-gray-700">
+                            <tr>
+                                <td class="px-6 py-4 text-center text-gray-400" colspan="5">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Miner Registration -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-user-plus mr-2 text-green-400"></i>
+                Join the Mining Pool
+            </h2>
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <form id="minerRegistrationForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                        <input type="email" id="email" required 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                        <input type="text" id="username" required 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Wallet Address</label>
+                        <input type="text" id="walletAddr" placeholder="0x..." 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Mining Rig Name</label>
+                        <input type="text" id="minerName" placeholder="My Mining Rig" 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">GPU Model</label>
+                        <select id="gpuModel" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select GPU</option>
+                            <option value="RTX 4090">RTX 4090</option>
+                            <option value="RTX 4080">RTX 4080</option>
+                            <option value="RTX 4070">RTX 4070</option>
+                            <option value="RTX 3090">RTX 3090</option>
+                            <option value="RTX 3080">RTX 3080</option>
+                            <option value="RTX 3070">RTX 3070</option>
+                            <option value="RTX 3060 Ti">RTX 3060 Ti</option>
+                            <option value="RX 7900 XTX">RX 7900 XTX</option>
+                            <option value="RX 6800 XT">RX 6800 XT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Number of GPUs</label>
+                        <input type="number" id="gpuCount" min="1" max="99" value="1" 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Location (Optional)</label>
+                        <input type="text" id="location" placeholder="Country/Region" 
+                               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div class="md:col-span-2">
+                        <button type="submit" 
+                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-md transition duration-300 flex items-center justify-center">
+                            <i class="fas fa-rocket mr-2"></i>
+                            Register Miner
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- API Status -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-server mr-2 text-red-400"></i>
+                API Status
+            </h2>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-sm text-gray-400">Database Connection:</span>
+                        <span id="dbStatus" class="ml-2 px-2 py-1 text-xs rounded-full">Checking...</span>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-400">Last Updated:</span>
+                        <span id="lastUpdate" class="ml-2 text-sm">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Registration Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg max-w-md w-full mx-4">
+            <div class="text-center">
+                <i class="fas fa-check-circle text-green-400 text-6xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Registration Successful!</h3>
+                <p class="text-gray-300 mb-4" id="successMessage">Your miner has been registered successfully.</p>
+                <button onclick="closeModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = '/.netlify/functions/pool-api';
+        
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPoolStats();
+            loadSupportedCoins();
+            
+            // Refresh data every 30 seconds
+            setInterval(() => {
+                loadPoolStats();
+                updateLastUpdated();
+            }, 30000);
+            
+            // Setup form submission
+            document.getElementById('minerRegistrationForm').addEventListener('submit', handleMinerRegistration);
+        });
+
+        async function loadPoolStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats/pool`);
+                const data = await response.json();
+                
+                document.getElementById('totalMiners').textContent = data.totalMiners || 0;
+                document.getElementById('totalHashrate').textContent = (data.totalHashrate || 0).toFixed(2);
+                document.getElementById('recentShares').textContent = data.recentShares || 0;
+                document.getElementById('pendingPayments').textContent = (data.pendingPayments || 0).toFixed(2);
+                
+                updateDbStatus('online');
+            } catch (error) {
+                console.error('Error loading pool stats:', error);
+                updateDbStatus('offline');
+            }
+        }
+
+        async function loadSupportedCoins() {
+            try {
+                const response = await fetch(`${API_BASE}/coins`);
+                const data = await response.json();
+                
+                const tableBody = document.getElementById('coinsTable');
+                tableBody.innerHTML = '';
+                
+                data.coins.forEach(coin => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-700 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="text-sm font-medium text-white">${coin.symbol}</div>
+                                <div class="text-xs text-gray-400 ml-2">${coin.name}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${coin.algorithm}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${coin.blockReward}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-wrap gap-1">
+                                ${coin.pools.map(pool => 
+                                    `<span class="inline-block px-2 py-1 text-xs bg-blue-600 text-white rounded-full">${pool.name}</span>`
+                                ).join('')}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            ${coin.price > 0 ? '$' + coin.price.toFixed(4) : 'Loading...'}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading coins:', error);
+                document.getElementById('coinsTable').innerHTML = `
+                    <tr>
+                        <td class="px-6 py-4 text-center text-red-400" colspan="5">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>Error loading coin data
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function handleMinerRegistration(e) {
+            e.preventDefault();
+            
+            const formData = {
+                email: document.getElementById('email').value,
+                username: document.getElementById('username').value,
+                walletAddr: document.getElementById('walletAddr').value,
+                minerName: document.getElementById('minerName').value,
+                gpuModel: document.getElementById('gpuModel').value,
+                gpuCount: document.getElementById('gpuCount').value,
+                location: document.getElementById('location').value
+            };
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Registering...';
+            submitButton.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/miners/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    document.getElementById('successMessage').innerHTML = `
+                        <strong>Welcome ${data.user.username}!</strong><br>
+                        Miner ID: <code class="bg-gray-700 px-2 py-1 rounded text-xs">${data.miner.minerId}</code><br>
+                        You can now start mining!
+                    `;
+                    document.getElementById('successModal').classList.remove('hidden');
+                    document.getElementById('successModal').classList.add('flex');
+                    
+                    // Reset form
+                    document.getElementById('minerRegistrationForm').reset();
+                    
+                    // Refresh stats
+                    setTimeout(loadPoolStats, 1000);
+                } else {
+                    throw new Error(data.error || 'Registration failed');
+                }
+            } catch (error) {
+                alert('Registration failed: ' + error.message);
+            } finally {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            }
+        }
+
+        function updateDbStatus(status) {
+            const dbStatus = document.getElementById('dbStatus');
+            if (status === 'online') {
+                dbStatus.textContent = 'Connected';
+                dbStatus.className = 'ml-2 px-2 py-1 text-xs rounded-full bg-green-500 text-white';
+            } else {
+                dbStatus.textContent = 'Disconnected';
+                dbStatus.className = 'ml-2 px-2 py-1 text-xs rounded-full bg-red-500 text-white';
+            }
+        }
+
+        function updateLastUpdated() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('flex');
+        }
+
+        // Initialize last updated time
+        updateLastUpdated();
+    </script>
+</body>
+</html>

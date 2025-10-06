@@ -15,6 +15,12 @@
   force = true
   headers = {X-From = "Netlify"}
 
+# Pool API redirects
+[[redirects]]
+  from = "/pool-api/*"
+  to = "/.netlify/functions/pool-api/:splat"
+  status = 200
+
 # Original API redirects
 [[redirects]]
   from = "/api/*"
