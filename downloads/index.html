@@ -92,10 +92,19 @@
                        class="block bg-purple-600 hover:bg-purple-700 text-center py-3 px-6 rounded-lg font-semibold transition">
                         <i class="fas fa-rocket mr-2"></i> Launch Smart Miner GUI
                     </a>
-                    <a href="#mine"
-                       class="block bg-blue-600 hover:bg-blue-700 text-center py-3 px-6 rounded-lg font-semibold transition">
-                        <i class="fas fa-download mr-2"></i> Mine
-                    </a>
+                    
+                    <!-- OS-specific downloads -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        <a href="../hybrid-pool/START-SMART-MINER.bat" download
+                           class="block bg-blue-600 hover:bg-blue-700 text-center py-3 px-4 rounded-lg font-semibold transition">
+                            <i class="fab fa-windows mr-2"></i> Windows (.exe)
+                        </a>
+                        <a href="../hybrid-pool/start-smart-miner.sh" download
+                           class="block bg-orange-600 hover:bg-orange-700 text-center py-3 px-4 rounded-lg font-semibold transition">
+                            <i class="fab fa-linux mr-2"></i> Linux (.sh)
+                        </a>
+                    </div>
+                    
                     <a href="../hybrid-pool/README-SMART-MINER.md"
                        class="block bg-green-600 hover:bg-green-700 text-center py-3 px-6 rounded-lg font-semibold transition">
                         <i class="fas fa-book mr-2"></i> Setup Guide
@@ -109,8 +118,9 @@
                 <div class="mt-6 p-4 bg-gray-800 rounded-lg">
                     <p class="text-sm text-gray-400">
                         <strong>System Requirements:</strong><br>
-                        Modern web browser (Chrome, Firefox, Edge)<br>
-                        <strong>For Full Mining:</strong> Windows 10/11, T-Rex Miner, 2GB RAM
+                        Modern web browser (Chrome, Firefox, Edge), Node.js<br>
+                        <strong>Windows:</strong> Windows 10/11, T-Rex Miner, 2GB RAM<br>
+                        <strong>Linux:</strong> Ubuntu 18.04+, T-Rex Miner for Linux, 2GB RAM
                     </p>
                 </div>
             </div>
@@ -189,16 +199,16 @@
                     <div class="flex">
                         <div class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 flex-shrink-0 font-bold">3</div>
                         <div>
-                            <h4 class="font-semibold mb-1">Mine (Optional)</h4>
-                            <p class="text-gray-400 text-sm">For full mining, use mine</p>
+                            <h4 class="font-semibold mb-1">Download Miner</h4>
+                            <p class="text-gray-400 text-sm">Download Windows .exe or Linux .sh based on your OS</p>
                         </div>
                     </div>
 
                     <div class="flex">
                         <div class="bg-orange-600 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 flex-shrink-0 font-bold">4</div>
                         <div>
-                            <h4 class="font-semibold mb-1">Configure & Mine</h4>
-                            <p class="text-gray-400 text-sm">Select coins and start auto-switching!</p>
+                            <h4 class="font-semibold mb-1">Run & Configure</h4>
+                            <p class="text-gray-400 text-sm">Execute downloaded file, select coins and start auto-switching!</p>
                         </div>
                     </div>
                 </div>
@@ -206,7 +216,7 @@
                 <div class="mt-6 p-4 bg-purple-900 bg-opacity-30 border border-purple-600 rounded-lg">
                     <p class="text-purple-300 text-sm">
                         <i class="fas fa-magic mr-2"></i>
-                        <strong>Web-Based:</strong> No downloads needed to get started! Open the GUI in your browser, connect wallet, and manage mining from anywhere. Mine only needed for actual mining.
+                        <strong>Cross-Platform Support:</strong> Download the appropriate executable for your operating system. Windows users get a .exe file, Linux users get a .sh script. Both provide the same powerful auto-profit switching functionality.
                     </p>
                 </div>
             </div>
