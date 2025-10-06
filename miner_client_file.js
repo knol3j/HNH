@@ -230,9 +230,9 @@ class HashNHedgeMiner {
 
 // Configuration - EDIT THIS!
 const config = {
-    poolUrl: 'https://hashnhedge-pool.onrender.com',
+    poolUrl: 'http://localhost:3001',
     walletAddress: 'GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc', // CHANGE THIS!
-    workerName: `miner-${os.hostname()}`
+    workerName: 'test-worker-01'
 };
 
 // Validate configuration

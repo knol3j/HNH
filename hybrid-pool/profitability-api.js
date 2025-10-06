@@ -48,7 +48,7 @@ class ProfitabilityAPI {
         this.apiEndpoints = {
             whattomine: 'https://whattomine.com/coins.json',
             miningpoolstats: 'https://miningpoolstats.stream/api/profitability',
-            2miners: 'https://2miners.com/api/stats'
+            'twoMiners': 'https://2miners.com/api/stats'
         };
 
         this.cache = {
