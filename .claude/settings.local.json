@@ -2,7 +2,30 @@
   "permissions": {
     "allow": [
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gh auth login:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git push:*)",
+      "Bash(gh auth:*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(npm install:*)",
+      "Bash(gh api:*)",
+      "Bash(while read branch)",
+      "Bash(do echo \"Deleting $branch\")",
+      "Bash(done)",
+      "Bash(for branch in \"claude/audit-codebase-01L8xGJ7sazp4LmrXCwUG199\" \"claude/brainstorm-new-features-01FTafzX1FMMcszx6k6XLvPA\" \"claude/config-security-improvements-011CUWPbsNxJhBbVN7Y7DMmL\" \"claude/debug-mobile-pool-build-011CUdHExtbiUtQDx11dyGJK\" \"claude/deploy-mobile-pool-fixes-011CUdHExtbiUtQDx11dyGJK\" \"claude/fix-critical-server-issues-011CUjgjQQz7ojqpYHNE3mbw\" \"claude/fix-git-actions-errors-01Hj6hEk5vTrav6SWKuTQYWV\" \"claude/gpu-mining-pool-research-011CUQym4E1kFGJ4XQHk3qB4\" \"claude/improve-orchestration-layer-011CUV3XsXwSroz8LmhRYYTb\" \"claude/improve-testing-validation-011CUWPX2M5ShHLNEdCxrcLW\")",
+      "Bash(do git push origin --delete \"$branch\")",
+      "Bash(for branch in \"claude/mining-pool-address-config-011CUjiztyc56SVn7xM6kcnH\" \"claude/remove-create-token-011CUm6atqpDfXGfsYwXm61b\" \"claude/remove-token-heading-011CUUPS6YS4dTDFa8LjedG8\" \"claude/seo-strategy-analysis-011CUUmNkMV3GvpwirVa7FeN\" \"claude/test-platform-links-011CUQwkyke2KayT5GjCTsyf\" \"claude/test-platform-pa-011CUbqcxvuWNKBMpaV8oBbH\" \"claude/verify-mining-pool-legitimacy-011CUn1DX4yAbENk6GGzRsLV\" \"claude-gh\" \"configuring-prisma-postgres-extens-ntl-68e40f794a93373ded587649\" \"cursor/optimize-code-for-performance-and-load-times-7afc\")",
+      "Bash(for branch in \"download-smart-multi-hnhminerexe-f-ntl-68e530939c96bc15870069e6\" \"ensure-end-to-end-functionality-an-ntl-68e444701344b5093363605f\" \"master\" \"phoneproof\" \"smart-miner-20-os-specific-downloa-ntl-68e446eed0d95f0ec9408fc2\" \"update-landing-page-with-current-p-ntl-68e44f0f7ff50c2a7b10e9ee\")",
+      "Bash(while read num)",
+      "Bash(do gh api -X PATCH \"repos/knol3j/HNH/dependabot/alerts/$num\" -f state=dismissed -f dismissed_reason=no_bandwidth -f dismissed_comment=\"Codebase replaced - dependencies no longer in use\")",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
