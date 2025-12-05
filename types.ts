@@ -1,0 +1,96 @@
+
+export interface ComputeNode {
+  id: string;
+  name: string;
+  gpuModel: string;
+  vram: number; // in GB
+  tflops: number;
+  pricePerHour: number;
+  region: string;
+  availability: number; // 0-100%
+  status: 'IDLE' | 'BUSY' | 'OFFLINE';
+  provider: string;
+  isVerified: boolean; // New: Trust signal
+  slaTier: 'Standard' | 'Gold' | 'Enterprise'; // New: Reliability metric
+}
+
+export interface NetworkStats {
+  activeNodes: number;
+  totalTflops: number;
+  jobsRunning: number;
+  networkUtilization: number; // %
+  avgPricePerFLOP: number;
+}
+
+export interface JobSpec {
+  title: string;
+  description: string;
+  recommendedGpu: string;
+  estimatedDuration: string;
+  maxPrice: number;
+  reasoning: string;
+}
+
+export interface ActiveJob {
+  id: string;
+  title: string;
+  nodeId: string;
+  status: 'PROVISIONING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  startTime: string;
+  costSoFar: number;
+  logs: string[];
+}
+
+export interface ProviderStats {
+  earnings24h: number;
+  totalEarnings: number;
+  reputationScore: number; // 0-100
+  uptime: number; // %
+  activeJobs: number;
+}
+
+export interface HardwareMonitor {
+  temp: number; // Celsius
+  power: number; // Watts
+  fanSpeed: number; // %
+  memoryUsage: number; // %
+}
+
+// New: Preconfigured Deployment Templates
+export interface ModelTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // Lucide icon name or emoji
+  prompt: string;
+  category: 'LLM' | 'Image' | 'Data';
+}
+
+// Navigation types - Expanded for full feature set
+export type View = 
+  | 'DASHBOARD' 
+  | 'MARKETPLACE' 
+  | 'DEPLOY' 
+  | 'PROVIDER' 
+  | 'DEX'
+  | 'SECURITY' 
+  | 'TOKEN_CREATOR' 
+  | 'WHITE_LABEL';
+
+// Algorithm types
+export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
+
+// Ethereum Window Type
+export interface EthereumProvider {
+  isMetaMask?: boolean;
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
+  on: (eventName: string, handler: (...args: any[]) => void) => void;
+  removeListener: (eventName: string, handler: (...args: any[]) => void) => void;
+}
+
+declare global {
+  interface Window {
+    ethereum?: EthereumProvider;
+  }
+}

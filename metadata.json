@@ -1,0 +1,5 @@
+{
+  "name": "HashNHedge Compute",
+  "description": "A decentralized compute marketplace connecting AI researchers and developers with idle GPU power. Use Gemini AI to orchestrate workloads and match tasks to the optimal hardware nodes.",
+  "requestFramePermissions": []
+}
