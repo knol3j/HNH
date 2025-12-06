@@ -25,7 +25,10 @@
       "Bash(do gh api -X PATCH \"repos/knol3j/HNH/dependabot/alerts/$num\" -f state=dismissed -f dismissed_reason=no_bandwidth -f dismissed_comment=\"Codebase replaced - dependencies no longer in use\")",
       "Bash(mkdir:*)",
       "Bash(npm run build:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
