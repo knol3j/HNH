@@ -11,7 +11,7 @@ const PORT = 4343;
 
 // --- STATE ---
 let config = {
-    wallet: '0x3a4f...9f2', // Default placeholder
+    wallet: 'RHUC17zAVjNqXDtkqwLPRvQ2XgoRZsXeeG', // Example RVN address
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060', // Default pool
     password: 'x'
 };

@@ -252,8 +252,10 @@ const Provider: React.FC = () => {
         // If fetch fails, we assume Agent is offline.
         setAgentConnected(false);
         setTelemetry(null); // No data
-        // setServerLogs([]); // Optional: clear logs or keep last known? Keep for now.
-        addLog("❌ Hardware Agent Disconnected: Retry in 1s...");
+        // Only log disconnect once every 5 seconds to prevent flood
+        if (Math.random() > 0.8) {
+          addLog("❌ Hardware Agent Disconnected. Ensure 'node agent/server.js' is running locally.");
+        }
       }
     };
 
@@ -406,14 +408,15 @@ const Provider: React.FC = () => {
 
       {/* Hardware Status Header */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className={`p-4 rounded-xl border ${agentConnected ? 'bg-green-500/10 border-green-500/50' : 'bg-yellow-500/10 border-yellow-500/50'}`}>
+        <div className={`p-4 rounded-xl border ${agentConnected ? 'bg-green-500/10 border-green-500/50' : 'bg-red-500/10 border-red-500/50'}`}>
           <div className="flex items-center gap-3">
-            {agentConnected ? <Wifi className="text-green-500" /> : <Zap className="text-yellow-500" />}
+            {agentConnected ? <Wifi className="text-green-500" /> : <Wifi className="text-red-500" />}
             <div>
               <p className="text-xs font-bold uppercase text-muted">Agent Status</p>
-              <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-yellow-500'}`}>
-                {agentConnected ? 'ONLINE' : 'DEMO MODE'}
+              <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-red-500'}`}>
+                {agentConnected ? 'ONLINE' : 'DISCONNECTED'}
               </p>
+              {!agentConnected && <p className="text-[10px] text-red-300 leading-tight mt-1">Run <code>node agent/server.js</code></p>}
             </div>
           </div>
         </div>
