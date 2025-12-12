@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Algorithm } from '../types';
-import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink } from 'lucide-react';
+import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink, Cpu } from 'lucide-react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 
 // --- Types & Interfaces ---
@@ -133,6 +133,9 @@ const Provider: React.FC = () => {
 
   // Agent Config
   const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
+  // Browser Miner State
+  const workerRef = useRef<Worker | null>(null);
+  const [isBrowserMining, setIsBrowserMining] = useState(false);
 
   const [clientLogs, setClientLogs] = useState<string[]>([]);
   const [serverLogs, setServerLogs] = useState<string[]>([]);
@@ -261,6 +264,10 @@ const Provider: React.FC = () => {
 
           if (!agentConnected) {
             setAgentConnected(true);
+            // Stop Browser Miner if Agent connects
+            if (isBrowserMining) {
+              stopBrowserMiner();
+            }
             addLog("✅ Hardware Agent Connected: Monitoring active.");
 
             // Initial Wallet Sync from Agent
@@ -285,10 +292,16 @@ const Provider: React.FC = () => {
       } catch (err) {
         // If fetch fails, we assume Agent is offline.
         setAgentConnected(false);
-        setTelemetry(null); // No data
+        // setTelemetry(null); // Keep last known or switch to browser stats
+
+        // AUTO-FALLBACK: Start Browser Miner
+        if (!isBrowserMining && !agentConnected) {
+          startBrowserMiner();
+        }
+
         // Only log disconnect once every 5 seconds to prevent flood
         if (Math.random() > 0.8) {
-          addLog("❌ Hardware Agent Disconnected. Ensure 'node agent/server.js' is running locally.");
+          addLog("⚠️ Agent Disconnected. Switching to Browser CPU Mining...");
         }
       }
     };
@@ -426,6 +439,57 @@ const Provider: React.FC = () => {
     addLog(`👛 Generated new ${COIN_CATALOG[selectedCoin].name} wallet: ${newWallet}`);
   };
 
+  const startBrowserMiner = () => {
+    if (workerRef.current) return;
+
+    setIsBrowserMining(true);
+    addLog("🚀 Starting Browser Miner (Fallback Mode)...");
+
+    const worker = new Worker(new URL('../workers/miner.worker.ts', import.meta.url));
+    worker.onmessage = (e) => {
+      const { type, data } = e.data;
+
+      if (type === 'log') {
+        addLog(data);
+      } else if (type === 'stats') {
+        // Update Telemetry with Browser Stats
+        setTelemetry(prev => ({
+          ...prev || {
+            gpu_temp: 45, // CPU cooler
+            fan_speed: 30,
+            power_draw: 65, // CPU watts
+            vram_used: 0,
+            logs: []
+          },
+          hashrate: data.hashrate / 1000000, // Convert to MH/s (fake scale for browser)
+          verified_shares: data.shares + (prev?.verified_shares || 0),
+          gpu_util: 100, // CPU pinned
+          logs: prev?.logs || []
+        } as HardwareTelemetry));
+      }
+    };
+
+    worker.postMessage({ command: 'START' });
+    workerRef.current = worker;
+  };
+
+  const stopBrowserMiner = () => {
+    if (workerRef.current) {
+      workerRef.current.postMessage({ command: 'STOP' });
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+    setIsBrowserMining(false);
+    addLog("🛑 Browser Miner Stopped.");
+  };
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      stopBrowserMiner();
+    };
+  }, []);
+
   const handleCoinSelect = (symbol: CoinSymbol) => {
     setSelectedCoin(symbol);
     setConfig(prev => ({ ...prev, algorithm: COIN_CATALOG[symbol].algorithm }));
@@ -453,12 +517,12 @@ const Provider: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className={`p-4 rounded-xl border ${agentConnected ? 'bg-green-500/10 border-green-500/50' : 'bg-red-500/10 border-red-500/50'}`}>
           <div className="flex items-center gap-3">
-            {agentConnected ? <Wifi className="text-green-500" /> : <Wifi className="text-red-500" />}
+            {agentConnected ? <Wifi className="text-green-500" /> : <Cpu className="text-blue-500 animate-pulse" />}
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-bold uppercase text-muted">Agent Status</p>
+              <p className="text-xs font-bold uppercase text-muted">Mining Mode</p>
               <div className="flex justify-between items-center">
-                <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-red-500'}`}>
-                  {agentConnected ? 'ONLINE' : 'DISCONNECTED'}
+                <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-blue-500'}`}>
+                  {agentConnected ? 'GPU (AGENT)' : 'CPU (BROWSER)'}
                 </p>
               </div>
 
