@@ -127,12 +127,18 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
   }
 };
 
+import { getCurrentUser } from '../services/authService';
+
 const Provider: React.FC = () => {
+  const currentUser = getCurrentUser();
+  const userId = currentUser?.id || 'guest';
+
   const [isAuto, setIsAuto] = useState(false);
   const [agentConnected, setAgentConnected] = useState(false);
 
+
   // Agent Config
-  const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
+  const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem(`hnh_agent_url_${userId}`) || 'http://localhost:4343');
   // Browser Miner State
   const workerRef = useRef<Worker | null>(null);
   const [isBrowserMining, setIsBrowserMining] = useState(false);
@@ -147,7 +153,7 @@ const Provider: React.FC = () => {
 
   // Wallet Persistence
   const [savedWallets, setSavedWallets] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('hnh_wallets');
+    const saved = localStorage.getItem(`hnh_wallets_${userId}`);
     return saved ? JSON.parse(saved) : {
       RVN: 'RHUC17zAVjNqXDtkqwLPRvQ2XgoRZsXeeG', // Default valid
       ETC: '', XMR: '', KAS: '', ERG: ''
@@ -503,7 +509,7 @@ const Provider: React.FC = () => {
     setWalletAddress(val);
     const newMap = { ...savedWallets, [selectedCoin]: val };
     setSavedWallets(newMap);
-    localStorage.setItem('hnh_wallets', JSON.stringify(newMap));
+    localStorage.setItem(`hnh_wallets_${userId}`, JSON.stringify(newMap));
   };
 
   const toggleAlgo = (name: Algorithm) => {
@@ -534,7 +540,7 @@ const Provider: React.FC = () => {
                   value={agentUrl}
                   onChange={(e) => {
                     setAgentUrl(e.target.value);
-                    localStorage.setItem('hnh_agent_url', e.target.value);
+                    localStorage.setItem(`hnh_agent_url_${userId}`, e.target.value);
                   }}
                   className="bg-black/20 border-none text-[10px] text-white w-full rounded px-1 h-5 focus:ring-1 focus:ring-primary"
                 />

@@ -11,8 +11,12 @@ import Security from './views/Security';
 import TokenCreator from './views/TokenCreator';
 import WhiteLabel from './views/WhiteLabel';
 import Dex from './views/Dex';
+import Auth from './views/Auth';
+import { User } from './types';
+import { getCurrentUser, logoutUser } from './services/authService';
 
 const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>('DASHBOARD');
   const [stats, setStats] = useState<NetworkStats>({
     activeNodes: 0,
@@ -44,6 +48,17 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Check Session
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) setCurrentUser(user);
+  }, []);
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+  };
+
   // Initial AI Load for Network Status (Dependent on stats)
   useEffect(() => {
     const fetchInsight = async () => {
@@ -53,8 +68,13 @@ const App: React.FC = () => {
     fetchInsight();
   }, [stats.activeNodes]); // Re-run when node count changes
 
+
+  if (!currentUser) {
+    return <Auth onLogin={setCurrentUser} />;
+  }
+
   return (
-    <Layout currentView={currentView} setCurrentView={setCurrentView}>
+    <Layout currentView={currentView} setCurrentView={setCurrentView} onLogout={handleLogout} user={currentUser}>
       {currentView === 'DASHBOARD' && (
         <Dashboard stats={stats} aiAnalysis={aiAnalysis} />
       )}

@@ -68,14 +68,14 @@ export interface ModelTemplate {
 }
 
 // Navigation types - Expanded for full feature set
-export type View = 
-  | 'DASHBOARD' 
-  | 'MARKETPLACE' 
-  | 'DEPLOY' 
-  | 'PROVIDER' 
+export type View =
+  | 'DASHBOARD'
+  | 'MARKETPLACE'
+  | 'DEPLOY'
+  | 'PROVIDER'
   | 'DEX'
-  | 'SECURITY' 
-  | 'TOKEN_CREATOR' 
+  | 'SECURITY'
+  | 'TOKEN_CREATOR'
   | 'WHITE_LABEL';
 
 // Algorithm types
@@ -87,6 +87,20 @@ export interface EthereumProvider {
   request: (args: { method: string; params?: any[] }) => Promise<any>;
   on: (eventName: string, handler: (...args: any[]) => void) => void;
   removeListener: (eventName: string, handler: (...args: any[]) => void) => void;
+}
+
+
+// Auth Types
+export interface User {
+  id: string;
+  username: string;
+  passwordHash: string; // SHA-256
+  createdAt: number;
+}
+
+export interface UserCredentials {
+  username: string;
+  password: string; // Plaintext (before hashing)
 }
 
 declare global {

@@ -1,15 +1,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from '../types';
-import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon } from 'lucide-react';
+import { User } from '../types';
 
 interface LayoutProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   children: React.ReactNode;
+  user?: User;
+  onLogout?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }) => {
+export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children, user, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>('0.00');
@@ -77,11 +80,10 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
         setCurrentView(view);
         setIsMobileMenuOpen(false);
       }}
-      className={`relative flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all duration-200 ${
-        currentView === view 
-          ? 'bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+      className={`relative flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all duration-200 ${currentView === view
+          ? 'bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
           : 'text-muted hover:bg-surface hover:text-white'
-      }`}
+        }`}
     >
       <Icon size={20} />
       <span className="font-medium tracking-wide">{label}</span>
@@ -102,9 +104,12 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-emerald-800 flex items-center justify-center shadow-lg shadow-primary/20">
               <Globe className="text-white" size={18} />
             </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              HashNHedge
-            </h1>
+            <div>
+              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 leading-none">
+                HashNHedge
+              </h1>
+              {user && <span className="text-[10px] text-primary font-mono block">@{user.username}</span>}
+            </div>
           </div>
           <p className="text-xs text-muted mt-2 ml-10">Decentralized Compute</p>
         </div>
@@ -115,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
           <NavItem view="MARKETPLACE" icon={Server} label="Compute Market" />
           <NavItem view="DEPLOY" icon={Rocket} label="Deploy Job" />
           <NavItem view="DEX" icon={ArrowLeftRight} label="HNH Swap" badge="DeFi" />
-          
+
           <div className="mt-6 px-4 py-2 text-xs font-bold text-muted uppercase tracking-widest">Tools</div>
           <NavItem view="SECURITY" icon={Shield} label="Security Center" />
           <NavItem view="TOKEN_CREATOR" icon={Coins} label="Token Factory" />
@@ -126,26 +131,25 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
         </nav>
 
         <div className="p-4 border-t border-white/5">
-           <button 
-             onClick={connectWallet}
-             disabled={isConnecting}
-             className={`w-full flex items-center justify-center space-x-2 border py-2 rounded-lg transition-all text-sm font-medium ${
-               walletAddress 
+          <button
+            onClick={connectWallet}
+            disabled={isConnecting}
+            className={`w-full flex items-center justify-center space-x-2 border py-2 rounded-lg transition-all text-sm font-medium ${walletAddress
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
-             }`}
-           >
-             <Wallet size={16} />
-             <span>
-                {isConnecting 
-                  ? 'Connecting...' 
-                  : walletAddress 
-                    ? `${walletAddress.substring(0,6)}...${walletAddress.substring(38)}` 
-                    : 'Connect Wallet'
-                }
-             </span>
-           </button>
-          
+              }`}
+          >
+            <Wallet size={16} />
+            <span>
+              {isConnecting
+                ? 'Connecting...'
+                : walletAddress
+                  ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`
+                  : 'Connect Wallet'
+              }
+            </span>
+          </button>
+
           {walletAddress && (
             <div className="mt-4 flex items-center justify-between text-xs text-muted px-1">
               <div className="flex flex-col">
@@ -158,18 +162,24 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
               </div>
             </div>
           )}
+
+          {onLogout && (
+            <button onClick={onLogout} className="w-full mt-2 flex items-center justify-center gap-2 py-2 text-xs text-red-400 hover:text-red-300 transition-colors">
+              <LogOut size={14} /> Logout
+            </button>
+          )}
         </div>
       </aside>
 
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-surface/90 backdrop-blur-md z-30 border-b border-white/5 px-4 py-3 flex items-center justify-between">
-         <div className="flex items-center space-x-2">
-            <Globe className="text-primary" size={24} />
-            <span className="font-bold text-lg">HNH Compute</span>
-         </div>
-         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-           {isMobileMenuOpen ? <X /> : <Menu />}
-         </button>
+        <div className="flex items-center space-x-2">
+          <Globe className="text-primary" size={24} />
+          <span className="font-bold text-lg">HNH Compute</span>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          {isMobileMenuOpen ? <X /> : <Menu />}
+        </button>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -183,13 +193,13 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
           <NavItem view="TOKEN_CREATOR" icon={Coins} label="Token Creator" />
           <NavItem view="WHITE_LABEL" icon={Palette} label="White Label" />
           <NavItem view="PROVIDER" icon={Zap} label="Host Node" />
-          <button 
-             onClick={connectWallet}
-             className="w-full mt-4 flex items-center justify-center space-x-2 border border-white/10 bg-white/5 py-3 rounded-xl text-white font-medium"
-           >
-             <Wallet size={16} />
-             <span>{walletAddress ? 'Connected' : 'Connect Wallet'}</span>
-           </button>
+          <button
+            onClick={connectWallet}
+            className="w-full mt-4 flex items-center justify-center space-x-2 border border-white/10 bg-white/5 py-3 rounded-xl text-white font-medium"
+          >
+            <Wallet size={16} />
+            <span>{walletAddress ? 'Connected' : 'Connect Wallet'}</span>
+          </button>
         </div>
       )}
 
