@@ -67,7 +67,11 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
     icon: 'https://cryptologos.cc/logos/ethereum-classic-etc-logo.svg?v=032',
     coingeckoId: 'ethereum-classic',
     yieldPerMh: 0.0035,
-    defaultPools: ['stratum+tcp://us.etchash-pool.2miners.com:1010', 'stratum+tcp://de.etc.herominers.com:10161', 'stratum+ssl://etc.crazypool.org:5555']
+    defaultPools: [
+      'stratum+tcp://us.etchash-pool.2miners.com:1010',
+      'stratum+tcp://de.etc.herominers.com:10161',
+      'stratum+tcp://etc-us-east1.nanopool.org:19999' // Replaced SSL pool with Nanopool TCP
+    ]
   },
   RVN: {
     name: 'Ravencoin',
@@ -76,16 +80,24 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
     icon: 'https://cryptologos.cc/logos/ravencoin-rvn-logo.svg?v=032',
     coingeckoId: 'ravencoin',
     yieldPerMh: 2.8,
-    defaultPools: ['stratum+tcp://stratum-ravencoin.flypool.org:3333', 'stratum+tcp://rvn.2miners.com:6060', 'stratum+tcp://rvn.herominers.com:10240']
+    defaultPools: [
+      'stratum+tcp://stratum-ravencoin.flypool.org:3333',
+      'stratum+tcp://rvn.2miners.com:6060',
+      'stratum+tcp://rvn.herominers.com:10240'
+    ]
   },
   KAS: {
     name: 'Kaspa',
     symbol: 'KAS',
-    algorithm: 'KawPow', // Using generic algo type for TS simplicity, actually kHeavyHash
+    algorithm: 'KawPow',
     icon: 'https://cryptologos.cc/logos/kaspa-kas-logo.svg?v=032',
     coingeckoId: 'kaspa',
-    yieldPerMh: 0.5, // High yield due to high hashrate on this algo
-    defaultPools: ['stratum+tcp://pool.woolypooly.com:3112', 'stratum+tcp://kas.2miners.com:2020', 'stratum+tcp://acc-pool.pw:16061']
+    yieldPerMh: 0.5,
+    defaultPools: [
+      'stratum+tcp://pool.woolypooly.com:3112',
+      'stratum+tcp://kas.2miners.com:2020',
+      'stratum+tcp://acc-pool.pw:16061'
+    ]
   },
   ERG: {
     name: 'Ergo',
@@ -94,7 +106,11 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
     icon: 'https://cryptologos.cc/logos/ergo-erg-logo.svg?v=032',
     coingeckoId: 'ergo',
     yieldPerMh: 0.045,
-    defaultPools: ['stratum+tcp://de.ergo.herominers.com:11800', 'stratum+tcp://pool.woolypooly.com:3100', 'stratum+tcp://erg.2miners.com:8888']
+    defaultPools: [
+      'stratum+tcp://de.ergo.herominers.com:11800',
+      'stratum+tcp://pool.woolypooly.com:3100',
+      'stratum+tcp://erg.2miners.com:8888'
+    ]
   },
   XMR: {
     name: 'Monero',
@@ -102,8 +118,12 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
     algorithm: 'RandomX',
     icon: 'https://cryptologos.cc/logos/monero-xmr-logo.svg?v=032',
     coingeckoId: 'monero',
-    yieldPerMh: 0.005, // Normalized
-    defaultPools: ['stratum+tcp://xmr.2miners.com:2222', 'stratum+tcp://supportxmr.com:3333', 'stratum+tcp://pool.hashvault.pro:443']
+    yieldPerMh: 0.005,
+    defaultPools: [
+      'stratum+tcp://xmr.2miners.com:2222',
+      'stratum+tcp://xmr.nanopool.org:14444',
+      'stratum+tcp://pool.hashvault.pro:80' // Using port 80 for firewall bypass (TCP)
+    ]
   }
 };
 
