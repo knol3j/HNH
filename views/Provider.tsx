@@ -30,6 +30,7 @@ interface HardwareTelemetry {
   power_draw: number;
   vram_used: number;
   hashrate: number;
+  logs?: string[];
 }
 
 interface PoolConfig {
@@ -109,7 +110,8 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
 const Provider: React.FC = () => {
   const [isAuto, setIsAuto] = useState(false);
   const [agentConnected, setAgentConnected] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [clientLogs, setClientLogs] = useState<string[]>([]);
+  const [serverLogs, setServerLogs] = useState<string[]>([]);
 
   // User Configurable Settings
   const [powerCost, setPowerCost] = useState<number>(0.12); // $/kWh
@@ -150,15 +152,24 @@ const Provider: React.FC = () => {
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 100));
+    setClientLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 50));
   };
+
+
+  // Combine logs for display
+  const displayLogs = [...clientLogs, ...serverLogs].sort((a, b) => {
+    // Extract timestamp [HH:MM:SS]
+    const timeA = a.match(/\[(.*?)\]/)?.[1] || '';
+    const timeB = b.match(/\[(.*?)\]/)?.[1] || '';
+    return timeB.localeCompare(timeA); // Newest first
+  });
 
   // Scroll to bottom of logs
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
-  }, [logs]);
+  }, [clientLogs, serverLogs]);
 
   // 1. REAL MARKET DATA FETCHING
   useEffect(() => {
@@ -210,6 +221,9 @@ const Provider: React.FC = () => {
         if (response.ok) {
           const realStats = await response.json();
           setTelemetry(realStats);
+          if (realStats.logs) {
+            setServerLogs(realStats.logs);
+          }
 
           if (!agentConnected) {
             setAgentConnected(true);
@@ -238,6 +252,7 @@ const Provider: React.FC = () => {
         // If fetch fails, we assume Agent is offline.
         setAgentConnected(false);
         setTelemetry(null); // No data
+        // setServerLogs([]); // Optional: clear logs or keep last known? Keep for now.
         addLog("❌ Hardware Agent Disconnected: Retry in 1s...");
       }
     };
@@ -254,12 +269,15 @@ const Provider: React.FC = () => {
       fetch('http://localhost:4343/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet: walletAddress })
+        body: JSON.stringify({
+          wallet: walletAddress,
+          poolUrl: activePoolUrl
+        })
       }).catch(() => { });
     }, 1000); // 1s debounce
 
     return () => clearTimeout(timer);
-  }, [walletAddress, agentConnected]);
+  }, [walletAddress, activePoolUrl, agentConnected]);
 
   // 3. PROFITABILITY LOGIC 
   useEffect(() => {
@@ -630,8 +648,8 @@ const Provider: React.FC = () => {
               </div>
             </div>
             <div ref={scrollRef} className="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-1 text-gray-300">
-              {logs.length === 0 && <span className="text-gray-600 italic">Initializing system...</span>}
-              {logs.map((log, i) => (
+              {displayLogs.length === 0 && <span className="text-gray-600 italic">Initializing system...</span>}
+              {displayLogs.map((log, i) => (
                 <div key={i} className="border-l-2 border-white/10 pl-2 hover:bg-white/5 transition-colors">
                   {log}
                 </div>

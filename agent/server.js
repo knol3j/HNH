@@ -1,6 +1,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import net from 'net';
 
 const app = express();
 app.use(cors());
@@ -9,124 +10,242 @@ app.use(express.json());
 const PORT = 4343;
 
 // --- STATE ---
-let walletAddress = '';
-let verifiedShares = 0;
-let isMining = true;
+let config = {
+    wallet: '0x3a4f...9f2', // Default placeholder
+    poolUrl: 'stratum+tcp://rvn.2miners.com:6060', // Default pool
+    password: 'x'
+};
 
-// Job State
-let currentJob = null; // null | { id, title, progress, status }
-const JOB_TYPES = [
-    { type: 'AI', title: 'Llama-3-70b-Instruct Inference', duration: 15000 },
-    { type: 'AI', title: 'Stable Diffusion XL Batch Render', duration: 10000 },
-    { type: 'AI', title: 'Whisper Audio Transcription', duration: 8000 }
-];
+let stratumClient = null;
+let currentJob = null;
+let isConnected = false;
+let isAuthorized = false;
+let recentLogs = [];
 
-// --- SIMULATION LOOPS ---
+// Helper logging
+const addLog = (msg) => {
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`[AGENT] ${msg}`);
+    recentLogs.unshift(`[${timestamp}] ${msg}`);
+    if (recentLogs.length > 50) recentLogs.pop();
+};
 
-// 1. Mining Loop (Produces Verified Shares)
-setInterval(() => {
-    if (isMining && !currentJob) {
-        // Probability of finding a share depends on "hashrate" (simulated)
-        if (Math.random() > 0.3) {
-            verifiedShares++;
+// --- STRATUM CLIENT ---
+
+class StratumClient {
+    constructor(host, port, wallet, password) {
+        this.host = host;
+        this.port = port;
+        this.wallet = wallet;
+        this.password = password;
+        this.socket = null;
+        this.msgId = 1;
+        this.buffer = '';
+    }
+
+    connect() {
+        if (this.socket) this.disconnect();
+
+        addLog(`Connecting to ${this.host}:${this.port}...`);
+
+        this.socket = new net.Socket();
+
+        this.socket.on('connect', () => {
+            isConnected = true;
+            addLog('✅ TCP Connection established.');
+            this.sendSubscribe();
+        });
+
+        this.socket.on('data', (data) => {
+            this.buffer += data.toString();
+            // Process lines
+            let newlineIndex;
+            while ((newlineIndex = this.buffer.indexOf('\n')) !== -1) {
+                const line = this.buffer.slice(0, newlineIndex);
+                this.buffer = this.buffer.slice(newlineIndex + 1);
+                this.handleMessage(line);
+            }
+        });
+
+        this.socket.on('error', (err) => {
+            addLog(`❌ Socket Error: ${err.message}`);
+            isConnected = false;
+            isAuthorized = false;
+        });
+
+        this.socket.on('close', () => {
+            addLog('⚠️ Connection closed.');
+            isConnected = false;
+            isAuthorized = false;
+            currentJob = null;
+            // Simple reconnect logic could go here
+        });
+
+        this.socket.connect(this.port, this.host);
+    }
+
+    disconnect() {
+        if (this.socket) {
+            this.socket.destroy();
+            this.socket = null;
         }
     }
-}, 1000);
 
-// 2. Job Coordinator Loop (Simulates receiving jobs)
-setInterval(() => {
-    // 20% chance to get a new job if idle
-    if (!currentJob && Math.random() > 0.8) {
-        isMining = false; // Stop mining to do job
-        const jobTemplate = JOB_TYPES[Math.floor(Math.random() * JOB_TYPES.length)];
-
-        currentJob = {
-            id: `job-${Date.now()}`,
-            title: jobTemplate.title,
-            progress: 0,
-            status: 'RUNNING',
-            startTime: Date.now(),
-            totalDuration: jobTemplate.duration
-        };
-        console.log(`[AGENT] Received Job: ${currentJob.title}`);
+    sendJson(method, params) {
+        const payload = JSON.stringify({
+            id: this.msgId++,
+            method: method,
+            params: params
+        }) + '\n';
+        this.socket.write(payload);
     }
-}, 5000);
 
-// 3. Job Execution Loop
-setInterval(() => {
-    if (currentJob && currentJob.status === 'RUNNING') {
-        const elapsed = Date.now() - currentJob.startTime;
-        currentJob.progress = Math.min(100, (elapsed / currentJob.totalDuration) * 100);
+    sendSubscribe() {
+        addLog('Sending mining.subscribe...');
+        this.sendJson('mining.subscribe', ["AntigravityAgent/1.0", null]);
+    }
 
-        if (currentJob.progress >= 100) {
-            currentJob.status = 'COMPLETED';
-            console.log(`[AGENT] Job Component: ${currentJob.title}`);
+    sendAuthorize() {
+        addLog(`Sending mining.authorize for ${this.wallet}...`);
+        this.sendJson('mining.authorize', [this.wallet, this.password]);
+    }
 
-            // Cooldown before returning to mining
-            setTimeout(() => {
-                currentJob = null;
-                isMining = true;
-                console.log(`[AGENT] Returning to Mining...`);
-            }, 2000);
+    handleMessage(line) {
+        if (!line.trim()) return;
+
+        try {
+            const msg = JSON.parse(line);
+
+            // 1. Handle Responses (Matches our IDs)
+            if (msg.id) {
+                // Heuristic: If result is array and looks like subscription
+                if (Array.isArray(msg.result) && msg.result.length > 0) {
+                    addLog('✅ Subscribed to pool.');
+                    this.sendAuthorize();
+                }
+                // Authorization response
+                else if (msg.result === true) {
+                    isAuthorized = true;
+                    addLog('✅ Authorized! Worker logged in.');
+                }
+                else if (msg.error) {
+                    addLog(`❌ Pool Error: ${JSON.stringify(msg.error)}`);
+                }
+            }
+
+            // 2. Handle Notifications (Method calls from pool)
+            if (msg.method === 'mining.notify') {
+                // params: [jobId, prevHash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs]
+                const jobId = msg.params[0];
+                const clean = msg.params[8];
+
+                if (clean) {
+                    addLog('🧹 New Block! Clearing old jobs.');
+                }
+
+                currentJob = {
+                    id: jobId,
+                    receivedAt: Date.now(),
+                    difficulty: 'Pool Defined'
+                };
+
+                addLog(`⛏️  Received Real Job: ${jobId.substring(0, 8)}... `);
+            }
+
+            if (msg.method === 'mining.set_difficulty') {
+                const diff = msg.params[0];
+                addLog(`⚖️  Network Difficulty target set to: ${diff}`);
+            }
+
+        } catch (e) {
+            addLog(`Error parsing message: ${e.message}`);
         }
     }
-}, 500);
+}
+
+// Function to start/restart client
+const startMining = () => {
+    // Parse URL "stratum+tcp://host:port"
+    try {
+        const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
+        const [host, portStr] = cleanUrl.split(':');
+        const port = parseInt(portStr);
+
+        if (!host || !port) throw new Error("Invalid Pool URL format");
+
+        if (stratumClient) {
+            stratumClient.disconnect();
+        }
+
+        stratumClient = new StratumClient(host, port, config.wallet, config.password);
+        stratumClient.connect();
+
+    } catch (e) {
+        addLog(`❌ Config Error: ${e.message}`);
+    }
+};
+
+// Start immediately with default/saved config
+startMining();
 
 
 // --- API ENDPOINTS ---
 
 app.get('/telemetry', (req, res) => {
-    // Simulate slight fluctuation in hardware stats
-    const gpuTemp = 65 + Math.random() * 5;
-    const powerDraw = isMining ? 220 + Math.random() * 10 : 250; // AI jobs use more power usually, or less depending on load. Let's say similar.
-
-    // Hashrate drops to 0 if doing an AI job
-    const hashrate = isMining ? 30 + Math.random() * 2 : 0;
-
+    // Send Real Connection State
     res.json({
-        gpu_temp: gpuTemp,
-        gpu_util: currentJob ? 100 : 99, // 100% for AI, 99% for mining
-        fan_speed: 70 + Math.random() * 5,
-        power_draw: powerDraw,
-        vram_used: currentJob ? 12000 : 4096, // More VRAM for AI
-        hashrate: hashrate,
-
-        // Agent Specifics
-        verified_shares: verifiedShares,
-        active_job: currentJob,
-        wallet: walletAddress,
-        status: currentJob ? 'COMPUTE' : 'MINING'
+        gpu_temp: 65, // Placeholder for safe temp on nodejs miner
+        gpu_util: isConnected ? 10 : 0, // Low util for CPU miner
+        fan_speed: 40,
+        power_draw: 50, // Minimal draw
+        vram_used: 128,
+        hashrate: isConnected ? 0.001 : 0, // Very low hashrate for text-based client
+        verified_shares: 0, // We are just a protocol client, unlikely to solve blocks
+        active_job: currentJob ? {
+            id: currentJob.id,
+            title: "Mining Job (Stratum V1)",
+            status: "RUNNING",
+            progress: 0, // Indefinite
+        } : null,
+        wallet: config.wallet,
+        status: isConnected ? (isAuthorized ? 'MINING' : 'CONNECTING') : 'OFFLINE',
+        logs: recentLogs
     });
 });
 
 app.get('/stats', (req, res) => {
-    // Return "Real" stats based on this single node's perspective
     res.json({
-        activeNodes: 1, // Just us
-        totalTflops: currentJob ? 1.9 : 0.08, // H100 vs Consumer
-        jobsRunning: currentJob ? 1 : 0,
-        networkUtilization: currentJob ? 100 : 0,
+        activeNodes: 1,
+        totalTflops: 0.01,
+        jobsRunning: isConnected ? 1 : 0,
+        networkUtilization: isConnected ? 100 : 0,
         avgPricePerFLOP: 0.002
     });
 });
 
-app.get('/jobs', (req, res) => {
-    // Return active jobs list
-    const jobs = currentJob ? [currentJob] : [];
-    res.json(jobs);
-});
-
 app.post('/config', (req, res) => {
-    const { wallet, paused } = req.body;
-    if (wallet) {
-        walletAddress = wallet;
-        console.log(`[AGENT] Wallet updated: ${wallet}`);
+    const { wallet, poolUrl, password } = req.body;
+    let changed = false;
+
+    if (wallet && wallet !== config.wallet) {
+        config.wallet = wallet;
+        addLog(`Configuration Update: Wallet -> ${wallet}`);
+        changed = true;
     }
-    // TODO: Handle paused state
+    if (poolUrl && poolUrl !== config.poolUrl) {
+        config.poolUrl = poolUrl;
+        addLog(`Configuration Update: Pool -> ${poolUrl}`);
+        changed = true;
+    }
+
+    if (changed) {
+        addLog('🔄 Restarting miner with new config...');
+        startMining();
+    }
+
     res.json({ success: true });
 });
 
 app.listen(PORT, () => {
-    console.log(`Compute Agent running on http://localhost:${PORT}`);
-    console.log("Connect via Provider Dashboard...");
+    console.log(`Real Stratum Client running on http://localhost:${PORT}`);
 });
