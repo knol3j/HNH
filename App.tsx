@@ -27,7 +27,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:4343/stats');
+        const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+        const res = await fetch(`${agentUrl}/stats`);
         if (res.ok) {
           const data = await res.json();
           setStats(data);

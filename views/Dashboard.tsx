@@ -34,7 +34,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const res = await fetch('http://localhost:4343/jobs');
+        const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+        const res = await fetch(`${agentUrl}/jobs`);
         if (res.ok) {
           setRealJobs(await res.json());
         }

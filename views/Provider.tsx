@@ -110,6 +110,10 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
 const Provider: React.FC = () => {
   const [isAuto, setIsAuto] = useState(false);
   const [agentConnected, setAgentConnected] = useState(false);
+
+  // Agent Config
+  const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
+
   const [clientLogs, setClientLogs] = useState<string[]>([]);
   const [serverLogs, setServerLogs] = useState<string[]>([]);
 
@@ -223,7 +227,7 @@ const Provider: React.FC = () => {
 
     const pollAgent = async () => {
       try {
-        const response = await fetch('http://localhost:4343/telemetry', {
+        const response = await fetch(`${agentUrl}/telemetry`, {
           method: 'GET',
           signal: AbortSignal.timeout(500)
         });
@@ -278,7 +282,7 @@ const Provider: React.FC = () => {
     if (!agentConnected || !walletAddress) return;
 
     const timer = setTimeout(() => {
-      fetch('http://localhost:4343/config', {
+      fetch(`${agentUrl}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -430,12 +434,27 @@ const Provider: React.FC = () => {
         <div className={`p-4 rounded-xl border ${agentConnected ? 'bg-green-500/10 border-green-500/50' : 'bg-red-500/10 border-red-500/50'}`}>
           <div className="flex items-center gap-3">
             {agentConnected ? <Wifi className="text-green-500" /> : <Wifi className="text-red-500" />}
-            <div>
+            <div className="flex-1 overflow-hidden">
               <p className="text-xs font-bold uppercase text-muted">Agent Status</p>
-              <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-red-500'}`}>
-                {agentConnected ? 'ONLINE' : 'DISCONNECTED'}
-              </p>
-              {!agentConnected && <p className="text-[10px] text-red-300 leading-tight mt-1">Run <code>node agent/server.js</code></p>}
+              <div className="flex justify-between items-center">
+                <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-red-500'}`}>
+                  {agentConnected ? 'ONLINE' : 'DISCONNECTED'}
+                </p>
+              </div>
+
+              {/* Agent URL Config (Mini) */}
+              <div className="mt-1 flex items-center gap-1">
+                <span className="text-[10px] text-muted whitespace-nowrap">Host:</span>
+                <input
+                  type="text"
+                  value={agentUrl}
+                  onChange={(e) => {
+                    setAgentUrl(e.target.value);
+                    localStorage.setItem('hnh_agent_url', e.target.value);
+                  }}
+                  className="bg-black/20 border-none text-[10px] text-white w-full rounded px-1 h-5 focus:ring-1 focus:ring-primary"
+                />
+              </div>
             </div>
           </div>
         </div>
