@@ -117,7 +117,17 @@ const Provider: React.FC = () => {
   const [powerCost, setPowerCost] = useState<number>(0.12); // $/kWh
   const [minProfitThreshold, setMinProfitThreshold] = useState<number>(0.50); // Min $ profit to mine
   const [selectedCoin, setSelectedCoin] = useState<CoinSymbol>('RVN');
-  const [walletAddress, setWalletAddress] = useState('');
+
+  // Wallet Persistence
+  const [savedWallets, setSavedWallets] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('hnh_wallets');
+    return saved ? JSON.parse(saved) : {
+      RVN: 'RHUC17zAVjNqXDtkqwLPRvQ2XgoRZsXeeG', // Default valid
+      ETC: '', XMR: '', KAS: '', ERG: ''
+    };
+  });
+
+  const [walletAddress, setWalletAddress] = useState(savedWallets['RVN'] || '');
   const [activePoolUrl, setActivePoolUrl] = useState(COIN_CATALOG['RVN'].defaultPools[0]);
 
   // Algorithm Priorities (Order matters for Auto-Switching)
@@ -388,7 +398,7 @@ const Provider: React.FC = () => {
     const prefix = prefixes[selectedCoin];
     const randomPart = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
     const newWallet = `${prefix}${randomPart}...`;
-    setWalletAddress(newWallet);
+    handleWalletChange(newWallet);
     addLog(`👛 Generated new ${COIN_CATALOG[selectedCoin].name} wallet: ${newWallet}`);
   };
 
@@ -397,6 +407,15 @@ const Provider: React.FC = () => {
     setConfig(prev => ({ ...prev, algorithm: COIN_CATALOG[symbol].algorithm }));
     // Reset pool to first default of new coin
     setActivePoolUrl(COIN_CATALOG[symbol].defaultPools[0]);
+    // Restore wallet for this coin
+    setWalletAddress(savedWallets[symbol] || '');
+  };
+
+  const handleWalletChange = (val: string) => {
+    setWalletAddress(val);
+    const newMap = { ...savedWallets, [selectedCoin]: val };
+    setSavedWallets(newMap);
+    localStorage.setItem('hnh_wallets', JSON.stringify(newMap));
   };
 
   const toggleAlgo = (name: Algorithm) => {
@@ -562,7 +581,7 @@ const Provider: React.FC = () => {
                   <input
                     type="text"
                     value={walletAddress}
-                    onChange={(e) => setWalletAddress(e.target.value)}
+                    onChange={(e) => handleWalletChange(e.target.value)}
                     placeholder={`${selectedCoin} Address`}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none text-sm font-mono"
                   />
