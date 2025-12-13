@@ -14,12 +14,13 @@ import Dex from './views/Dex';
 import Auth from './views/Auth';
 import Referrals from './views/Referrals';
 import Upgrade from './views/Upgrade';
+import Landing from './views/Landing';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<View>('DASHBOARD');
+  const [currentView, setCurrentView] = useState<View>('LANDING'); // Default to Landing
   const [stats, setStats] = useState<NetworkStats>({
     activeNodes: 0,
     totalTflops: 0,
@@ -53,12 +54,16 @@ const App: React.FC = () => {
   // Check Session
   useEffect(() => {
     const user = getCurrentUser();
-    if (user) setCurrentUser(user);
+    if (user) {
+      setCurrentUser(user);
+      if (currentView === 'LANDING') setCurrentView('DASHBOARD');
+    }
   }, []);
 
   const handleLogout = () => {
     logoutUser();
     setCurrentUser(null);
+    setCurrentView('LANDING');
   };
 
   // Initial AI Load for Network Status (Dependent on stats)
@@ -70,9 +75,17 @@ const App: React.FC = () => {
     fetchInsight();
   }, [stats.activeNodes]); // Re-run when node count changes
 
+  // Show Landing if not logged in and not explicitly in Auth view
+  if (!currentUser && currentView === 'LANDING') {
+    return <Landing onEnterApp={() => setCurrentView('DASHBOARD')} />; // Dashboard redirects to Auth if no user
+  }
 
+  // Auth Guard
   if (!currentUser) {
-    return <Auth onLogin={setCurrentUser} />;
+    return <Auth onLogin={(user) => {
+      setCurrentUser(user);
+      setCurrentView('DASHBOARD');
+    }} />;
   }
 
   return (

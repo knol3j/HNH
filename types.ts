@@ -78,7 +78,8 @@ export type View =
   | 'TOKEN_CREATOR'
   | 'WHITE_LABEL'
   | 'REFERRALS'
-  | 'UPGRADE';
+  | 'UPGRADE'
+  | 'LANDING';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';

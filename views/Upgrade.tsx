@@ -22,9 +22,9 @@ const FEATURES: PlanFeature[] = [
 ];
 
 const PLANS = [
-    { tier: 'free' as UserTier, name: 'Free', price: 0, fee: '2%', color: 'gray' },
-    { tier: 'pro' as UserTier, name: 'Pro', price: 20, fee: '1%', color: 'blue', popular: true },
-    { tier: 'enterprise' as UserTier, name: 'Enterprise', price: 100, fee: '0.5%', color: 'purple' },
+    { tier: 'free' as UserTier, name: 'Free', price: 0, fee: '2%', color: 'gray', stripeLink: '' },
+    { tier: 'pro' as UserTier, name: 'Pro', price: 20, fee: '1%', color: 'blue', popular: true, stripeLink: 'https://buy.stripe.com/test_pro_link' },
+    { tier: 'enterprise' as UserTier, name: 'Enterprise', price: 100, fee: '0.5%', color: 'purple', stripeLink: 'https://buy.stripe.com/test_ent_link' },
 ];
 
 const Upgrade: React.FC = () => {
@@ -35,19 +35,24 @@ const Upgrade: React.FC = () => {
     const handleUpgrade = async (tier: UserTier) => {
         if (!currentUser || tier === currentUser.tier) return;
 
-        setUpgrading(tier);
-
-        // Simulate payment processing
-        await new Promise(r => setTimeout(r, 1500));
-
-        // Update tier
-        updateUserTier(currentUser.id, tier);
-
-        setUpgrading(null);
-        setSuccess(true);
-
-        // Refresh page to apply new tier
-        setTimeout(() => window.location.reload(), 1000);
+        const plan = PLANS.find(p => p.tier === tier);
+        if (plan?.stripeLink) {
+            // Redirect to Stripe
+            window.open(plan.stripeLink, '_blank');
+            // Optimistically update tier for demo purposes (in real app, use webhook)
+            setUpgrading(tier);
+            await new Promise(r => setTimeout(r, 2000));
+            updateUserTier(currentUser.id, tier);
+            setUpgrading(null);
+            setSuccess(true);
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            // Free tier downgrade
+            if (confirm('Are you sure you want to downgrade to Free?')) {
+                updateUserTier(currentUser.id, tier);
+                window.location.reload();
+            }
+        }
     };
 
     return (
@@ -75,8 +80,8 @@ const Upgrade: React.FC = () => {
                     <div
                         key={plan.tier}
                         className={`relative bg-surface border rounded-2xl p-6 transition-all ${plan.popular
-                                ? 'border-blue-500 shadow-lg shadow-blue-500/20 scale-105'
-                                : 'border-white/10 hover:border-white/20'
+                            ? 'border-blue-500 shadow-lg shadow-blue-500/20 scale-105'
+                            : 'border-white/10 hover:border-white/20'
                             }`}
                     >
                         {plan.popular && (
@@ -114,10 +119,10 @@ const Upgrade: React.FC = () => {
                             onClick={() => handleUpgrade(plan.tier)}
                             disabled={currentUser?.tier === plan.tier || upgrading !== null}
                             className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${currentUser?.tier === plan.tier
-                                    ? 'bg-white/5 text-muted cursor-not-allowed'
-                                    : plan.popular
-                                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                                        : 'bg-white/10 hover:bg-white/20 text-white'
+                                ? 'bg-white/5 text-muted cursor-not-allowed'
+                                : plan.popular
+                                    ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
                                 }`}
                         >
                             {upgrading === plan.tier ? (
