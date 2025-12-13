@@ -10,7 +10,7 @@ const getAIClient = () => {
 export const analyzeComputeRequirements = async (taskDescription: string): Promise<JobSpec> => {
   try {
     const ai = getAIClient();
-    
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `You are a DevOps and AI Infrastructure expert. A user wants to run this computing task: "${taskDescription}". 
@@ -58,5 +58,58 @@ export const getNetworkStatusAnalysis = async (stats: any): Promise<string> => {
     return response.text || "Network status stable.";
   } catch (error) {
     return "Network optimal.";
+  }
+};
+
+/**
+ * AI-powered mining optimization recommendation
+ */
+export interface MiningRecommendation {
+  action: 'HOLD' | 'SWITCH' | 'OPTIMIZE';
+  currentCoin: string;
+  recommendedCoin: string;
+  reason: string;
+  expectedImprovement: string;
+}
+
+export const getMiningOptimization = async (
+  currentCoin: string,
+  hashrate: number,
+  coins: { symbol: string; price: number; profitabilityScore: number }[]
+): Promise<MiningRecommendation> => {
+  try {
+    const ai = getAIClient();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a crypto mining optimization AI. 
+      
+Current state:
+- Mining: ${currentCoin}
+- Hashrate: ${hashrate} H/s
+- Available coins: ${JSON.stringify(coins)}
+
+Analyze and recommend:
+1. Should the user HOLD (keep mining current), SWITCH (change coin), or OPTIMIZE (adjust settings)?
+2. If SWITCH, which coin and why?
+3. What's the expected improvement?
+
+Respond in JSON: { "action": "HOLD|SWITCH|OPTIMIZE", "currentCoin": "...", "recommendedCoin": "...", "reason": "...", "expectedImprovement": "..." }`,
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No recommendation generated");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Optimization Error:", error);
+    return {
+      action: 'HOLD',
+      currentCoin,
+      recommendedCoin: currentCoin,
+      reason: 'AI service unavailable. Continue current mining.',
+      expectedImprovement: '0%'
+    };
   }
 };

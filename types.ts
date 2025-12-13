@@ -76,7 +76,9 @@ export type View =
   | 'DEX'
   | 'SECURITY'
   | 'TOKEN_CREATOR'
-  | 'WHITE_LABEL';
+  | 'WHITE_LABEL'
+  | 'REFERRALS'
+  | 'UPGRADE';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
@@ -91,16 +93,23 @@ export interface EthereumProvider {
 
 
 // Auth Types
+export type UserTier = 'free' | 'pro' | 'enterprise';
+
 export interface User {
   id: string;
   username: string;
   passwordHash: string; // SHA-256
   createdAt: number;
+  tier: UserTier;
+  referralCode: string;
+  referredBy?: string; // referralCode of who invited this user
+  referralBonus: number; // Accumulated bonus shares from referrals
 }
 
 export interface UserCredentials {
   username: string;
   password: string; // Plaintext (before hashing)
+  referralCode?: string; // Optional: code to apply on signup
 }
 
 declare global {

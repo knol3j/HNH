@@ -12,6 +12,8 @@ import TokenCreator from './views/TokenCreator';
 import WhiteLabel from './views/WhiteLabel';
 import Dex from './views/Dex';
 import Auth from './views/Auth';
+import Referrals from './views/Referrals';
+import Upgrade from './views/Upgrade';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -98,6 +100,12 @@ const App: React.FC = () => {
       )}
       {currentView === 'WHITE_LABEL' && (
         <WhiteLabel />
+      )}
+      {currentView === 'REFERRALS' && (
+        <Referrals />
+      )}
+      {currentView === 'UPGRADE' && (
+        <Upgrade />
       )}
     </Layout>
   );

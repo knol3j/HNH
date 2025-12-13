@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HashNHedge</string>
+    <string name="title_activity_main">HashNHedge</string>
+    <string name="package_name">com.hnh.miningapp</string>
+    <string name="custom_url_scheme">com.hnh.miningapp</string>
+</resources>

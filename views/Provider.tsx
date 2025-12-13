@@ -149,7 +149,7 @@ const Provider: React.FC = () => {
   // User Configurable Settings
   const [powerCost, setPowerCost] = useState<number>(0.12); // $/kWh
   const [minProfitThreshold, setMinProfitThreshold] = useState<number>(0.50); // Min $ profit to mine
-  const [selectedCoin, setSelectedCoin] = useState<CoinSymbol>('RVN');
+  const [selectedCoin, setSelectedCoin] = useState<CoinSymbol>('XMR');
 
   // Wallet Persistence
   const [savedWallets, setSavedWallets] = useState<Record<string, string>>(() => {
@@ -542,6 +542,9 @@ const Provider: React.FC = () => {
                     setAgentUrl(e.target.value);
                     localStorage.setItem(`hnh_agent_url_${userId}`, e.target.value);
                   }}
+                  aria-label="Agent URL"
+                  title="Agent URL"
+                  placeholder="http://localhost:4343"
                   className="bg-black/20 border-none text-[10px] text-white w-full rounded px-1 h-5 focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -550,8 +553,20 @@ const Provider: React.FC = () => {
         </div>
 
         <div className="p-4 bg-surface border border-white/10 rounded-xl">
-          <p className="text-xs font-bold uppercase text-muted mb-1">Verified Shares</p>
-          <span className="text-2xl font-bold text-blue-400">{telemetry?.verified_shares || 0}</span>
+          <p className="text-xs font-bold uppercase text-muted mb-1">Gross Shares</p>
+          <span className="text-2xl font-bold text-blue-400">{(telemetry as any)?.gross_shares || telemetry?.verified_shares || 0}</span>
+        </div>
+
+        <div className="p-4 bg-surface border border-white/10 rounded-xl">
+          <p className="text-xs font-bold uppercase text-muted mb-1">Net Shares</p>
+          <span className="text-2xl font-bold text-green-400">{telemetry?.verified_shares || 0}</span>
+          <p className="text-[10px] text-muted">After {(telemetry as any)?.fee_rate || 2}% platform fee</p>
+        </div>
+
+        <div className="p-4 bg-surface border border-red-500/20 rounded-xl">
+          <p className="text-xs font-bold uppercase text-red-400 mb-1">Platform Fee</p>
+          <span className="text-2xl font-bold text-red-400">{((telemetry as any)?.fee_deducted || 0).toFixed(4)}</span>
+          <p className="text-[10px] text-muted capitalize">Tier: {(telemetry as any)?.user_tier || 'free'}</p>
         </div>
 
         <div className="p-4 bg-surface border border-white/10 rounded-xl">
@@ -666,6 +681,8 @@ const Provider: React.FC = () => {
                   <select
                     value={activePoolUrl}
                     onChange={(e) => setActivePoolUrl(e.target.value)}
+                    aria-label="Mining Pool"
+                    title="Select Mining Pool"
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none appearance-none text-sm font-mono truncate pr-8"
                   >
                     {COIN_CATALOG[selectedCoin].defaultPools.map(url => (
@@ -694,7 +711,11 @@ const Provider: React.FC = () => {
                     placeholder={`${selectedCoin} Address`}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none text-sm font-mono"
                   />
-                  <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-muted hover:text-white transition-colors">
+                  <button
+                    className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-muted hover:text-white transition-colors"
+                    aria-label="Copy wallet address"
+                    title="Copy wallet address"
+                  >
                     <Copy size={16} />
                   </button>
                 </div>
@@ -761,6 +782,9 @@ const Provider: React.FC = () => {
                     step="0.01"
                     value={powerCost}
                     onChange={(e) => setPowerCost(parseFloat(e.target.value))}
+                    aria-label="Electricity Cost"
+                    title="Electricity cost per kWh"
+                    placeholder="0.12"
                     className="bg-black/20 text-white w-full focus:outline-none font-mono text-sm p-2 rounded border border-white/10"
                   />
                 </div>

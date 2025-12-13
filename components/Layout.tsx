@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from '../types';
-import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, Crown } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -81,8 +81,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
         setIsMobileMenuOpen(false);
       }}
       className={`relative flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all duration-200 ${currentView === view
-          ? 'bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-          : 'text-muted hover:bg-surface hover:text-white'
+        ? 'bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+        : 'text-muted hover:bg-surface hover:text-white'
         }`}
     >
       <Icon size={20} />
@@ -128,6 +128,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
 
           <div className="mt-6 px-4 py-2 text-xs font-bold text-muted uppercase tracking-widest">Supply Side</div>
           <NavItem view="PROVIDER" icon={Zap} label="Host Node" badge="EARN" />
+          <NavItem view="REFERRALS" icon={Users} label="Referrals" badge="$$$" />
+          <NavItem view="UPGRADE" icon={Crown} label="Upgrade" badge="PRO" />
         </nav>
 
         <div className="p-4 border-t border-white/5">
@@ -135,8 +137,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
             onClick={connectWallet}
             disabled={isConnecting}
             className={`w-full flex items-center justify-center space-x-2 border py-2 rounded-lg transition-all text-sm font-medium ${walletAddress
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
               }`}
           >
             <Wallet size={16} />

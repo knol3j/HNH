@@ -1,28 +1,64 @@
 
 import express from 'express';
 import cors from 'cors';
-import net from 'net';
+import fs from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const PORT = 4343;
+const MINER_BIN = path.join(__dirname, 'bin', 'xmrig');
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// --- PLATFORM FEE CONFIG ---
+const PLATFORM_FEE_TIERS = {
+    free: 0.02,      // 2%
+    pro: 0.01,       // 1%
+    enterprise: 0.005 // 0.5%
+};
+const PLATFORM_WALLET = '48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzBY52XU6kl2p4JS17kk074db13V2_RX7k1A5u23c59525'; // Platform owner wallet
 
 // --- STATE ---
 let config = {
-    wallet: 'RHUC17zAVjNqXDtkqwLPRvQ2XgoRZsXeeG', // Example RVN address
-    poolUrl: 'stratum+tcp://rvn.2miners.com:6060', // Default pool
-    password: 'x'
+    wallet: '48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzBY52XU6kl2p4JS17kk074db13V2_RX7k1A5u23c59525', // Default Monero wallet
+    poolUrl: 'stratum+tcp://xmr.2miners.com:2222',
+    password: 'x',
+    algorithm: 'rx/0' // RandomX default
 };
 
-let stratumClient = null;
-let currentJob = null;
-let isConnected = false;
-let isAuthorized = false;
+let minerProcess = null;
+let minerStatus = 'OFFLINE'; // OFFLINE, STARTING, MINING, ERROR
 let recentLogs = [];
+let totalShares = 0;
+let feeShares = 0; // Shares owed to platform
+let userTier = 'free'; // Current user's tier
+let telemetry = {
+    hashrate: 0,
+    temp: 60, // Fallback if not parsed
+    power: 0
+};
 
-// Helper logging
+// --- PERSISTENCE ---
+try {
+    if (fs.existsSync(DATA_FILE)) {
+        const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        totalShares = data.totalShares || 0;
+        feeShares = data.feeShares || 0;
+    }
+} catch (e) { console.error(e); }
+
+const saveStats = () => {
+    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+};
+
+// --- LOGGING ---
 const addLog = (msg) => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[AGENT] ${msg}`);
@@ -30,222 +66,227 @@ const addLog = (msg) => {
     if (recentLogs.length > 50) recentLogs.pop();
 };
 
-// --- STRATUM CLIENT ---
-
-class StratumClient {
-    constructor(host, port, wallet, password) {
-        this.host = host;
-        this.port = port;
-        this.wallet = wallet;
-        this.password = password;
-        this.socket = null;
-        this.msgId = 1;
-        this.buffer = '';
+// --- MINER MANAGER ---
+const startMiner = () => {
+    if (minerProcess) {
+        killMiner();
     }
 
-    connect() {
-        if (this.socket) this.disconnect();
+    // Clean URL
+    const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
 
-        addLog(`Connecting to ${this.host}:${this.port}...`);
+    addLog(`🚀 Launching XMRig...`);
+    addLog(`   Pool: ${cleanUrl}`);
+    addLog(`   User: ${config.wallet.substring(0, 8)}...`);
 
-        this.socket = new net.Socket();
+    // XMRig Args
+    const args = [
+        '-o', cleanUrl,
+        '-u', config.wallet,
+        '-p', config.password,
+        '--no-color',
+        '--api-worker-id', 'AntigravityAgent',
+        '--cpu-priority', '0',
+        '--donate-level', '1'
+    ];
 
-        this.socket.on('connect', () => {
-            isConnected = true;
-            addLog('✅ TCP Connection established.');
-            this.sendSubscribe();
-        });
+    // Algorithm override if needed (XMRig auto-detects mostly)
+    // if (config.algorithm) args.push('-a', config.algorithm);
 
-        this.socket.on('data', (data) => {
-            this.buffer += data.toString();
-            // Process lines
-            let newlineIndex;
-            while ((newlineIndex = this.buffer.indexOf('\n')) !== -1) {
-                const line = this.buffer.slice(0, newlineIndex);
-                this.buffer = this.buffer.slice(newlineIndex + 1);
-                this.handleMessage(line);
-            }
-        });
+    minerStatus = 'STARTING';
 
-        this.socket.on('error', (err) => {
-            addLog(`❌ Socket Error: ${err.message}`);
-            isConnected = false;
-            isAuthorized = false;
-        });
-
-        this.socket.on('close', () => {
-            addLog('⚠️ Connection closed.');
-            isConnected = false;
-            isAuthorized = false;
-            currentJob = null;
-            // Simple reconnect logic could go here
-        });
-
-        this.socket.connect(this.port, this.host);
-    }
-
-    disconnect() {
-        if (this.socket) {
-            this.socket.destroy();
-            this.socket = null;
-        }
-    }
-
-    sendJson(method, params) {
-        const payload = JSON.stringify({
-            id: this.msgId++,
-            method: method,
-            params: params
-        }) + '\n';
-        this.socket.write(payload);
-    }
-
-    sendSubscribe() {
-        addLog('Sending mining.subscribe...');
-        this.sendJson('mining.subscribe', ["AntigravityAgent/1.0", null]);
-    }
-
-    sendAuthorize() {
-        addLog(`Sending mining.authorize for ${this.wallet}...`);
-        this.sendJson('mining.authorize', [this.wallet, this.password]);
-    }
-
-    handleMessage(line) {
-        if (!line.trim()) return;
-
-        try {
-            const msg = JSON.parse(line);
-
-            // 1. Handle Responses (Matches our IDs)
-            if (msg.id) {
-                // Heuristic: If result is array and looks like subscription
-                if (Array.isArray(msg.result) && msg.result.length > 0) {
-                    addLog('✅ Subscribed to pool.');
-                    this.sendAuthorize();
-                }
-                // Authorization response
-                else if (msg.result === true) {
-                    isAuthorized = true;
-                    addLog('✅ Authorized! Worker logged in.');
-                }
-                else if (msg.error) {
-                    addLog(`❌ Pool Error: ${JSON.stringify(msg.error)}`);
-                }
-            }
-
-            // 2. Handle Notifications (Method calls from pool)
-            if (msg.method === 'mining.notify') {
-                // params: [jobId, prevHash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs]
-                const jobId = msg.params[0];
-                const clean = msg.params[8];
-
-                if (clean) {
-                    addLog('🧹 New Block! Clearing old jobs.');
-                }
-
-                currentJob = {
-                    id: jobId,
-                    receivedAt: Date.now(),
-                    difficulty: 'Pool Defined'
-                };
-
-                addLog(`⛏️  Received Real Job: ${jobId.substring(0, 8)}... `);
-            }
-
-            if (msg.method === 'mining.set_difficulty') {
-                const diff = msg.params[0];
-                addLog(`⚖️  Network Difficulty target set to: ${diff}`);
-            }
-
-        } catch (e) {
-            addLog(`Error parsing message: ${e.message}`);
-        }
-    }
-}
-
-// Function to start/restart client
-const startMining = () => {
-    // Parse URL "stratum+tcp://host:port"
     try {
-        const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
-        const [host, portStr] = cleanUrl.split(':');
-        const port = parseInt(portStr);
+        minerProcess = spawn(MINER_BIN, args);
 
-        if (!host || !port) throw new Error("Invalid Pool URL format");
+        minerProcess.stdout.on('data', (data) => {
+            const line = data.toString().trim();
+            handleMinerOutput(line);
+        });
 
-        if (stratumClient) {
-            stratumClient.disconnect();
-        }
+        minerProcess.stderr.on('data', (data) => {
+            console.error(`[XMRIG ERR] ${data}`);
+            addLog(`ERR: ${data.toString().trim()}`);
+        });
 
-        stratumClient = new StratumClient(host, port, config.wallet, config.password);
-        stratumClient.connect();
+        minerProcess.on('close', (code) => {
+            addLog(`⚠️ Miner exitted with code ${code}`);
+            minerStatus = 'OFFLINE';
+            telemetry.hashrate = 0;
+            minerProcess = null;
+        });
 
+        minerStatus = 'MINING';
     } catch (e) {
-        addLog(`❌ Config Error: ${e.message}`);
+        addLog(`❌ Failed to spawn miner: ${e.message}`);
+        minerStatus = 'ERROR';
     }
 };
 
-// Start immediately with default/saved config
-startMining();
+const killMiner = () => {
+    if (minerProcess) {
+        minerProcess.kill();
+        minerProcess = null;
+    }
+};
 
+const handleMinerOutput = (rawLine) => {
+    const lines = rawLine.split('\n');
+    lines.forEach(line => {
+        if (!line.trim()) return;
 
-// --- API ENDPOINTS ---
+        // Passthrough Log (Filtered)
+        if (line.includes('accepted') || line.includes('speed') || line.includes('ready') || line.includes('error')) {
+            addLog(line);
+        }
 
+        // PARSE: Accepted Share
+        // [2023-10-27 12:00:00.000]  cpu      accepted (1/0) diff 1000 (37 ms)
+        if (line.includes('accepted')) {
+            totalShares++;
+            // Calculate fee based on tier
+            const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+            feeShares += feeRate; // Accumulate fractional fee shares
+            saveStats();
+        }
+
+        // PARSE: Speed (Hashrate)
+        // [2023-10-27 12:00:00.000]  miner    speed 10s/60s/15m 1264.3 1264.3 1264.3 H/s max 1265.1 H/s
+        if (line.includes('speed')) {
+            const match = line.match(/(\d+\.\d+) H\/s/);
+            if (match && match[1]) {
+                telemetry.hashrate = parseFloat(match[1]); // H/s
+            }
+        }
+    });
+};
+
+// Start on Load
+if (fs.existsSync(MINER_BIN)) {
+    startMiner();
+} else {
+    addLog("❌ Miner binary not found. Run 'setup_miner.sh' first.");
+}
+
+// --- API ---
 app.get('/telemetry', (req, res) => {
-    // Send Real Connection State
+    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+    const grossShares = totalShares;
+    const feeDeducted = feeShares;
+    const netShares = grossShares - feeDeducted;
+
     res.json({
-        gpu_temp: 65, // Placeholder for safe temp on nodejs miner
-        gpu_util: isConnected ? 10 : 0, // Low util for CPU miner
-        fan_speed: 40,
-        power_draw: 50, // Minimal draw
-        vram_used: 128,
-        hashrate: isConnected ? 0.001 : 0, // Very low hashrate for text-based client
-        verified_shares: 0, // We are just a protocol client, unlikely to solve blocks
-        active_job: currentJob ? {
-            id: currentJob.id,
-            title: "Mining Job (Stratum V1)",
-            status: "RUNNING",
-            progress: 0, // Indefinite
+        gpu_temp: 60,
+        gpu_util: minerStatus === 'MINING' ? 100 : 0,
+        fan_speed: 50,
+        power_draw: 0,
+        vram_used: 0,
+        hashrate: telemetry.hashrate / 1000000,
+        verified_shares: netShares, // Net after fee
+        gross_shares: grossShares,
+        fee_deducted: feeDeducted,
+        fee_rate: feeRate * 100, // As percentage
+        user_tier: userTier,
+        active_job: minerStatus === 'MINING' ? {
+            id: 'xmrig-job',
+            title: `Mining ${config.algorithm || 'RandomX'}`,
+            status: 'RUNNING',
+            progress: 0
         } : null,
         wallet: config.wallet,
-        status: isConnected ? (isAuthorized ? 'MINING' : 'CONNECTING') : 'OFFLINE',
+        platform_wallet: PLATFORM_WALLET,
+        status: minerStatus,
         logs: recentLogs
     });
 });
 
-app.get('/stats', (req, res) => {
-    res.json({
-        activeNodes: 1,
-        totalTflops: 0.01,
-        jobsRunning: isConnected ? 1 : 0,
-        networkUtilization: isConnected ? 100 : 0,
-        avgPricePerFLOP: 0.002
-    });
-});
-
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password } = req.body;
+    const { wallet, poolUrl, password, tier } = req.body;
     let changed = false;
 
     if (wallet && wallet !== config.wallet) {
         config.wallet = wallet;
-        addLog(`Configuration Update: Wallet -> ${wallet}`);
         changed = true;
     }
     if (poolUrl && poolUrl !== config.poolUrl) {
         config.poolUrl = poolUrl;
-        addLog(`Configuration Update: Pool -> ${poolUrl}`);
         changed = true;
+    }
+    if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
+        userTier = tier;
+        addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);
     }
 
     if (changed) {
         addLog('🔄 Restarting miner with new config...');
-        startMining();
+        startMiner();
     }
-
     res.json({ success: true });
 });
 
+// --- AUTO-SWITCH ---
+let autoSwitchEnabled = false;
+let autoSwitchInterval = null;
+let currentCoin = 'XMR';
+
+// Simplified coin->pool mapping
+const COIN_POOLS = {
+    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    RVN: 'stratum+tcp://rvn.2miners.com:6060',
+    ETC: 'stratum+tcp://etc.2miners.com:1010',
+    ERG: 'stratum+tcp://erg.2miners.com:8888',
+    KAS: 'stratum+tcp://kas.2miners.com:4040'
+};
+
+app.post('/auto-switch', (req, res) => {
+    const { enabled } = req.body;
+
+    if (enabled && !autoSwitchEnabled) {
+        autoSwitchEnabled = true;
+        addLog('🔄 Auto-Profit Switching ENABLED');
+
+        // Check profitability every 5 minutes
+        autoSwitchInterval = setInterval(async () => {
+            try {
+                // Fetch profitability from frontend service (simplified for agent)
+                // In production, this would call an API or use embedded logic
+                addLog('📊 Checking profitability...');
+                // For now, just log - actual switching handled by frontend
+            } catch (e) {
+                addLog(`Auto-switch error: ${e.message}`);
+            }
+        }, 5 * 60 * 1000);
+
+    } else if (!enabled && autoSwitchEnabled) {
+        autoSwitchEnabled = false;
+        if (autoSwitchInterval) {
+            clearInterval(autoSwitchInterval);
+            autoSwitchInterval = null;
+        }
+        addLog('⏸️ Auto-Profit Switching DISABLED');
+    }
+
+    res.json({ success: true, autoSwitchEnabled });
+});
+
+app.post('/switch-coin', (req, res) => {
+    const { coin } = req.body;
+
+    if (!COIN_POOLS[coin]) {
+        return res.status(400).json({ error: 'Unknown coin' });
+    }
+
+    currentCoin = coin;
+    config.poolUrl = COIN_POOLS[coin];
+    addLog(`💱 Switching to ${coin}...`);
+    startMiner();
+
+    res.json({ success: true, coin });
+});
+
+app.get('/auto-switch', (req, res) => {
+    res.json({ enabled: autoSwitchEnabled, currentCoin });
+});
+
 app.listen(PORT, () => {
-    console.log(`Real Stratum Client running on http://localhost:${PORT}`);
+    console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
 });
