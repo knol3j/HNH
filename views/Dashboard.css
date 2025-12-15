@@ -1,0 +1,42 @@
+.tooltip-item {
+    color: var(--tooltip-color);
+}
+
+.mining-bar {
+    height: var(--mining-height);
+    background-color: #4b5563;
+    /* gray-600 */
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    transition: all 0.5s;
+}
+
+.mining-bar:hover {
+    background-color: #6b7280;
+    /* gray-500 */
+}
+
+.compute-bar {
+    height: var(--compute-height);
+    background-color: #10b981;
+    /* primary (emerald-500) */
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    transition: all 0.5s;
+    position: relative;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.compute-bar:hover {
+    background-color: #34d399;
+    /* primary-hover */
+}
+
+.job-progress-bar {
+    width: var(--job-width);
+    background-color: #10b981;
+    /* primary */
+    height: 0.25rem;
+    /* h-1 */
+    transition: all 0.5s;
+}

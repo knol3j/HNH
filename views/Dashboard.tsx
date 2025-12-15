@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { NetworkStats } from '../types';
 import { Activity, Server, Zap, Cpu, HardDrive, Terminal, Calculator, ArrowRight, TrendingUp, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import './Dashboard.css';
 
 interface DashboardProps {
   stats: NetworkStats;
@@ -15,7 +16,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="bg-surface border border-white/10 p-3 rounded-lg shadow-xl backdrop-blur-md">
         <p className="text-muted text-xs mb-1">{label}</p>
         {payload.map((p: any) => (
-          <p key={p.name} style={{ color: p.color }} className="font-bold text-sm">
+          // eslint-disable-next-line react/forbid-dom-props, react/style-prop-object
+          <p key={p.name} className="font-bold text-sm tooltip-item" style={{ '--tooltip-color': p.color } as React.CSSProperties}>
             {p.name}: ${p.value.toFixed(2)}
           </p>
         ))}
@@ -295,15 +297,17 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
             <div className="relative h-48 flex items-end justify-around pb-6 border-b border-white/10">
               <div className="w-16 flex flex-col justify-end group">
                 <div
-                  className="bg-gray-600 rounded-t-lg transition-all duration-500 group-hover:bg-gray-500 min-h-[10px]"
-                  style={{ height: `${(estimates.mining / 3) * 100}%` }}
+                  className="rounded-t-lg transition-all duration-500 group-hover:bg-gray-500 min-h-[10px] mining-bar"
+                  // eslint-disable-next-line react/forbid-dom-props
+                  style={{ '--mining-height': `${(estimates.mining / 3) * 100}%` } as React.CSSProperties}
                 ></div>
                 <span className="text-xs text-center mt-2 text-muted">Mining</span>
               </div>
               <div className="w-16 flex flex-col justify-end group">
                 <div
-                  className="bg-primary rounded-t-lg transition-all duration-500 relative group-hover:bg-primary-hover shadow-[0_0_15px_rgba(16,185,129,0.4)] min-h-[10px]"
-                  style={{ height: `${(estimates.ai / 3) * 100}%` }}
+                  className="rounded-t-lg transition-all duration-500 relative group-hover:bg-primary-hover shadow-[0_0_15px_rgba(16,185,129,0.4)] min-h-[10px] compute-bar"
+                  // eslint-disable-next-line react/forbid-dom-props
+                  style={{ '--compute-height': `${(estimates.ai / 3) * 100}%` } as React.CSSProperties}
                 >
                   {isAiProfitable && (
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded">
@@ -336,7 +340,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
                     <span className="text-[10px] bg-primary/20 text-primary px-2 py-1 rounded font-bold">{job.status}</span>
                   </div>
                   <div className="w-full bg-gray-700 h-1 rounded-full overflow-hidden">
-                    <div className="bg-primary h-1 transition-all duration-500" style={{ width: `${job.progress}%` }}></div>
+                    <div className="h-1 transition-all duration-500 job-progress-bar" style={{ '--job-width': `${job.progress}%` } as React.CSSProperties}></div>
                   </div>
                 </div>
               ))

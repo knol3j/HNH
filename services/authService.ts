@@ -85,3 +85,13 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
     } catch (e) { }
     return null;
 }
+
+export const getReferrals = async (referralCode: string): Promise<any[]> => {
+    // TODO: implement real backend call
+    return [];
+};
+
+export const updateUserTier = async (userId: string, tier: string): Promise<boolean> => {
+    // TODO: implement real backend call
+    return true;
+};

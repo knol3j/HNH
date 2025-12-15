@@ -1,3 +1,6 @@
+// Debugging: Print current JVM version
+println "Build is running on Java version: " + System.getProperty("java.version") + " from " + System.getProperty("java.home")
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {

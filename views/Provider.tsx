@@ -128,6 +128,7 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
 };
 
 import { getCurrentUser } from '../services/authService';
+import './Provider.css';
 
 const Provider: React.FC = () => {
   const currentUser = getCurrentUser();
@@ -593,7 +594,7 @@ const Provider: React.FC = () => {
             <span className="text-2xl font-bold text-white">{telemetry?.gpu_temp.toFixed(0) || '--'}°C</span>
             {telemetry && (
               <div className="w-full bg-gray-700 h-1.5 rounded-full mb-2">
-                <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${(telemetry.gpu_temp / 90) * 100}%` }}></div>
+                <div className="h-1.5 rounded-full temp-bar-fill" style={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` } as React.CSSProperties}></div>
               </div>
             )}
           </div>
