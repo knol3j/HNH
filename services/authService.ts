@@ -1,113 +1,87 @@
 
 import { User, UserCredentials } from '../types';
 
-const STORAGE_KEY_USERS = 'hnh_users';
-const STORAGE_KEY_SESSION = 'hnh_session';
-
-// Simple hash (for demo privacy, not strong security)
-const hashPassword = async (pwd: string): Promise<string> => {
-    const msgBuffer = new TextEncoder().encode(pwd);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
+// TODO: In production, this URL should come from env var (VITE_API_URL)
+const API_URL = 'http://localhost:8080'; // Default to local for dev, Railway URL for prod
 
 export const registerUser = async (creds: UserCredentials): Promise<User | null> => {
-    const usersStr = localStorage.getItem(STORAGE_KEY_USERS);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+    try {
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(creds)
+        });
 
-    if (users.find(u => u.username === creds.username)) {
-        return null; // Already exists
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        localStorage.setItem('hnh_token', data.token); // Store JWT
+        return data.user;
+    } catch (e) {
+        console.error("Register failed:", e);
+        return null;
     }
-
-    // Generate unique referral code
-    const referralCode = `HNH-${creds.username.toUpperCase().substring(0, 4)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-
-    // Find referrer if code provided
-    let referredBy: string | undefined;
-    if (creds.referralCode) {
-        const referrer = users.find(u => u.referralCode === creds.referralCode);
-        if (referrer) {
-            referredBy = creds.referralCode;
-        }
-    }
-
-    const newUser: User = {
-        id: crypto.randomUUID(),
-        username: creds.username,
-        passwordHash: await hashPassword(creds.password),
-        createdAt: Date.now(),
-        tier: 'free',
-        referralCode,
-        referredBy,
-        referralBonus: 0
-    };
-
-    users.push(newUser);
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-
-    // Auto-login the new user
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(newUser));
-    return newUser;
 };
 
 export const loginUser = async (creds: UserCredentials): Promise<User | null> => {
-    const usersStr = localStorage.getItem(STORAGE_KEY_USERS);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+    try {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(creds)
+        });
 
-    const hash = await hashPassword(creds.password);
-    const user = users.find(u => u.username === creds.username && u.passwordHash === hash);
+        if (!res.ok) throw new Error(await res.text());
 
-    if (user) {
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(user));
-        return user;
+        const data = await res.json();
+        localStorage.setItem('hnh_token', data.token);
+        return data.user;
+    } catch (e) {
+        console.error("Login failed:", e);
+        return null;
     }
-    return null;
 };
 
 export const logoutUser = () => {
-    localStorage.removeItem(STORAGE_KEY_SESSION);
+    localStorage.removeItem('hnh_token');
+    // window.location.reload(); // Optional: reset state
 };
 
 export const getCurrentUser = (): User | null => {
-    const sessionStr = localStorage.getItem(STORAGE_KEY_SESSION);
-    return sessionStr ? JSON.parse(sessionStr) : null;
+    // With JWT, we can't fully know user details without decoding or fetching profile.
+    // For sync checks, we check token existence.
+    // Ideally we should use a React Context/Hook for async auth state.
+    // This function signature is synchronous which is tricky for async backend.
+
+    // TEMPORARY ADAPTER: Return minimal user if token exists to satisfy TS
+    const token = localStorage.getItem('hnh_token');
+    if (!token) return null;
+
+    // In a real app we 'decode' the token here or return a cached user object
+    return {
+        id: 'session',
+        username: 'User',
+        tier: 'free',
+        createdAt: 0,
+        passwordHash: '',
+        referralCode: '',
+        referralBonus: 0
+    };
 };
 
-// Update user tier
-export const updateUserTier = (userId: string, newTier: User['tier']): boolean => {
-    const usersStr = localStorage.getItem(STORAGE_KEY_USERS);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+// Async version recommended for real backend
+export const fetchCurrentUser = async (): Promise<User | null> => {
+    const token = localStorage.getItem('hnh_token');
+    if (!token) return null;
 
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) return false;
-
-    users[userIndex].tier = newTier;
-    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-
-    // Update session if current user
-    const session = getCurrentUser();
-    if (session?.id === userId) {
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(users[userIndex]));
-    }
-    return true;
-};
-
-// Add referral bonus to a user
-export const addReferralBonus = (referralCode: string, bonusAmount: number): void => {
-    const usersStr = localStorage.getItem(STORAGE_KEY_USERS);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-
-    const referrer = users.find(u => u.referralCode === referralCode);
-    if (referrer) {
-        referrer.referralBonus += bonusAmount;
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-    }
-};
-
-// Get all users referred by a specific code
-export const getReferrals = (referralCode: string): User[] => {
-    const usersStr = localStorage.getItem(STORAGE_KEY_USERS);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-    return users.filter(u => u.referredBy === referralCode);
-};
+    try {
+        const res = await fetch(`${API_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const user = await res.json();
+            return user;
+        }
+    } catch (e) { }
+    return null;
+}

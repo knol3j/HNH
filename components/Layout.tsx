@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from '../types';
-import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, Crown } from 'lucide-react';
+import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, Crown, Activity, Layers } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -128,6 +128,9 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
 
           <div className="mt-6 px-4 py-2 text-xs font-bold text-muted uppercase tracking-widest">Supply Side</div>
           <NavItem view="PROVIDER" icon={Zap} label="Host Node" badge="EARN" />
+          <NavItem view="WORKERS" icon={Server} label="Worker Manager" />
+          <NavItem view="ANALYTICS" icon={Activity} label="Analytics" />
+          <NavItem view="OVERCLOCK" icon={Layers} label="AI Tuner" badge="NEW" />
           <NavItem view="REFERRALS" icon={Users} label="Referrals" badge="$$$" />
           <NavItem view="UPGRADE" icon={Crown} label="Upgrade" badge="PRO" />
         </nav>

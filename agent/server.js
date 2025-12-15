@@ -23,14 +23,14 @@ const PLATFORM_FEE_TIERS = {
     pro: 0.01,       // 1%
     enterprise: 0.005 // 0.5%
 };
-const PLATFORM_WALLET = '48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzBY52XU6kl2p4JS17kk074db13V2_RX7k1A5u23c59525'; // Platform owner wallet
+const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- STATE ---
 let config = {
-    wallet: '48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzBY52XU6kl2p4JS17kk074db13V2_RX7k1A5u23c59525', // Default Monero wallet
-    poolUrl: 'stratum+tcp://xmr.2miners.com:2222',
+    wallet: 'Rqr113e2e3... (User Wallet)',
+    poolUrl: 'stratum+tcp://rvn.2miners.com:6060', // Default to Ravencoin (GPU)
     password: 'x',
-    algorithm: 'rx/0' // RandomX default
+    algorithm: 'kawpow' // Default to KawPow (GPU)
 };
 
 let minerProcess = null;
@@ -41,8 +41,9 @@ let feeShares = 0; // Shares owed to platform
 let userTier = 'free'; // Current user's tier
 let telemetry = {
     hashrate: 0,
-    temp: 60, // Fallback if not parsed
-    power: 0
+    temp: 0,
+    power: 0,
+    fan: 0
 };
 
 // --- PERSISTENCE ---
@@ -80,15 +81,27 @@ const startMiner = () => {
     addLog(`   User: ${config.wallet.substring(0, 8)}...`);
 
     // XMRig Args
+    // XMRig Args
     const args = [
         '-o', cleanUrl,
         '-u', config.wallet,
         '-p', config.password,
         '--no-color',
         '--api-worker-id', 'AntigravityAgent',
-        '--cpu-priority', '0',
+        '--http-port', '4444', // Enable HTTP API for telemetry
+        '--http-access-token', 'antigravity_secret',
+        '--http-no-restricted',
         '--donate-level', '1'
     ];
+
+    // Add Algorithm if specified (Critical for GPU switching)
+    if (config.algorithm) {
+        if (config.algorithm === 'kawpow' || config.algorithm === 'etchash') {
+            args.push('--cuda'); // Try to enable CUDA if available (user must have plugin)
+            args.push('--opencl'); // Try OpenCL
+        }
+        args.push('-a', config.algorithm);
+    }
 
     // Algorithm override if needed (XMRig auto-detects mostly)
     // if (config.algorithm) args.push('-a', config.algorithm);
@@ -129,33 +142,72 @@ const killMiner = () => {
     }
 };
 
+// --- TELEMETRY POLLING ---
+import http from 'http';
+
+const fetchXmrigStats = () => {
+    if (minerStatus !== 'MINING') return;
+
+    const options = {
+        hostname: '127.0.0.1',
+        port: 4444,
+        path: '/2/summary',
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer antigravity_secret'
+        }
+    };
+
+    const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+            try {
+                const stats = JSON.parse(data);
+
+                // Hashrate (Highest of all threads)
+                telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
+
+                // Hardware Stats (GPU/CPU)
+                // XMRig puts sensors in different places depending on backend
+                const health = stats.health || [];
+                if (health.length > 0) {
+                    // Average temp/power if multiple devices
+                    const avgTemp = health.reduce((acc, h) => acc + (h.temp || 0), 0) / health.length;
+                    const totalPower = health.reduce((acc, h) => acc + (h.power || 0), 0);
+                    const avgFan = health.reduce((acc, h) => acc + (h.fan || 0), 0) / health.length;
+
+                    telemetry.temp = avgTemp;
+                    telemetry.power = totalPower;
+                    telemetry.fan = avgFan;
+                }
+            } catch (e) { }
+        });
+    });
+
+    req.on('error', (e) => { /* Silent fail if miner busy/restarting */ });
+    req.end();
+};
+
+// Poll XMRig every 2 seconds
+setInterval(fetchXmrigStats, 2000);
+
 const handleMinerOutput = (rawLine) => {
     const lines = rawLine.split('\n');
     lines.forEach(line => {
         if (!line.trim()) return;
 
         // Passthrough Log (Filtered)
-        if (line.includes('accepted') || line.includes('speed') || line.includes('ready') || line.includes('error')) {
+        if (line.includes('accepted') || line.includes('ready') || line.includes('error') || line.includes('new job')) {
             addLog(line);
         }
 
         // PARSE: Accepted Share
-        // [2023-10-27 12:00:00.000]  cpu      accepted (1/0) diff 1000 (37 ms)
         if (line.includes('accepted')) {
             totalShares++;
-            // Calculate fee based on tier
             const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
-            feeShares += feeRate; // Accumulate fractional fee shares
+            feeShares += feeRate;
             saveStats();
-        }
-
-        // PARSE: Speed (Hashrate)
-        // [2023-10-27 12:00:00.000]  miner    speed 10s/60s/15m 1264.3 1264.3 1264.3 H/s max 1265.1 H/s
-        if (line.includes('speed')) {
-            const match = line.match(/(\d+\.\d+) H\/s/);
-            if (match && match[1]) {
-                telemetry.hashrate = parseFloat(match[1]); // H/s
-            }
         }
     });
 };
@@ -175,11 +227,11 @@ app.get('/telemetry', (req, res) => {
     const netShares = grossShares - feeDeducted;
 
     res.json({
-        gpu_temp: 60,
+        gpu_temp: telemetry.temp,
         gpu_util: minerStatus === 'MINING' ? 100 : 0,
-        fan_speed: 50,
-        power_draw: 0,
-        vram_used: 0,
+        fan_speed: telemetry.fan,
+        power_draw: telemetry.power,
+        vram_used: 0, // Need external tool for this usually
         hashrate: telemetry.hashrate / 1000000,
         verified_shares: netShares, // Net after fee
         gross_shares: grossShares,
@@ -231,10 +283,10 @@ let currentCoin = 'XMR';
 // Simplified coin->pool mapping
 const COIN_POOLS = {
     XMR: 'stratum+tcp://xmr.2miners.com:2222',
-    RVN: 'stratum+tcp://rvn.2miners.com:6060',
-    ETC: 'stratum+tcp://etc.2miners.com:1010',
-    ERG: 'stratum+tcp://erg.2miners.com:8888',
-    KAS: 'stratum+tcp://kas.2miners.com:4040'
+    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
+    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
+    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
+    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
 };
 
 app.post('/auto-switch', (req, res) => {

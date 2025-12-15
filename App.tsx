@@ -15,6 +15,9 @@ import Auth from './views/Auth';
 import Referrals from './views/Referrals';
 import Upgrade from './views/Upgrade';
 import Landing from './views/Landing';
+import Analytics from './views/Analytics';
+import Workers from './views/Workers';
+import Overclock from './views/Overclock';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -119,6 +122,15 @@ const App: React.FC = () => {
       )}
       {currentView === 'UPGRADE' && (
         <Upgrade />
+      )}
+      {currentView === 'ANALYTICS' && (
+        <Analytics />
+      )}
+      {currentView === 'WORKERS' && (
+        <Workers />
+      )}
+      {currentView === 'OVERCLOCK' && (
+        <Overclock />
       )}
     </Layout>
   );

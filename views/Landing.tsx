@@ -185,8 +185,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterApp }) => {
             <div className="max-w-7xl mx-auto px-6 py-8 flex justify-center">
                 <div className="w-full max-w-[728px] h-[90px] bg-white/5 border border-white/5 rounded-lg flex items-center justify-center text-muted text-xs">
                     {/* AdSense Unit */}
-                    <ins className="adsbygoogle"
-                        style={{ display: 'block' }}
+                    <ins className="adsbygoogle block"
                         data-ad-client="ca-pub-4626165154390205"
                         data-ad-slot="1234567890"
                         data-ad-format="auto"

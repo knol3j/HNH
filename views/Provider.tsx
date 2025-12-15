@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Algorithm } from '../types';
-import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink, Cpu } from 'lucide-react';
+import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink, Cpu, Download, Monitor, AlertCircle, PlayCircle } from 'lucide-react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 
 // --- Types & Interfaces ---
@@ -261,11 +261,29 @@ const Provider: React.FC = () => {
           signal: AbortSignal.timeout(500)
         });
 
+
         if (response.ok) {
           const realStats = await response.json();
           setTelemetry(realStats);
           if (realStats.logs) {
             setServerLogs(realStats.logs);
+          }
+
+          // ALSO: Report this telemetry to our Backend API (Cloud Sync)
+          // This allows the dashboard to see this worker even if it's running on another machine
+          const token = localStorage.getItem('hnh_token');
+          if (token && realStats.hashrate > 0) {
+            fetch('http://localhost:8080/miner/telemetry', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({
+                userId: 'session', // In real app, JWT handles user ID extraction
+                workerName: config.workerName || 'HNH-Worker',
+                hashrate: realStats.hashrate,
+                temp: realStats.gpu_temp,
+                power: realStats.power_draw
+              })
+            }).catch(() => { });
           }
 
           if (!agentConnected) {
@@ -527,8 +545,8 @@ const Provider: React.FC = () => {
             <div className="flex-1 overflow-hidden">
               <p className="text-xs font-bold uppercase text-muted">Mining Mode</p>
               <div className="flex justify-between items-center">
-                <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-blue-500'}`}>
-                  {agentConnected ? 'GPU (AGENT)' : 'CPU (BROWSER)'}
+                <p className={`font-bold ${agentConnected ? 'text-green-500' : 'text-amber-500'}`}>
+                  {agentConnected ? 'GPU (NATIVE)' : 'CPU (BROWSER)'}
                 </p>
               </div>
 
@@ -575,7 +593,7 @@ const Provider: React.FC = () => {
             <span className="text-2xl font-bold text-white">{telemetry?.gpu_temp.toFixed(0) || '--'}°C</span>
             {telemetry && (
               <div className="w-full bg-gray-700 h-1.5 rounded-full mb-2">
-                <div className="bg-orange-500 h-1.5 rounded-full w-[var(--temp-width)]" style={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` } as React.CSSProperties}></div>
+                <div className="bg-orange-500 h-1.5 rounded-full" style={{ width: `${(telemetry.gpu_temp / 90) * 100}%` }}></div>
               </div>
             )}
           </div>
@@ -589,6 +607,7 @@ const Provider: React.FC = () => {
         <div className="p-4 bg-surface border border-white/10 rounded-xl">
           <p className="text-xs font-bold uppercase text-muted mb-1">Real Hashrate</p>
           <span className="text-2xl font-bold text-primary">{telemetry?.hashrate.toFixed(2) || '--'} MH/s</span>
+          {!agentConnected && <span className="text-[10px] text-amber-500 block">Low Efficiency (PoC)</span>}
         </div>
       </div>
 
@@ -787,6 +806,47 @@ const Provider: React.FC = () => {
                     placeholder="0.12"
                     className="bg-black/20 text-white w-full focus:outline-none font-mono text-sm p-2 rounded border border-white/10"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Native Miner Setup */}
+          {!agentConnected && (
+            <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-20">
+                <Monitor size={100} />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Download className="text-primary" /> Install Native Miner
+              </h4>
+              <p className="text-sm text-gray-300 mb-4">
+                Browser mining is only a <b>Proof of Concept</b>. For realistic profits, deploy the native agent to unlock full GPU power.
+              </p>
+
+              <div className="space-y-3">
+                <div className="group relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+                  <div className="relative bg-black rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-white flex items-center gap-2"><Terminal size={12} /> Linux / MacOS</span>
+                    </div>
+                    <code className="block text-[10px] font-mono text-green-400 bg-white/5 p-2 rounded break-all select-all cursor-pointer hover:bg-white/10" onClick={() => navigator.clipboard.writeText('curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh')}>
+                      curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh
+                    </code>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-white flex items-center gap-2"><Monitor size={12} /> Windows (PowerShell)</span>
+                    <a href="/agent/setup_miner_windows.ps1" download className="text-[10px] bg-primary/20 hover:bg-primary/30 text-primary px-2 py-1 rounded flex items-center gap-1">
+                      <Download size={10} /> Download Script
+                    </a>
+                  </div>
+                  <p className="text-[10px] text-muted mt-1">
+                    Download <span className="text-white font-mono">setup_miner_windows.ps1</span>, right-click, select "Run with PowerShell".
+                  </p>
                 </div>
               </div>
             </div>

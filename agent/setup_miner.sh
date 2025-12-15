@@ -18,5 +18,14 @@ tar -xzf "$BIN_DIR/$ARCHIVE_NAME" -C "$BIN_DIR" --strip-components=1
 # Cleanup
 rm "$BIN_DIR/$ARCHIVE_NAME"
 
+
+# Install dependencies
+echo "Installing Agent dependencies..."
+npm install
+
 echo "✅ XMRig installed to $BIN_DIR/xmrig"
+echo "✅ Agent dependencies installed."
+echo ""
+echo "To start the miner agent:"
+echo "  node server.js"
 chmod +x "$BIN_DIR/xmrig"

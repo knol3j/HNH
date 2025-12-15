@@ -79,7 +79,10 @@ export type View =
   | 'WHITE_LABEL'
   | 'REFERRALS'
   | 'UPGRADE'
-  | 'LANDING';
+  | 'LANDING'
+  | 'ANALYTICS'
+  | 'WORKERS'
+  | 'OVERCLOCK';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
