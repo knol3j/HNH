@@ -262,7 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
               <label className="text-sm text-muted uppercase font-bold">Hardware Model</label>
               <select
                 value={calcGpu}
-                onChange={(e) => setCalcGpu(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCalcGpu(e.target.value)}
                 aria-label="Select Hardware Model"
                 title="Select GPU hardware model for profitability estimation"
                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:outline-none"
@@ -340,6 +340,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
                     <span className="text-[10px] bg-primary/20 text-primary px-2 py-1 rounded font-bold">{job.status}</span>
                   </div>
                   <div className="w-full bg-gray-700 h-1 rounded-full overflow-hidden">
+                    // eslint-disable-next-line react/forbid-dom-props
                     <div className="h-1 transition-all duration-500 job-progress-bar" style={{ '--job-width': `${job.progress}%` } as React.CSSProperties}></div>
                   </div>
                 </div>

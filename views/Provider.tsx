@@ -196,7 +196,7 @@ const Provider: React.FC = () => {
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setClientLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 50));
+    setClientLogs((prev: string[]) => [`[${timestamp}] ${msg}`, ...prev].slice(0, 50));
   };
 
 
@@ -557,7 +557,7 @@ const Provider: React.FC = () => {
                 <input
                   type="text"
                   value={agentUrl}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setAgentUrl(e.target.value);
                     localStorage.setItem(`hnh_agent_url_${userId}`, e.target.value);
                   }}
@@ -594,6 +594,7 @@ const Provider: React.FC = () => {
             <span className="text-2xl font-bold text-white">{telemetry?.gpu_temp.toFixed(0) || '--'}°C</span>
             {telemetry && (
               <div className="w-full bg-gray-700 h-1.5 rounded-full mb-2">
+                // eslint-disable-next-line react/forbid-dom-props
                 <div className="h-1.5 rounded-full temp-bar-fill" style={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` } as React.CSSProperties}></div>
               </div>
             )}
@@ -755,7 +756,7 @@ const Provider: React.FC = () => {
               <Settings size={14} /> Auto-Switch Priorities
             </h4>
             <div className="space-y-2">
-              {algoPriorities.map((algo, idx) => (
+              {algoPriorities.map((algo: AlgoConfig, idx: number) => (
                 <div key={algo.name} className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5">
                   <div className="flex items-center gap-3">
                     <button onClick={() => toggleAlgo(algo.name)}>
