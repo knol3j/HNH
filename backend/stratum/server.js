@@ -4,6 +4,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
 
+import crypto from 'crypto';
 const { Pool } = pg;
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -36,10 +37,36 @@ const server = net.createServer((minerSocket) => {
 
                 // Capture Login to associate Socket with User
                 if (msg.method === 'login' || msg.method === 'submitLogin') {
-                    // Wallet address might be passed here.
-                    // For HNH, we expect "username" or "wallet" in the login param
-                    // msg.params.login
-                    // We need to parse this to map to our DB User
+                    // XMRig often sends { login: "wallet", pass: "x" } or ["wallet", "pass"]
+                    let login = null;
+                    if (msg.params && msg.params.login) {
+                        login = msg.params.login;
+                    } else if (Array.isArray(msg.params) && msg.params.length > 0) {
+                        login = msg.params[0];
+                    }
+
+                    if (login) {
+                        // Login might be "username" or "username.worker"
+                        const parts = login.split('.');
+                        const username = parts[0];
+                        const workerName = parts[1] || 'default';
+
+                        try {
+                            // Find User
+                            console.log(`[PROXY] miner login: ${username}`);
+                            const userRes = await pool.query('SELECT id FROM "User" WHERE username = $1', [username]);
+
+                            if (userRes.rows.length > 0) {
+                                currentUserId = userRes.rows[0].id;
+                                currentWorkerName = workerName;
+                                console.log(`[PROXY] Identified user ${username} (ID: ${currentUserId})`);
+                            } else {
+                                console.log(`[PROXY] User ${username} not found in DB`);
+                            }
+                        } catch (err) {
+                            console.error('[PROXY] Login lookup error:', err);
+                        }
+                    }
                 }
 
                 upstreamSocket.write(line + '\n');
@@ -65,12 +92,19 @@ const server = net.createServer((minerSocket) => {
                     console.log(`[PROXY] Share accepted for ${workerId}`);
 
                     // SAVE SHARE TO DB
-                    /*
-                    await pool.query(
-                        'INSERT INTO "Share" ("id", "workerId", "userId", "difficulty", "accepted") VALUES ($1, $2, $3, $4, $5)',
-                        [crypto.randomUUID(), workerId, userId, 1.0, true]
-                    );
-                    */
+                    try {
+                        // We need a userId to associate the share. 
+                        // For MVP without strict login, we might skip or use a default if not logged in.
+                        // Assuming login happened and we have currentUserId
+                        if (currentUserId) {
+                            await pool.query(
+                                'INSERT INTO "Share" ("id", "workerId", "userId", "difficulty", "accepted", "timestamp") VALUES ($1, $2, $3, $4, $5, NOW())',
+                                [crypto.randomUUID(), workerId, currentUserId, 1.0, true]
+                            );
+                        }
+                    } catch (dbErr) {
+                        console.error('[PROXY] DB Error:', dbErr);
+                    }
                 }
 
                 minerSocket.write(line + '\n');
