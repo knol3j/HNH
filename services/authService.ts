@@ -14,12 +14,16 @@ export const registerUser = async (creds: UserCredentials): Promise<{ user: User
         });
 
         if (!res.ok) {
-            let errorText = '';
+            // Read response as text first (can only be read once)
+            const responseText = await res.text();
+            let errorText = `HTTP ${res.status}`;
             try {
-                const errorData = await res.json();
-                errorText = errorData.error || `HTTP ${res.status}`;
+                // Try to parse as JSON
+                const errorData = JSON.parse(responseText);
+                errorText = errorData.error || errorText;
             } catch {
-                errorText = await res.text() || `HTTP ${res.status}`;
+                // If not JSON, use the text directly (could be HTML from reverse proxy, etc.)
+                errorText = responseText || errorText;
             }
             console.error(`[Auth] Registration failed with status ${res.status}:`, errorText);
             return { user: null, error: errorText };
@@ -52,12 +56,16 @@ export const loginUser = async (creds: UserCredentials): Promise<{ user: User | 
         });
 
         if (!res.ok) {
-            let errorText = '';
+            // Read response as text first (can only be read once)
+            const responseText = await res.text();
+            let errorText = `HTTP ${res.status}`;
             try {
-                const errorData = await res.json();
-                errorText = errorData.error || `HTTP ${res.status}`;
+                // Try to parse as JSON
+                const errorData = JSON.parse(responseText);
+                errorText = errorData.error || errorText;
             } catch {
-                errorText = await res.text() || `HTTP ${res.status}`;
+                // If not JSON, use the text directly (could be HTML from reverse proxy, etc.)
+                errorText = responseText || errorText;
             }
             console.error(`[Auth] Login failed with status ${res.status}:`, errorText);
             return { user: null, error: errorText };

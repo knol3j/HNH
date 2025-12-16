@@ -226,7 +226,7 @@ app.get('/status', (req, res) => {
         algorithm: config.algorithm,
         pool: config.poolUrl,
         wallet: config.wallet.substring(0, 8) + '...',
-        hashrate: telemetry.hashrate,
+        hashrate: telemetry.hashrate / 1000000, // Convert to MH/s for consistency with /telemetry and /stats
         shares: totalShares,
         logs: recentLogs.slice(0, 10)
     });
@@ -311,7 +311,7 @@ app.post('/config', (req, res) => {
         const isGpu = algoLower === 'kawpow' || algoLower === 'etchash' || algoLower === 'autolykos2';
         addLog(`⚙️ Algorithm updated: ${algorithm} (${isGpu ? 'GPU' : 'CPU'})`);
     }
-    if (password !== undefined) {
+    if (password !== undefined && password !== config.password) {
         config.password = password;
         changed = true;
     }
