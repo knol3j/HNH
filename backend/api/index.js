@@ -11,7 +11,24 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
-app.use(cors());
+// CORS configuration - allow all origins with credentials
+// When credentials are enabled, we must use a function to validate origins (can't use wildcard '*')
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // In production, you can restrict to specific frontend domains:
+        // const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+        // if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+        //     return callback(new Error('Not allowed by CORS'));
+        // }
+        
+        // For now, allow all origins (needed for Railway deployment flexibility)
+        callback(null, true);
+    },
+    credentials: true
+}));
 app.use(express.json());
 
 // --- AUTH MIDDLEWARE ---
@@ -127,6 +144,22 @@ app.post('/miner/telemetry', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Backend API running on port ${PORT}`);
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'hnh-api' });
+});
+
+// Test database connection on startup
+prisma.$connect()
+    .then(() => {
+        console.log('✅ Database connection successful');
+    })
+    .catch((err) => {
+        console.error('❌ Database connection failed:', err.message);
+    });
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Backend API running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Database URL: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`);
 });

@@ -1,5 +1,6 @@
 
 import net from 'net';
+import http from 'http';
 import pg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -86,6 +87,24 @@ const server = net.createServer((minerSocket) => {
     upstreamSocket.on('close', () => { minerSocket.destroy(); });
 });
 
+// Health check endpoint for Railway (HTTP server for health checks)
+const healthServer = http.createServer((req, res) => {
+    if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', service: 'hnh-stratum-proxy', port: PROXY_PORT }));
+    } else {
+        res.writeHead(404);
+        res.end('Not Found');
+    }
+});
+
+const HEALTH_PORT = process.env.HEALTH_PORT || 3334;
+healthServer.listen(HEALTH_PORT, () => {
+    console.log(`Health check server listening on port ${HEALTH_PORT}`);
+});
+
 server.listen(PROXY_PORT, () => {
     console.log(`Stratum Proxy listening on port ${PROXY_PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
 });

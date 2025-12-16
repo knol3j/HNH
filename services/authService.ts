@@ -1,44 +1,82 @@
 
 import { User, UserCredentials } from '../types';
 
-// TODO: In production, this URL should come from env var (VITE_API_URL)
-const API_URL = 'http://localhost:8080'; // Default to local for dev, Railway URL for prod
+// Railway backend URL - uses VITE_API_URL in production, localhost for dev
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-export const registerUser = async (creds: UserCredentials): Promise<User | null> => {
+export const registerUser = async (creds: UserCredentials): Promise<{ user: User | null; error: string | null }> => {
     try {
+        console.log(`[Auth] Attempting registration to: ${API_URL}/auth/register`);
         const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(creds)
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            let errorText = '';
+            try {
+                const errorData = await res.json();
+                errorText = errorData.error || `HTTP ${res.status}`;
+            } catch {
+                errorText = await res.text() || `HTTP ${res.status}`;
+            }
+            console.error(`[Auth] Registration failed with status ${res.status}:`, errorText);
+            return { user: null, error: errorText };
+        }
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token); // Store JWT
-        return data.user;
+        console.log('[Auth] Registration successful');
+        return { user: data.user, error: null };
     } catch (e) {
-        console.error("Register failed:", e);
-        return null;
+        console.error("[Auth] Registration error:", e);
+        let errorMessage = 'Registration failed';
+        if (e instanceof TypeError && e.message.includes('fetch')) {
+            errorMessage = `Cannot connect to backend at ${API_URL}. Please check your network connection and ensure VITE_API_URL is set correctly.`;
+            console.error(`[Auth] Network error - is the backend running at ${API_URL}?`);
+        } else if (e instanceof Error) {
+            errorMessage = e.message;
+        }
+        return { user: null, error: errorMessage };
     }
 };
 
-export const loginUser = async (creds: UserCredentials): Promise<User | null> => {
+export const loginUser = async (creds: UserCredentials): Promise<{ user: User | null; error: string | null }> => {
     try {
+        console.log(`[Auth] Attempting login to: ${API_URL}/auth/login`);
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(creds)
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            let errorText = '';
+            try {
+                const errorData = await res.json();
+                errorText = errorData.error || `HTTP ${res.status}`;
+            } catch {
+                errorText = await res.text() || `HTTP ${res.status}`;
+            }
+            console.error(`[Auth] Login failed with status ${res.status}:`, errorText);
+            return { user: null, error: errorText };
+        }
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token);
-        return data.user;
+        console.log('[Auth] Login successful');
+        return { user: data.user, error: null };
     } catch (e) {
-        console.error("Login failed:", e);
-        return null;
+        console.error("[Auth] Login error:", e);
+        let errorMessage = 'Login failed';
+        if (e instanceof TypeError && e.message.includes('fetch')) {
+            errorMessage = `Cannot connect to backend at ${API_URL}. Please check your network connection and ensure VITE_API_URL is set correctly.`;
+            console.error(`[Auth] Network error - is the backend running at ${API_URL}?`);
+        } else if (e instanceof Error) {
+            errorMessage = e.message;
+        }
+        return { user: null, error: errorMessage };
     }
 };
 

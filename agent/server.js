@@ -220,6 +220,44 @@ if (fs.existsSync(MINER_BIN)) {
 }
 
 // --- API ---
+app.get('/status', (req, res) => {
+    res.json({
+        status: minerStatus,
+        algorithm: config.algorithm,
+        pool: config.poolUrl,
+        wallet: config.wallet.substring(0, 8) + '...',
+        hashrate: telemetry.hashrate,
+        shares: totalShares,
+        logs: recentLogs.slice(0, 10)
+    });
+});
+
+app.get('/stats', (req, res) => {
+    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+    const grossShares = totalShares;
+    const feeDeducted = feeShares;
+    const netShares = grossShares - feeDeducted;
+    
+    // Calculate approximate TFLOPS from hashrate (very rough estimate)
+    // Hashrate is in H/s, GPU mining typically ranges from 1-100 MH/s
+    // 1 MH/s ≈ 0.001 TFLOPS (rough approximation for KawPow/Etchash)
+    const estimatedTflops = telemetry.hashrate > 0 ? (telemetry.hashrate / 1000000) * 0.001 : 0;
+
+    res.json({
+        activeNodes: minerStatus === 'MINING' ? 1 : 0,
+        totalTflops: estimatedTflops,
+        jobsRunning: minerStatus === 'MINING' ? 1 : 0,
+        networkUtilization: minerStatus === 'MINING' ? 100 : 0,
+        avgPricePerFLOP: feeRate, // Using fee rate as price indicator
+        shares: {
+            gross: grossShares,
+            net: netShares,
+            feeDeducted: feeDeducted,
+            feeRate: feeRate
+        }
+    });
+});
+
 app.get('/telemetry', (req, res) => {
     const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
     const grossShares = totalShares;
@@ -252,15 +290,29 @@ app.get('/telemetry', (req, res) => {
 });
 
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password, tier } = req.body;
+    const { wallet, poolUrl, password, algorithm, tier } = req.body;
     let changed = false;
 
     if (wallet && wallet !== config.wallet) {
         config.wallet = wallet;
         changed = true;
+        addLog(`💰 Wallet updated: ${wallet.substring(0, 8)}...`);
     }
     if (poolUrl && poolUrl !== config.poolUrl) {
         config.poolUrl = poolUrl;
+        changed = true;
+        addLog(`🌐 Pool updated: ${poolUrl}`);
+    }
+    if (algorithm && algorithm !== config.algorithm) {
+        config.algorithm = algorithm.toLowerCase();
+        changed = true;
+        // Use normalized config.algorithm for GPU/CPU classification
+        const algoLower = config.algorithm;
+        const isGpu = algoLower === 'kawpow' || algoLower === 'etchash' || algoLower === 'autolykos2';
+        addLog(`⚙️ Algorithm updated: ${algorithm} (${isGpu ? 'GPU' : 'CPU'})`);
+    }
+    if (password !== undefined) {
+        config.password = password;
         changed = true;
     }
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
@@ -272,7 +324,7 @@ app.post('/config', (req, res) => {
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
-    res.json({ success: true });
+    res.json({ success: true, config });
 });
 
 // --- AUTO-SWITCH ---

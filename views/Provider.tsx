@@ -127,7 +127,7 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
   }
 };
 
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser, API_URL } from '../services/authService';
 
 const Provider: React.FC = () => {
   const currentUser = getCurrentUser();
@@ -149,7 +149,7 @@ const Provider: React.FC = () => {
   // User Configurable Settings
   const [powerCost, setPowerCost] = useState<number>(0.12); // $/kWh
   const [minProfitThreshold, setMinProfitThreshold] = useState<number>(0.50); // Min $ profit to mine
-  const [selectedCoin, setSelectedCoin] = useState<CoinSymbol>('XMR');
+  const [selectedCoin, setSelectedCoin] = useState<CoinSymbol>('RVN'); // Default to GPU mining (Ravencoin)
 
   // Wallet Persistence
   const [savedWallets, setSavedWallets] = useState<Record<string, string>>(() => {
@@ -164,11 +164,12 @@ const Provider: React.FC = () => {
   const [activePoolUrl, setActivePoolUrl] = useState(COIN_CATALOG['RVN'].defaultPools[0]);
 
   // Algorithm Priorities (Order matters for Auto-Switching)
+  // GPU algorithms first (KawPow, Etchash) for better performance
   const [algoPriorities, setAlgoPriorities] = useState<AlgoConfig[]>([
-    { name: 'Etchash', enabled: true },
-    { name: 'KawPow', enabled: true },
-    { name: 'RandomX', enabled: true },
-    { name: 'Autolykos2', enabled: true }
+    { name: 'KawPow', enabled: true },      // GPU - Ravencoin, Kaspa
+    { name: 'Etchash', enabled: true },     // GPU - Ethereum Classic
+    { name: 'Autolykos2', enabled: true },  // GPU - Ergo
+    { name: 'RandomX', enabled: false }     // CPU - Monero (disabled by default)
   ]);
 
   // Real Data State
@@ -273,7 +274,7 @@ const Provider: React.FC = () => {
           // This allows the dashboard to see this worker even if it's running on another machine
           const token = localStorage.getItem('hnh_token');
           if (token && realStats.hashrate > 0) {
-            fetch('http://localhost:8080/miner/telemetry', {
+            fetch(`${API_URL}/miner/telemetry`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({
@@ -283,7 +284,9 @@ const Provider: React.FC = () => {
                 temp: realStats.gpu_temp,
                 power: realStats.power_draw
               })
-            }).catch(() => { });
+            }).catch((err) => {
+              console.warn('[Provider] Failed to sync telemetry to backend:', err);
+            });
           }
 
           if (!agentConnected) {

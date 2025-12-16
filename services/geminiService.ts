@@ -2,8 +2,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ComputeNode, JobSpec } from "../types";
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key not found");
+  // Vite replaces process.env.API_KEY at build time via vite.config.ts define
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("Gemini API Key not found. AI features will be disabled.");
+    throw new Error("API Key not found");
+  }
   return new GoogleGenAI({ apiKey });
 };
 
