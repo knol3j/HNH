@@ -14,6 +14,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok', database: 'connected' });
+    } catch (e) {
+        res.status(500).json({ status: 'error', database: 'disconnected', error: e.message });
+    }
+});
+
 // --- AUTH MIDDLEWARE ---
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -34,8 +44,17 @@ app.post('/auth/register', async (req, res) => {
     const { username, password, referralCode } = req.body;
 
     try {
+        console.log(`[REGISTER] Attempting to register user: ${username}`);
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
         const existing = await prisma.user.findUnique({ where: { username } });
-        if (existing) return res.status(400).json({ error: 'Username taken' });
+        if (existing) {
+            console.log(`[REGISTER] Username already taken: ${username}`);
+            return res.status(400).json({ error: 'Username taken' });
+        }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const myReferralCode = `HNH-${username.substring(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -50,9 +69,11 @@ app.post('/auth/register', async (req, res) => {
         });
 
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        console.log(`[REGISTER] Successfully registered user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier } });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error('[REGISTER] Error:', e);
+        res.status(500).json({ error: e.message, details: process.env.NODE_ENV === 'development' ? e.stack : undefined });
     }
 });
 
@@ -61,16 +82,30 @@ app.post('/auth/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
+        console.log(`[LOGIN] Attempting login for user: ${username}`);
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
         const user = await prisma.user.findUnique({ where: { username } });
-        if (!user) return res.status(400).json({ error: 'User not found' });
+        if (!user) {
+            console.log(`[LOGIN] User not found: ${username}`);
+            return res.status(400).json({ error: 'User not found' });
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return res.status(400).json({ error: 'Invalid password' });
+        if (!valid) {
+            console.log(`[LOGIN] Invalid password for user: ${username}`);
+            return res.status(400).json({ error: 'Invalid password' });
+        }
 
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        console.log(`[LOGIN] Successfully logged in user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier } });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error('[LOGIN] Error:', e);
+        res.status(500).json({ error: e.message, details: process.env.NODE_ENV === 'development' ? e.stack : undefined });
     }
 });
 
@@ -127,6 +162,16 @@ app.post('/miner/telemetry', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Backend API running on port ${PORT}`);
-});
+// Test database connection on startup
+prisma.$connect()
+    .then(() => {
+        console.log('Database connected successfully');
+        app.listen(PORT, () => {
+            console.log(`Backend API running on port ${PORT}`);
+        });
+    })
+    .catch((e) => {
+        console.error('Failed to connect to database:', e.message);
+        console.error('Make sure DATABASE_URL is set correctly and the database is running');
+        process.exit(1);
+    });

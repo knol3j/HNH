@@ -14,6 +14,9 @@
     },
     "scripts": {
         "start": "node index.js",
-        "build": "prisma generate"
+        "build": "prisma generate",
+        "migrate": "prisma migrate deploy",
+        "migrate:dev": "prisma migrate dev",
+        "db:push": "prisma db push"
     }
 }

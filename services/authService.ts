@@ -13,14 +13,23 @@ export const registerUser = async (creds: UserCredentials): Promise<User | null>
             body: JSON.stringify(creds)
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            const errorText = await res.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { error: errorText };
+            }
+            throw new Error(errorData.error || 'Registration failed');
+        }
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token); // Store JWT
         return data.user;
     } catch (e) {
         console.error("Register failed:", e);
-        return null;
+        throw e; // Re-throw to allow error handling in UI
     }
 };
 
@@ -32,14 +41,23 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
             body: JSON.stringify(creds)
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            const errorText = await res.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { error: errorText };
+            }
+            throw new Error(errorData.error || 'Login failed');
+        }
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token);
         return data.user;
     } catch (e) {
         console.error("Login failed:", e);
-        return null;
+        throw e; // Re-throw to allow error handling in UI
     }
 };
 

@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Algorithm } from '../types';
+import './Provider.css';
 import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink, Cpu, Download, Monitor, AlertCircle, PlayCircle } from 'lucide-react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -31,6 +31,7 @@ interface HardwareTelemetry {
   vram_used: number;
   hashrate: number;
   logs?: string[];
+  verified_shares?: number;
 }
 
 interface PoolConfig {
@@ -128,7 +129,7 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
 };
 
 import { getCurrentUser } from '../services/authService';
-import './Provider.css';
+
 
 const Provider: React.FC = () => {
   const currentUser = getCurrentUser();
@@ -594,7 +595,6 @@ const Provider: React.FC = () => {
             <span className="text-2xl font-bold text-white">{telemetry?.gpu_temp.toFixed(0) || '--'}°C</span>
             {telemetry && (
               <div className="w-full bg-gray-700 h-1.5 rounded-full mb-2">
-                // eslint-disable-next-line react/forbid-dom-props
                 <div className="h-1.5 rounded-full temp-bar-fill" style={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` } as React.CSSProperties}></div>
               </div>
             )}

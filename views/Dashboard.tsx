@@ -1,8 +1,26 @@
-
 import React, { useState, useEffect } from 'react';
 import { NetworkStats } from '../types';
-import { Activity, Server, Zap, Cpu, HardDrive, Terminal, Calculator, ArrowRight, TrendingUp, RefreshCw } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import {
+  Activity,
+  Calculator,
+  Cpu,
+  HardDrive,
+  RefreshCw,
+  Server,
+  TrendingUp,
+  Zap,
+  Terminal,
+  ArrowRight
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 import './Dashboard.css';
 
 interface DashboardProps {
@@ -17,6 +35,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-muted text-xs mb-1">{label}</p>
         {payload.map((p: any) => (
           // eslint-disable-next-line react/forbid-dom-props, react/style-prop-object
+          // eslint-disable-next-line react/forbid-dom-props
           <p key={p.name} className="font-bold text-sm tooltip-item" style={{ '--tooltip-color': p.color } as React.CSSProperties}>
             {p.name}: ${p.value.toFixed(2)}
           </p>
@@ -298,6 +317,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
               <div className="w-16 flex flex-col justify-end group">
                 <div
                   className="rounded-t-lg transition-all duration-500 group-hover:bg-gray-500 min-h-[10px] mining-bar"
+                  // eslint-disable-next-line react/forbid-dom-props
                   // eslint-disable-next-line react/forbid-dom-props
                   style={{ '--mining-height': `${(estimates.mining / 3) * 100}%` } as React.CSSProperties}
                 ></div>

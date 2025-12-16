@@ -25,20 +25,20 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
         const creds: UserCredentials = { username, password };
 
-        if (isLogin) {
-            const user = await loginUser(creds);
-            if (user) {
-                onLogin(user);
+        try {
+            if (isLogin) {
+                const user = await loginUser(creds);
+                if (user) {
+                    onLogin(user);
+                }
             } else {
-                setError('Invalid credentials');
+                const user = await registerUser(creds);
+                if (user) {
+                    onLogin(user);
+                }
             }
-        } else {
-            const user = await registerUser(creds);
-            if (user) {
-                onLogin(user);
-            } else {
-                setError('Username already taken');
-            }
+        } catch (e: any) {
+            setError(e.message || (isLogin ? 'Invalid credentials' : 'Registration failed'));
         }
     };
 
