@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  passwordHash  String
+  tier          String   @default("free") // free, pro, enterprise
+  balance       Float    @default(0.0)
+  referralCode  String   @unique
+  referredBy    String?
+  referralBonus Float    @default(0.0)
+  createdAt     DateTime @default(now())
+  
+  workers       Worker[]
+  shares        Share[]
+  transactions  Transaction[]
+}
+
+model Worker {
+  id          String   @id @default(uuid())
+  name        String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  hashrate    Float    @default(0.0)
+  lastSeen    DateTime @default(now())
+  
+  shares      Share[]
+}
+
+model Share {
+  id        String   @id @default(uuid())
+  workerId  String
+  worker    Worker   @relation(fields: [workerId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  difficulty Float
+  accepted   Boolean @default(true)
+  timestamp  DateTime @default(now())
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  amount    Float
+  type      String   // MINING_PAYOUT, REFERRAL_BONUS, WITHDRAWAL
+  timestamp DateTime @default(now())
+}

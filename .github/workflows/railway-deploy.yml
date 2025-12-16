@@ -1,31 +1,30 @@
 name: Railway Deploy
 
 on:
-    push:
-        branches: [main]
-    workflow_dispatch:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    deploy-backend:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+  deploy-backend:
+    runs-on: ubuntu-latest
+    env:
+      # actionlint-disable-next-line
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Install Railway CLI
-              run: npm install -g @railway/cli
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
 
-            - name: Deploy API
-              run: railway up --service hnh-backend-api --detach
-              env:
-                  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-              continue-on-error: true
+      - name: Deploy API
+        run: railway up --service hnh-backend-api --detach
+        continue-on-error: true
 
-            - name: Deploy Stratum Proxy
-              run: railway up --service hnh-backend-stratum --detach
-              env:
-                  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-              continue-on-error: true
+      - name: Deploy Stratum Proxy
+        run: railway up --service hnh-backend-stratum --detach
+        continue-on-error: true

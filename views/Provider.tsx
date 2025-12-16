@@ -3,6 +3,7 @@ import { Algorithm } from '../types';
 import './Provider.css';
 import { Settings, Activity, Zap, Server, Wifi, Terminal, AlertTriangle, Plus, Trash2, Clock, CheckSquare, Square, Wallet, Copy, RefreshCw, ChevronDown, ExternalLink, Cpu, Download, Monitor, AlertCircle, PlayCircle } from 'lucide-react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import { DynamicDiv } from '../components/DynamicDiv';
 
 // --- Types & Interfaces ---
 
@@ -593,9 +594,10 @@ const Provider: React.FC = () => {
           <p className="text-xs font-bold uppercase text-muted mb-1">GPU Temp</p>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-bold text-white">{telemetry?.gpu_temp.toFixed(0) || '--'}°C</span>
+
             {telemetry && (
               <div className="w-full bg-gray-700 h-1.5 rounded-full mb-2">
-                <div className="h-1.5 rounded-full temp-bar-fill" style={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` } as React.CSSProperties}></div>
+                <DynamicDiv className="h-1.5 rounded-full temp-bar-fill" cssVars={{ '--temp-width': `${(telemetry.gpu_temp / 90) * 100}%` }}></DynamicDiv>
               </div>
             )}
           </div>

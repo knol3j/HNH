@@ -22,6 +22,7 @@ import {
   YAxis
 } from 'recharts';
 import './Dashboard.css';
+import { DynamicDiv } from '../components/DynamicDiv';
 
 interface DashboardProps {
   stats: NetworkStats;
@@ -33,12 +34,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-surface border border-white/10 p-3 rounded-lg shadow-xl backdrop-blur-md">
         <p className="text-muted text-xs mb-1">{label}</p>
+
         {payload.map((p: any) => (
-          // eslint-disable-next-line react/forbid-dom-props, react/style-prop-object
-          // eslint-disable-next-line react/forbid-dom-props
-          <p key={p.name} className="font-bold text-sm tooltip-item" style={{ '--tooltip-color': p.color } as React.CSSProperties}>
+          <DynamicDiv
+            key={p.name}
+            className="font-bold text-sm tooltip-item"
+            cssVars={{ '--tooltip-color': p.color }}
+          >
             {p.name}: ${p.value.toFixed(2)}
-          </p>
+          </DynamicDiv>
         ))}
       </div>
     );
@@ -315,26 +319,23 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
             {/* Visual Bar Chart */}
             <div className="relative h-48 flex items-end justify-around pb-6 border-b border-white/10">
               <div className="w-16 flex flex-col justify-end group">
-                <div
+                <DynamicDiv
                   className="rounded-t-lg transition-all duration-500 group-hover:bg-gray-500 min-h-[10px] mining-bar"
-                  // eslint-disable-next-line react/forbid-dom-props
-                  // eslint-disable-next-line react/forbid-dom-props
-                  style={{ '--mining-height': `${(estimates.mining / 3) * 100}%` } as React.CSSProperties}
-                ></div>
+                  cssVars={{ '--mining-height': `${(estimates.mining / 3) * 100}%` }}
+                ></DynamicDiv>
                 <span className="text-xs text-center mt-2 text-muted">Mining</span>
               </div>
               <div className="w-16 flex flex-col justify-end group">
-                <div
+                <DynamicDiv
                   className="rounded-t-lg transition-all duration-500 relative group-hover:bg-primary-hover shadow-[0_0_15px_rgba(16,185,129,0.4)] min-h-[10px] compute-bar"
-                  // eslint-disable-next-line react/forbid-dom-props
-                  style={{ '--compute-height': `${(estimates.ai / 3) * 100}%` } as React.CSSProperties}
+                  cssVars={{ '--compute-height': `${(estimates.ai / 3) * 100}%` }}
                 >
                   {isAiProfitable && (
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded">
                       {estimates.ai.toFixed(2)}x
                     </div>
                   )}
-                </div>
+                </DynamicDiv>
                 <span className="text-xs text-center mt-2 text-primary font-bold">Compute</span>
               </div>
             </div>
@@ -360,8 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
                     <span className="text-[10px] bg-primary/20 text-primary px-2 py-1 rounded font-bold">{job.status}</span>
                   </div>
                   <div className="w-full bg-gray-700 h-1 rounded-full overflow-hidden">
-                    // eslint-disable-next-line react/forbid-dom-props
-                    <div className="h-1 transition-all duration-500 job-progress-bar" style={{ '--job-width': `${job.progress}%` } as React.CSSProperties}></div>
+                    <DynamicDiv className="h-1 transition-all duration-500 job-progress-bar" cssVars={{ '--job-width': `${job.progress}%` }}></DynamicDiv>
                   </div>
                 </div>
               ))
