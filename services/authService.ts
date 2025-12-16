@@ -1,9 +1,8 @@
 
 import { User, UserCredentials } from '../types';
 
-// TODO: In production, this URL should come from env var (VITE_API_URL)
-// TODO: In production, this URL should come from env var (VITE_API_URL)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'; // Default to local for dev, Railway URL for prod
+// Railway backend URL - uses VITE_API_URL in production, localhost only for local dev
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const registerUser = async (creds: UserCredentials): Promise<User | null> => {
     try {

@@ -129,7 +129,7 @@ const COIN_CATALOG: Record<CoinSymbol, CoinDef> = {
   }
 };
 
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser, API_URL } from '../services/authService';
 
 
 const Provider: React.FC = () => {
@@ -276,7 +276,7 @@ const Provider: React.FC = () => {
           // This allows the dashboard to see this worker even if it's running on another machine
           const token = localStorage.getItem('hnh_token');
           if (token && realStats.hashrate > 0) {
-            fetch('http://localhost:8080/miner/telemetry', {
+            fetch(`${API_URL}/miner/telemetry`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({
