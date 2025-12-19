@@ -141,7 +141,7 @@ const Provider: React.FC = () => {
 
 
   // Agent Config
-  const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem(`hnh_agent_url_${userId}`) || 'http://localhost:4343');
+  const [agentUrl, setAgentUrl] = useState(() => localStorage.getItem(`hnh_agent_url_${userId}`) || import.meta.env.VITE_AGENT_URL || '');
   // Browser Miner State
   const workerRef = useRef<Worker | null>(null);
   const [isBrowserMining, setIsBrowserMining] = useState(false);
@@ -565,7 +565,7 @@ const Provider: React.FC = () => {
                   }}
                   aria-label="Agent URL"
                   title="Agent URL"
-                  placeholder="http://localhost:4343"
+                  placeholder="http://127.0.0.1:4343"
                   className="bg-black/20 border-none text-[10px] text-white w-full rounded px-1 h-5 focus:ring-1 focus:ring-primary"
                 />
               </div>
