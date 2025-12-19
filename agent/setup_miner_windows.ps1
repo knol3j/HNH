@@ -12,10 +12,10 @@ $XMRIG_URL = "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.2
 $ZIP_NAME = "xmrig.zip"
 $ZIP_PATH = Join-Path $BIN_DIR $ZIP_NAME
 
-Write-Host "⬇️ Downloading XMRig for Windows..." -ForegroundColor Cyan
+Write-Host "Downloading XMRig for Windows..." -ForegroundColor Cyan
 Invoke-WebRequest -Uri $XMRIG_URL -OutFile $ZIP_PATH
 
-Write-Host "📦 Extracting..." -ForegroundColor Cyan
+Write-Host "Extracting..." -ForegroundColor Cyan
 Expand-Archive -Path $ZIP_PATH -DestinationPath $BIN_DIR -Force
 
 # Locate the extracted xmrig.exe and move it to bin root if nested
@@ -25,14 +25,37 @@ if ($extractedExe) {
     # Cleanup extra folders
     Get-ChildItem -Path $BIN_DIR -Directory | Remove-Item -Recurse -Force
 } else {
-    Write-Error "❌ Could not find xmrig.exe after extraction"
+    Write-Error "Could not find xmrig.exe after extraction"
 }
 
 # Cleanup Zip
 Remove-Item -Path $ZIP_PATH -Force
 
+# --- CUDA PLUGIN ---
+$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.17.0/xmrig-cuda-6.17.0-msvc-win64.zip"
+$CUDA_ZIP_NAME = "xmrig-cuda.zip"
+$CUDA_ZIP_PATH = Join-Path $BIN_DIR $CUDA_ZIP_NAME
+
+Write-Host "Downloading NVIDIA CUDA Plugin..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $CUDA_URL -OutFile $CUDA_ZIP_PATH
+
+Write-Host "Extracting CUDA Plugin..." -ForegroundColor Cyan
+Expand-Archive -Path $CUDA_ZIP_PATH -DestinationPath $BIN_DIR -Force
+
+# Move CUDA DLLs to root of bin if nested
+$extractedDll = Get-ChildItem -Path $BIN_DIR -Recurse -Filter "xmrig-cuda.dll" | Select-Object -First 1
+if ($extractedDll) {
+    $dllDir = $extractedDll.Directory
+    Get-ChildItem -Path $dllDir -Filter "*.dll" | ForEach-Object {
+        Move-Item -Path $_.FullName -Destination $BIN_DIR -Force
+    }
+}
+
+Remove-Item -Path $CUDA_ZIP_PATH -Force
+
+
 # Install Node Deps
-Write-Host "📦 Installing Agent dependencies..." -ForegroundColor Cyan
+Write-Host "Installing Agent dependencies..." -ForegroundColor Cyan
 npm install
 
 # Create Batch Launcher
@@ -40,5 +63,5 @@ $BATCH_CONTENT = "@echo off`r`ncd /d `"%~dp0`"`r`nnode server.js`r`npause"
 $BATCH_PATH = Join-Path $PSScriptRoot "start_miner.bat"
 Set-Content -Path $BATCH_PATH -Value $BATCH_CONTENT
 
-Write-Host "✅ Setup Complete!" -ForegroundColor Green
-Write-Host "👉 Double-click 'start_miner.bat' to start the native miner agent." -ForegroundColor Yellow
+Write-Host "Setup Complete!" -ForegroundColor Green
+Write-Host "Double-click 'start_miner.bat' to start the native miner agent." -ForegroundColor Yellow

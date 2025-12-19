@@ -57,6 +57,17 @@ export interface HardwareMonitor {
   memoryUsage: number; // %
 }
 
+export interface HardwareTelemetry {
+  gpu_temp: number;
+  gpu_util: number;
+  fan_speed: number;
+  power_draw: number;
+  vram_used: number;
+  hashrate: number;
+  logs?: string[];
+  verified_shares?: number;
+}
+
 // New: Preconfigured Deployment Templates
 export interface ModelTemplate {
   id: string;

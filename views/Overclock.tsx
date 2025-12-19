@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTelemetry } from '../services/useTelemetry';
 import { Cpu, Zap, Shield, TrendingUp, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface OverclockProfile {
@@ -42,6 +43,7 @@ const PROFILES: OverclockProfile[] = [
 ];
 
 const Overclock: React.FC = () => {
+    const { telemetry, isConnected } = useTelemetry();
     const [analyzing, setAnalyzing] = useState(false);
     const [activeProfile, setActiveProfile] = useState<string>('safe');
     const [applied, setApplied] = useState(false);
@@ -72,13 +74,27 @@ const Overclock: React.FC = () => {
                     <div>
                         <h2 className="text-lg font-bold text-white">Detected Hardware</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">NVIDIA GeForce RTX 4090</span>
-                            <span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">AMD Ryzen 9 5950X</span>
+                            {isConnected && telemetry ? (
+                                <>
+                                    <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs font-mono text-green-400 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                        Active GPU ({telemetry.hashrate.toFixed(1)} MH/s)
+                                    </span>
+                                    <span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">
+                                        Temp: {telemetry.gpu_temp}°C | Power: {telemetry.power_draw}W
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs font-mono text-red-400 flex items-center gap-2">
+                                    <AlertTriangle size={12} />
+                                    No Agent Detected - Waiting for telemetry...
+                                </span>
+                            )}
                         </div>
                     </div>
                     <div className="text-right">
                         <span className="text-xs text-muted">Current Driver</span>
-                        <p className="font-mono text-white">v536.23</p>
+                        <p className="font-mono text-white">{isConnected ? 'v536.23 (Active)' : '--'}</p>
                     </div>
                 </div>
 
@@ -87,8 +103,8 @@ const Overclock: React.FC = () => {
                         <div
                             key={profile.id}
                             className={`relative border rounded-xl p-5 transition-all cursor-pointer hover:border-white/30 ${activeProfile === profile.id
-                                    ? `bg-${profile.color}-500/10 border-${profile.color}-500 ring-1 ring-${profile.color}-500`
-                                    : 'bg-black/20 border-white/10'
+                                ? `bg-${profile.color}-500/10 border-${profile.color}-500 ring-1 ring-${profile.color}-500`
+                                : 'bg-black/20 border-white/10'
                                 }`}
                             onClick={() => handleApply(profile.id)}
                         >
@@ -113,15 +129,15 @@ const Overclock: React.FC = () => {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted">Risk Level</span>
                                     <span className={`font-bold ${profile.risk === 'Low' ? 'text-green-400' :
-                                            profile.risk === 'Medium' ? 'text-blue-400' : 'text-orange-400'
+                                        profile.risk === 'Medium' ? 'text-blue-400' : 'text-orange-400'
                                         }`}>{profile.risk}</span>
                                 </div>
                             </div>
 
                             <button
                                 className={`w-full py-2 rounded-lg font-bold text-sm transition-all ${activeProfile === profile.id
-                                        ? 'bg-white/10 text-muted cursor-default'
-                                        : 'bg-white text-black hover:bg-gray-200'
+                                    ? 'bg-white/10 text-muted cursor-default'
+                                    : 'bg-white text-black hover:bg-gray-200'
                                     }`}
                             >
                                 {activeProfile === profile.id ? 'Active' : 'Apply Profile'}

@@ -816,64 +816,102 @@ const Provider: React.FC = () => {
           )}
 
           {/* Native Miner Setup */}
-          {!agentConnected && (
-            <div className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 rounded-2xl p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 opacity-20">
-                <Monitor size={100} />
-              </div>
-              <h4 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <Download className="text-primary" /> Install Native Miner
+        </div>
+      </div>
+
+      {/* Full Width Native Miner & Logs Section */}
+      <div className="grid grid-cols-1 gap-6 animate-fade-in-up">
+
+        {/* Native Miner Setup - Expanded */}
+        {!agentConnected && (
+          <div className="bg-gradient-to-r from-primary/10 to-blue-600/10 border border-primary/20 rounded-2xl p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Monitor size={200} />
+            </div>
+
+            <div className="relative z-10">
+              <h4 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                <Download className="text-primary w-8 h-8" />
+                Install Native Miner
               </h4>
-              <p className="text-sm text-gray-300 mb-4">
-                Browser mining is only a <b>Proof of Concept</b>. For realistic profits, deploy the native agent to unlock full GPU power.
+              <p className="text-base text-gray-300 mb-8 max-w-2xl">
+                Unlock the full potential of your hardware. The browser miner is limited by web safety protocols.
+                Deploy the native agent to access raw GPU power, temperature monitoring, and automatic algorithm switching.
               </p>
 
-              <div className="space-y-3">
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-                  <div className="relative bg-black rounded-lg p-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-white flex items-center gap-2"><Terminal size={12} /> Linux / MacOS</span>
-                    </div>
-                    <code className="block text-[10px] font-mono text-green-400 bg-white/5 p-2 rounded break-all select-all cursor-pointer hover:bg-white/10" onClick={() => navigator.clipboard.writeText('curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh')}>
-                      curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh
-                    </code>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Linux / Mac */}
+                <div className="bg-black/40 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Terminal className="text-white" />
+                    <span className="font-bold text-white text-lg">Linux / macOS</span>
                   </div>
+                  <code
+                    className="block text-sm font-mono text-green-400 bg-black p-4 rounded-lg break-all cursor-pointer hover:bg-white/5 transition-colors border border-white/5"
+                    onClick={() => {
+                      navigator.clipboard.writeText('curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh');
+                      addLog("📋 Copied install command to clipboard");
+                    }}
+                  >
+                    curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh
+                  </code>
+                  <p className="text-xs text-muted mt-2 text-center">Click command to copy</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-white flex items-center gap-2"><Monitor size={12} /> Windows (PowerShell)</span>
-                    <a href="/agent/setup_miner_windows.ps1" download className="text-[10px] bg-primary/20 hover:bg-primary/30 text-primary px-2 py-1 rounded flex items-center gap-1">
-                      <Download size={10} /> Download Script
-                    </a>
+                {/* Windows */}
+                <div className="bg-black/40 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                      <Monitor className="text-blue-400" />
+                      <span className="font-bold text-white text-lg">Windows</span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-muted mt-1">
-                    Download <span className="text-white font-mono">setup_miner_windows.ps1</span>, right-click, select "Run with PowerShell".
+                  <a
+                    href="/agent/setup_miner_windows.ps1"
+                    download
+                    className="flex flex-col items-center justify-center p-4 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl border border-blue-500/30 transition-all group"
+                    onClick={() => addLog("⬇️ Downloading Windows Installer...")}
+                  >
+                    <Download className="mb-2 w-8 h-8 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold">Download PowerShell Script</span>
+                  </a>
+                  <p className="text-xs text-muted mt-3 text-center">
+                    Right-click the downloaded file and select "Run with PowerShell"
                   </p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="bg-black border border-white/10 rounded-2xl overflow-hidden flex flex-col h-full min-h-[400px] shadow-2xl">
-            <div className="bg-white/5 px-4 py-3 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-gray-400 font-mono">
-                <Terminal size={14} />
-                <span>agent.log</span>
-              </div>
-              <div className="flex gap-1.5">
-                <div className={`w-2 h-2 rounded-full ${agentConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-              </div>
+        {/* Verbose Logs - Expanded */}
+        <div className="bg-black border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
+          <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Terminal size={18} className="text-muted" />
+              <span className="font-mono text-sm font-bold text-gray-300">System Logs & Telemetry</span>
+              <span className="px-2 py-0.5 bg-white/10 rounded text-[10px] text-muted uppercase tracking-wider">Verbose Mode</span>
             </div>
-            <div ref={scrollRef} className="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-1 text-gray-300">
-              {displayLogs.length === 0 && <span className="text-gray-600 italic">Initializing system...</span>}
-              {displayLogs.map((log, i) => (
-                <div key={i} className="border-l-2 border-white/10 pl-2 hover:bg-white/5 transition-colors">
-                  {log}
-                </div>
-              ))}
+            <div className="flex gap-2">
+              <button onClick={() => setClientLogs([])} className="p-1 hover:bg-white/10 rounded text-muted hover:text-white" title="Clear Logs">
+                <Trash2 size={14} />
+              </button>
+              <div className={`w-3 h-3 rounded-full ${agentConnected ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-amber-500'}`}></div>
             </div>
+          </div>
+          <div ref={scrollRef} className="flex-1 p-6 font-mono text-sm overflow-y-auto space-y-1.5 text-gray-300 bg-black/50">
+            {displayLogs.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-muted opacity-50">
+                <Activity size={48} className="mb-4" />
+                <p>Waiting for system events...</p>
+              </div>
+            )}
+            {displayLogs.map((log, i) => (
+              <div key={i} className="border-l-2 border-white/10 pl-3 py-0.5 hover:bg-white/5 transition-colors break-words flex gap-3">
+                <span className="text-white/30 text-xs shrink-0 select-none">{i + 1}</span>
+                <span>{log}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

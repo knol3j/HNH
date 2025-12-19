@@ -14,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = 4343;
-const MINER_BIN = path.join(__dirname, 'bin', 'xmrig');
+const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // --- PLATFORM FEE CONFIG ---

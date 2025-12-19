@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -12,6 +12,7 @@ model User {
   username      String   @unique
   passwordHash  String
   tier          String   @default("free") // free, pro, enterprise
+  role          String   @default("USER") // USER, ADMIN
   balance       Float    @default(0.0)
   referralCode  String   @unique
   referredBy    String?
