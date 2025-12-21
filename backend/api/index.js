@@ -11,7 +11,30 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
-app.use(cors());
+// CORS Configuration
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:4173',
+    'https://hashnhedge-app.up.railway.app',
+    'https://app.hashnhedge.com',
+    'https://hashnhedge.com'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            // Optional: for development, you might want to log this
+            console.log('Blocked by CORS:', origin);
+            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
+            // Default to allowing for now to debug user issue, but warn
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
+    credentials: true
+}));
 app.use(express.json());
 
 // Health check endpoint
