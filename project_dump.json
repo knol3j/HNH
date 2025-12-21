@@ -1,0 +1,81 @@
+{
+  "id": "0f9376bb-733c-4fcc-baa5-2759d15170b3",
+  "name": "HashNHedge AI",
+  "createdAt": "2025-12-20T17:49:27.490Z",
+  "updatedAt": "2025-12-20T20:14:36.830Z",
+  "deletedAt": null,
+  "environments": {
+    "edges": [
+      {
+        "node": {
+          "id": "fe4c445e-b37c-41f5-acda-fd5718114265",
+          "name": "production",
+          "canAccess": true,
+          "serviceInstances": {
+            "edges": [
+              {
+                "node": {
+                  "serviceId": "4734b385-0f90-4824-83f9-cb435977e37b"
+                }
+              },
+              {
+                "node": {
+                  "serviceId": "0e1a6ee1-67a5-4cd2-b873-930a73df43ac"
+                }
+              },
+              {
+                "node": {
+                  "serviceId": "b0309b47-2def-42d5-baef-0127ee47a4d9"
+                }
+              },
+              {
+                "node": {
+                  "serviceId": "a05a10cc-f7f5-4aa4-80c6-6e8e40a708dc"
+                }
+              },
+              {
+                "node": {
+                  "serviceId": "abf094fc-d30b-4b19-9d6c-25b492e15425"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "services": {
+    "edges": [
+      {
+        "node": {
+          "id": "0e1a6ee1-67a5-4cd2-b873-930a73df43ac",
+          "name": "api"
+        }
+      },
+      {
+        "node": {
+          "id": "4734b385-0f90-4824-83f9-cb435977e37b",
+          "name": "agent"
+        }
+      },
+      {
+        "node": {
+          "id": "a05a10cc-f7f5-4aa4-80c6-6e8e40a708dc",
+          "name": "stratum"
+        }
+      },
+      {
+        "node": {
+          "id": "abf094fc-d30b-4b19-9d6c-25b492e15425",
+          "name": "HNH"
+        }
+      },
+      {
+        "node": {
+          "id": "b0309b47-2def-42d5-baef-0127ee47a4d9",
+          "name": "app"
+        }
+      }
+    ]
+  }
+}

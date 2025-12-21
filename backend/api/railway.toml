@@ -1,5 +1,6 @@
 [build]
 builder = "NIXPACKS"
+buildCommand = "npx prisma generate --schema=schema.prisma"
 
 [deploy]
-startCommand = "node index.js"
+startCommand = "npx prisma db push --schema=schema.prisma && node index.js"
