@@ -1,6 +1,6 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm install && npm run build"
+builder = "DOCKERFILE"
 
 [deploy]
-startCommand = "npm run preview -- --port $PORT --host"
+# startCommand is handled by CMD in Dockerfile, but we can keep restartPolicy if needed
+restartPolicyType = "ON_FAILURE"
