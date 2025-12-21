@@ -849,11 +849,13 @@ const Provider: React.FC = () => {
                   <code
                     className="block text-sm font-mono text-green-400 bg-black p-4 rounded-lg break-all cursor-pointer hover:bg-white/5 transition-colors border border-white/5"
                     onClick={() => {
-                      navigator.clipboard.writeText('curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh');
+                      const origin = window.location.origin;
+                      const cmd = `curl -L -o setup_miner.sh ${origin}/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh ${origin}`;
+                      navigator.clipboard.writeText(cmd);
                       addLog("📋 Copied install command to clipboard");
                     }}
                   >
-                    curl -L -o setup_miner.sh https://hnh-web.vercel.app/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh
+                    curl -L -o setup_miner.sh {typeof window !== 'undefined' ? window.location.origin : ''}/scripts/setup_miner.sh && chmod +x setup_miner.sh && ./setup_miner.sh {typeof window !== 'undefined' ? window.location.origin : ''}
                   </code>
                   <p className="text-xs text-muted mt-2 text-center">Click command to copy</p>
                 </div>
@@ -867,7 +869,7 @@ const Provider: React.FC = () => {
                     </div>
                   </div>
                   <a
-                    href="/agent/setup_miner_windows.ps1"
+                    href="/scripts/setup_miner_windows.ps1"
                     download
                     className="flex flex-col items-center justify-center p-4 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl border border-blue-500/30 transition-all group"
                     onClick={() => addLog("⬇️ Downloading Windows Installer...")}
