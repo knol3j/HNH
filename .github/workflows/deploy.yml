@@ -32,7 +32,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:8080' }}
+          VITE_API_URL: 'https://api.hashnhedge.com'
         run: npm run build
 
       - name: Setup Pages
