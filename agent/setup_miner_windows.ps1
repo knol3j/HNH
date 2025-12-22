@@ -12,8 +12,27 @@ $XMRIG_URL = "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.2
 $ZIP_NAME = "xmrig.zip"
 $ZIP_PATH = Join-Path $BIN_DIR $ZIP_NAME
 
-Write-Host "Downloading XMRig for Windows..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $XMRIG_URL -OutFile $ZIP_PATH
+if (Test-Path $ZIP_PATH) {
+    Write-Host "Found existing $ZIP_NAME. Skipping download." -ForegroundColor Yellow
+}
+else {
+    Write-Host "Downloading XMRig for Windows..." -ForegroundColor Cyan
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $XMRIG_URL -OutFile $ZIP_PATH
+    }
+    catch {
+        Write-Error "Download failed: $_"
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        Write-Host "Please manually download the file from:" -ForegroundColor Yellow
+        Write-Host $XMRIG_URL -ForegroundColor White
+        Write-Host "and save it to:" -ForegroundColor Yellow
+        Write-Host $ZIP_PATH -ForegroundColor White
+        Write-Host "Then run this script again." -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        exit 1
+    }
+}
 
 Write-Host "Extracting..." -ForegroundColor Cyan
 Expand-Archive -Path $ZIP_PATH -DestinationPath $BIN_DIR -Force
@@ -24,7 +43,8 @@ if ($extractedExe) {
     Move-Item -Path $extractedExe.FullName -Destination $BIN_DIR -Force
     # Cleanup extra folders
     Get-ChildItem -Path $BIN_DIR -Directory | Remove-Item -Recurse -Force
-} else {
+}
+else {
     Write-Error "Could not find xmrig.exe after extraction"
 }
 
