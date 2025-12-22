@@ -9,7 +9,14 @@
     "preview": "vite preview",
     "start": "cd agent && npm install && node server.js",
     "server": "node backend/api/index.js",
-    "dev:all": "concurrently \"npm run server\" \"npm run dev\""
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:all": "npm run test && npm run test:backend && npm run test:agent",
+    "test:backend": "cd backend/api && npm test",
+    "test:agent": "cd agent && npm test"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
@@ -30,5 +37,15 @@
     "concurrently": "^9.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/ui": "^2.1.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/user-event": "^14.5.0",
+    "jsdom": "^25.0.0",
+    "happy-dom": "^15.7.0"
   }
 }
