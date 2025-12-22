@@ -52,12 +52,31 @@ else {
 Remove-Item -Path $ZIP_PATH -Force
 
 # --- CUDA PLUGIN ---
-$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.17.0/xmrig-cuda-6.17.0-msvc-win64.zip"
-$CUDA_ZIP_NAME = "xmrig-cuda.zip"
+$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.21.0/xmrig-cuda-6.21.0-cuda11_4-win64.zip"
+$CUDA_ZIP_NAME = "xmrig-cuda-6.21.0-cuda11_4-win64.zip"
 $CUDA_ZIP_PATH = Join-Path $BIN_DIR $CUDA_ZIP_NAME
 
-Write-Host "Downloading NVIDIA CUDA Plugin..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $CUDA_URL -OutFile $CUDA_ZIP_PATH
+if (Test-Path $CUDA_ZIP_PATH) {
+    Write-Host "Found existing $CUDA_ZIP_NAME. Skipping download." -ForegroundColor Yellow
+}
+else {
+    Write-Host "Downloading NVIDIA CUDA Plugin..." -ForegroundColor Cyan
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $CUDA_URL -OutFile $CUDA_ZIP_PATH
+    }
+    catch {
+        Write-Host "Download failed: $_" -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        Write-Host "Please manually download the file from:" -ForegroundColor Yellow
+        Write-Host $CUDA_URL -ForegroundColor White
+        Write-Host "and save it to:" -ForegroundColor Yellow
+        Write-Host $CUDA_ZIP_PATH -ForegroundColor White
+        Write-Host "Then run this script again." -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        exit 1
+    }
+}
 
 Write-Host "Extracting CUDA Plugin..." -ForegroundColor Cyan
 Expand-Archive -Path $CUDA_ZIP_PATH -DestinationPath $BIN_DIR -Force
@@ -78,9 +97,26 @@ Remove-Item -Path $CUDA_ZIP_PATH -Force
 $BASE_URL = if ($args[0]) { $args[0] } else { "https://app.hashnhedge.com" }
 Write-Host "Fetching Agent Code from $BASE_URL..." -ForegroundColor Cyan
 
-Invoke-WebRequest -Uri "$BASE_URL/agent-dist/package.json" -OutFile (Join-Path $PSScriptRoot "package.json")
-Invoke-WebRequest -Uri "$BASE_URL/agent-dist/server.js" -OutFile (Join-Path $PSScriptRoot "server.js")
-Invoke-WebRequest -Uri "$BASE_URL/agent-dist/stratum-proxy.js" -OutFile (Join-Path $PSScriptRoot "stratum-proxy.js")
+try {
+    Write-Host "Downloading package.json..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/package.json" -OutFile (Join-Path $PSScriptRoot "package.json")
+    Write-Host "Downloading server.js..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/server.js" -OutFile (Join-Path $PSScriptRoot "server.js")
+    Write-Host "Downloading stratum-proxy.js..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/stratum-proxy.js" -OutFile (Join-Path $PSScriptRoot "stratum-proxy.js")
+}
+catch {
+    Write-Host "Agent source download failed: $_" -ForegroundColor Red
+    Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+    Write-Host "Please manually download the following files from $BASE_URL/agent-dist/ :" -ForegroundColor Yellow
+    Write-Host "1. package.json" -ForegroundColor White
+    Write-Host "2. server.js" -ForegroundColor White
+    Write-Host "3. stratum-proxy.js" -ForegroundColor White
+    Write-Host "And save them to: $PSScriptRoot" -ForegroundColor Yellow
+    Write-Host "Then run this script again." -ForegroundColor Red
+    Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+    exit 1
+}
 
 # Install Node Deps
 Write-Host "Installing Agent dependencies..." -ForegroundColor Cyan

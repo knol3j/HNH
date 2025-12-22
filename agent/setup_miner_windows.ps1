@@ -22,7 +22,7 @@ else {
         Invoke-WebRequest -Uri $XMRIG_URL -OutFile $ZIP_PATH
     }
     catch {
-        Write-Error "Download failed: $_"
+        Write-Host "Download failed: $_" -ForegroundColor Red
         Write-Host "---------------------------------------------------------------" -ForegroundColor Red
         Write-Host "Please manually download the file from:" -ForegroundColor Yellow
         Write-Host $XMRIG_URL -ForegroundColor White
@@ -52,12 +52,33 @@ else {
 Remove-Item -Path $ZIP_PATH -Force
 
 # --- CUDA PLUGIN ---
-$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.17.0/xmrig-cuda-6.17.0-msvc-win64.zip"
-$CUDA_ZIP_NAME = "xmrig-cuda.zip"
+$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.21.0/xmrig-cuda-6.21.0-cuda11_4-win64.zip"
+$CUDA_ZIP_NAME = "xmrig-cuda-6.21.0-cuda11_4-win64.zip"
 $CUDA_ZIP_PATH = Join-Path $BIN_DIR $CUDA_ZIP_NAME
 
-Write-Host "Downloading NVIDIA CUDA Plugin..." -ForegroundColor Cyan
-Invoke-WebRequest -Uri $CUDA_URL -OutFile $CUDA_ZIP_PATH
+if (Test-Path $CUDA_ZIP_PATH) {
+    Write-Host "Found existing $CUDA_ZIP_NAME. Skipping download." -ForegroundColor Yellow
+}
+else {
+    Write-Host "Downloading NVIDIA CUDA Plugin..." -ForegroundColor Cyan
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $CUDA_URL -OutFile $CUDA_ZIP_PATH
+    }
+    catch {
+        Write-Host "Download failed: $_" -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        Write-Host "Please manually download the file from:" -ForegroundColor Yellow
+        Write-Host $CUDA_URL -ForegroundColor White
+        Write-Host "and save it to:" -ForegroundColor Yellow
+        Write-Host $CUDA_ZIP_PATH -ForegroundColor White
+        Write-Host "Then run this script again." -ForegroundColor Red
+        Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+        # We don't exit here because CUDA is optional-ish, but for safety let's exit to avoid partial state confusion
+        # Actually, let's treat it as non-fatal but warn heavily? No, user expects full setup. Exit 1.
+        exit 1
+    }
+}
 
 Write-Host "Extracting CUDA Plugin..." -ForegroundColor Cyan
 Expand-Archive -Path $CUDA_ZIP_PATH -DestinationPath $BIN_DIR -Force

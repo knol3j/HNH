@@ -18,3 +18,17 @@ View your app in AI Studio: https://ai.studio/apps/drive/1b5I3X-QRhQyZ5A7FAcOthl
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Running the Native Miner Agent (Windows)
+
+To start the miner agent, you need to run the setup script. If you encounter execution policy errors, run:
+
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\agent\setup_miner_windows.ps1
+```
+
+Or if you have downloaded the script manually:
+
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\setup_miner_windows.ps1
+```
