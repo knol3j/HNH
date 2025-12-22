@@ -1,5 +1,5 @@
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
 buildCommand = "npx prisma generate --schema=schema.prisma"
 
 [deploy]
