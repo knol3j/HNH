@@ -202,7 +202,7 @@ const Landing: React.FC<LandingProps> = ({ onEnterApp }) => {
                         </div>
                         <span className="font-bold">HashNHedge</span>
                     </div>
-                    <p className="text-sm text-muted">© 2024 HashNHedge Inc. All rights reserved.</p>
+                    <p className="text-sm text-muted">© 2025 HashNHedge Inc. All rights reserved.</p>
                 </div>
             </footer>
         </div>
