@@ -9,11 +9,15 @@ const Referrals: React.FC = () => {
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const currentUser = getCurrentUser();
-        setUser(currentUser);
-        if (currentUser) {
-            setReferrals(getReferrals(currentUser.referralCode));
-        }
+        const loadUserData = async () => {
+            const currentUser = getCurrentUser();
+            setUser(currentUser);
+            if (currentUser) {
+                const referralData = await getReferrals(currentUser.referralCode);
+                setReferrals(referralData);
+            }
+        };
+        loadUserData();
     }, []);
 
     const copyReferralLink = () => {

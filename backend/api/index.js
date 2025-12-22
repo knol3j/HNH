@@ -154,9 +154,64 @@ app.get('/user/profile', authenticateToken, async (req, res) => {
     }
 });
 
+// Get referrals for a user
+app.get('/user/referrals', authenticateToken, async (req, res) => {
+    try {
+        // Get the current user to find their referral code
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { referralCode: true }
+        });
+
+        if (!currentUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Find all users who were referred by this user
+        const referrals = await prisma.user.findMany({
+            where: { referredBy: currentUser.referralCode },
+            select: {
+                id: true,
+                username: true,
+                tier: true,
+                createdAt: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(referrals);
+    } catch (e) {
+        console.error('[REFERRALS] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Update user tier
+app.patch('/user/tier', authenticateToken, async (req, res) => {
+    const { tier } = req.body;
+
+    const validTiers = ['free', 'pro', 'enterprise'];
+    if (!tier || !validTiers.includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier. Must be free, pro, or enterprise.' });
+    }
+
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { tier },
+            select: { id: true, username: true, tier: true }
+        });
+
+        res.json(updatedUser);
+    } catch (e) {
+        console.error('[UPDATE_TIER] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Telemetry from Agent (Authenticated via User Token or special Agent Key - simplified to Token for now)
 app.post('/miner/telemetry', async (req, res) => {
-    // In a real app, agents would have their own API keys. 
+    // In a real app, agents would have their own API keys.
     // We'll trust the payload contains a valid userId for this PoC.
     const { userId, workerName, hashrate, temp, power } = req.body;
 

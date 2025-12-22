@@ -118,11 +118,38 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
 }
 
 export const getReferrals = async (referralCode: string): Promise<any[]> => {
-    // TODO: implement real backend call
+    const token = localStorage.getItem('hnh_token');
+    if (!token) return [];
+
+    try {
+        const res = await fetch(`${API_URL}/user/referrals`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (e) {
+        console.error('Failed to fetch referrals:', e);
+    }
     return [];
 };
 
 export const updateUserTier = async (userId: string, tier: string): Promise<boolean> => {
-    // TODO: implement real backend call
-    return true;
+    const token = localStorage.getItem('hnh_token');
+    if (!token) return false;
+
+    try {
+        const res = await fetch(`${API_URL}/user/tier`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ tier })
+        });
+        return res.ok;
+    } catch (e) {
+        console.error('Failed to update tier:', e);
+        return false;
+    }
 };

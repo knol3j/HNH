@@ -25,8 +25,15 @@ const MOCK_WORKERS: Worker[] = [
 const Workers: React.FC = () => {
     const [currentUser] = useState(getCurrentUser());
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-    const [workers, setWorkers] = useState<Worker[]>(MOCK_WORKERS);
+    const [workers] = useState<Worker[]>(MOCK_WORKERS);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter workers based on search term
+    const filteredWorkers = workers.filter(worker =>
+        worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        worker.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        worker.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     if (!currentUser) return null;
 
@@ -37,7 +44,7 @@ const Workers: React.FC = () => {
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Server className="text-primary" /> Worker Manager
                     </h1>
-                    <p className="text-muted text-sm">{workers.filter(w => w.status === 'online').length} Online / {workers.length} Total</p>
+                    <p className="text-muted text-sm">{filteredWorkers.filter(w => w.status === 'online').length} Online / {filteredWorkers.length} Shown</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -92,7 +99,7 @@ const Workers: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {workers.map((worker) => (
+                                {filteredWorkers.map((worker) => (
                                     <tr key={worker.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className={`flex items-center gap-2 px-2 py-1 rounded-full w-fit ${worker.status === 'online' ? 'bg-green-500/10 text-green-400' :
@@ -138,7 +145,7 @@ const Workers: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {workers.map((worker) => (
+                    {filteredWorkers.map((worker) => (
                         <div key={worker.id} className="bg-surface border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-3">
