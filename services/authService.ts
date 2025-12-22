@@ -76,6 +76,18 @@ export const getCurrentUser = (): User | null => {
     const token = localStorage.getItem('hnh_token');
     if (!token) return null;
 
+    if (token === 'demo-mode') {
+        return {
+            id: 'demo-user',
+            username: 'Demo User',
+            tier: 'pro',
+            createdAt: Date.now(),
+            passwordHash: '',
+            referralCode: 'DEMO123',
+            referralBonus: 50
+        };
+    }
+
     // In a real app we 'decode' the token here or return a cached user object
     return {
         id: 'session',

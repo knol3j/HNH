@@ -158,7 +158,7 @@ const Overclock: React.FC = () => {
                         <h3 className="text-xl font-bold text-white mb-2">Analyzing Silicon Quality...</h3>
                         <p className="text-muted text-sm mb-6">Gemini is finding the optimal voltage curve for your specific chip.</p>
                         <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                            <div className="h-full bg-primary animate-[progress_2s_ease-in-out_infinite]" style={{ width: '60%' }} />
+                            <div className="h-full bg-primary animate-[progress_2s_ease-in-out_infinite] w-[60%]" />
                         </div>
                     </div>
                 </div>
