@@ -97,8 +97,6 @@ const startMiner = () => {
     // Add Algorithm if specified (Critical for GPU switching)
     if (config.algorithm) {
         if (config.algorithm === 'kawpow' || config.algorithm === 'etchash') {
-            args.push('--cuda'); // Try to enable CUDA if available (user must have plugin)
-            args.push('--opencl'); // Try OpenCL
         }
         args.push('-a', config.algorithm);
     }
