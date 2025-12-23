@@ -39,10 +39,11 @@ app.use(cors({
 app.use(express.json());
 
 // Health check endpoint
-app.get(['/health', '/healthck'], async (req, res) => {
+app.get(['/', '/health', '/healthck'], async (req, res) => {
+    console.log(`[HEALTH] Request received from ${req.ip}`);
     try {
         await prisma.$queryRaw`SELECT 1`;
-        res.json({ status: 'ok', database: 'connected' });
+        res.json({ status: 'ok', database: 'connected', service: 'HNH-API', version: '1.0.1' });
     } catch (e) {
         res.status(500).json({ status: 'error', database: 'disconnected', error: e.message });
     }
