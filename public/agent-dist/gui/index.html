@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HNH Miner Agent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="pulse">●</span> HNH Miner Agent</h1>
+            <div id="status-badge" class="badge">OFFLINE</div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>Hashrate</h3>
+                <p id="hashrate" class="value">0.00 H/s</p>
+            </div>
+            <div class="stat-card">
+                <h3>GPU Temp</h3>
+                <p id="temp" class="value">0°C</p>
+            </div>
+            <div class="stat-card">
+                <h3>Power</h3>
+                <p id="power" class="value">0 W</p>
+            </div>
+            <div class="stat-card">
+                <h3>Shares</h3>
+                <p id="shares" class="value">0</p>
+            </div>
+        </section>
+
+        <section class="config-panel">
+            <h2>Configuration</h2>
+            <div class="control-group">
+                <label>Coin</label>
+                <select id="coin-select"></select>
+            </div>
+            <div class="control-group">
+                <label>Pool</label>
+                <select id="pool-select"></select>
+            </div>
+            <div class="control-group full-width">
+                <label>Wallet Address</label>
+                <div class="wallet-wrapper">
+                    <select id="wallet-select"></select>
+                    <input type="text" id="wallet-input" class="hidden" placeholder="Enter Wallet Address...">
+                    <button id="cancel-edit-btn" class="btn small hidden">✕</button>
+                    <span class="save-indicator" id="save-status">Saved</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="start-btn" class="btn primary">Start Mining</button>
+                <button id="stop-btn" class="btn danger">Stop</button>
+            </div>
+        </section>
+
+        <section class="logs-panel">
+            <h2>Terminal Log</h2>
+            <div id="terminal" class="terminal-window">
+                <div class="log-line">Waiting for connection...</div>
+            </div>
+        </section>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>

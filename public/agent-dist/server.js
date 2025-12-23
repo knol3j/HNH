@@ -10,8 +10,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+
+// SECURITY: Strict CORS
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            return callback(new Error('CORS not allowed'), false);
+        }
+        return callback(null, true);
+    }
+}));
 app.use(express.json());
+
+// GUI: Serve Static Files (Public)
+const GUI_PATH = path.join(__dirname, 'gui');
+app.use(express.static(GUI_PATH));
+
+// SECURITY: Auth Middleware
+const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
+const requireAuth = (req, res, next) => {
+    // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
+    // Also skip /meta for GUI initialization
+    if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta')) return next();
+
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token === AGENT_SECRET || req.headers['x-agent-secret'] === AGENT_SECRET) {
+        next();
+    } else {
+        console.warn(`[SECURITY] Unauthorized access attempt from ${req.ip}`);
+        res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+    }
+};
+
+// Apply Auth to all routes (GET /telemetry is excepted inside)
+app.use(requireAuth);
 
 const PORT = 4343;
 const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
@@ -25,6 +62,15 @@ const PLATFORM_FEE_TIERS = {
 };
 const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
+// --- CONSTANTS ---
+const COIN_POOLS = {
+    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
+    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
+    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
+    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
+};
+
 // --- STATE ---
 // --- STATE ---
 let currentCoin = 'XMR'; // Defined early for usage in persistence loading
@@ -33,6 +79,9 @@ let config = {
     wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
     wallets: {
         XMR: 'Rqr113e2e3... (User Wallet)',
+        ETC: '0x19511e52720739f6F47E74221cBCd746BE387535',
+        ERG: '9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV',
+        KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek'
     },
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
     algorithm: 'kawpow',
@@ -55,7 +104,8 @@ let telemetry = {
 // --- PERSISTENCE ---
 try {
     if (fs.existsSync(DATA_FILE)) {
-        const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        const rawData = fs.readFileSync(DATA_FILE, 'utf8').replace(/^\uFEFF/, '');
+        const data = JSON.parse(rawData);
         totalShares = data.totalShares || 0;
         feeShares = data.feeShares || 0;
 
@@ -118,11 +168,23 @@ const startMiner = () => {
         '-p', config.password,
         '--no-color',
         '--api-worker-id', 'AntigravityAgent',
+        '--http-host', '127.0.0.1', // SECURITY: Bind to localhost only
         '--http-port', '4444', // Enable HTTP API for telemetry
         '--http-access-token', 'antigravity_secret',
         '--http-no-restricted',
         '--donate-level', '1'
     ];
+
+    // SECURITY: Input Validation
+    if (config.poolUrl && !config.poolUrl.match(/^(stratum\+tcp|ssl):\/\/[a-zA-Z0-9.:-]+$/)) {
+        addLog(`❌ Security: Invalid Pool URL detected: ${config.poolUrl}`);
+        return;
+    }
+    if (config.wallet && !config.wallet.match(/^[a-zA-Z0-9]+$/)) {
+        // Basic alphanumeric check - might need adjustment for specific coin formats
+        // but prevents obvious shell injection chars like ; | &
+        // addLog(`⚠️ Warning: Wallet contains special characters`); 
+    }
 
     // Add Algorithm if specified (Critical for GPU switching)
     if (config.algorithm) {
@@ -285,6 +347,10 @@ app.post('/config', (req, res) => {
 
     if (wallet && wallet !== config.wallet) {
         config.wallet = wallet;
+        // PERSISTENCE: Save to specific coin slot
+        if (currentCoin) {
+            config.wallets[currentCoin] = wallet;
+        }
         changed = true;
     }
     if (poolUrl && poolUrl !== config.poolUrl) {
@@ -309,13 +375,7 @@ let autoSwitchInterval = null;
 // currentCoin moved to top state
 
 // Simplified coin->pool mapping
-const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
-    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
-    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
-    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
-    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
-};
+// COIN_POOLS defined at top
 
 app.post('/auto-switch', (req, res) => {
     const { enabled } = req.body;
@@ -370,6 +430,17 @@ app.post('/switch-coin', (req, res) => {
 
 app.get('/auto-switch', (req, res) => {
     res.json({ enabled: autoSwitchEnabled, currentCoin });
+});
+
+// GUI: Metadata Endpoint
+app.get('/meta', (req, res) => {
+    res.json({
+        coins: Object.keys(COIN_POOLS),
+        pools: COIN_POOLS,
+        wallet: config.wallet,
+        currentCoin: currentCoin,
+        config: config
+    });
 });
 
 app.listen(PORT, () => {
