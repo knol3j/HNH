@@ -4,6 +4,20 @@
 $ErrorActionPreference = "Stop"
 
 $BIN_DIR = Join-Path $PSScriptRoot "bin"
+
+# --- CHECK DEPENDENCIES ---
+try {
+    Get-Command node -ErrorAction Stop | Out-Null
+    Write-Host "Node.js is installed." -ForegroundColor Green
+}
+catch {
+    Write-Host "CRITICAL ERROR: Node.js is NOT installed." -ForegroundColor Red
+    Write-Host "Please download and install Node.js (LTS) from: https://nodejs.org/" -ForegroundColor Yellow
+    Write-Host "After installing, please RESTART your terminal and run this script again." -ForegroundColor Red
+    Start-Sleep -Seconds 5
+    exit 1
+}
+
 if (!(Test-Path -Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR | Out-Null
 }
@@ -168,8 +182,8 @@ Write-Host "Double-click 'start_miner.bat' to start the native miner agent." -Fo
 # SIG # Begin signature block
 # MIIFbQYJKoZIhvcNAQcCoIIFXjCCBVoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUGfpEdcsJFz5eHl75gvQasKfE
-# B1CgggMIMIIDBDCCAeygAwIBAgIQWecOD3GojodJDiddDg7rGDANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsG7NldtN/mvKldYSmBt9Y5k3
+# 3/ugggMIMIIDBDCCAeygAwIBAgIQWecOD3GojodJDiddDg7rGDANBgkqhkiG9w0B
 # AQsFADAaMRgwFgYDVQQDDA9IYXNoTkhlZGdlTWluZXIwHhcNMjUxMjIzMDI0NDA5
 # WhcNMjYxMjIzMDMwNDA5WjAaMRgwFgYDVQQDDA9IYXNoTkhlZGdlTWluZXIwggEi
 # MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDHEE0X+vU0iLdwiz5yykOvuRZc
@@ -188,12 +202,12 @@ Write-Host "Double-click 'start_miner.bat' to start the native miner agent." -Fo
 # 51aRr/XY35UYq+RJ69cxggHPMIIBywIBATAuMBoxGDAWBgNVBAMMD0hhc2hOSGVk
 # Z2VNaW5lcgIQWecOD3GojodJDiddDg7rGDAJBgUrDgMCGgUAoHgwGAYKKwYBBAGC
 # NwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
-# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUZUZR0PyO
-# 2bWaI8Y45A41Elhm8BgwDQYJKoZIhvcNAQEBBQAEggEANG7wF33GEGU4SlxoMwRU
-# qz+mYZgaLzyR5ygazO7EvqJWb6C3o0YrZtQTRdWzZmmuYeVKmIT2ADAJHaNEaneo
-# ch9U74hjmr/bPoxB5tvRMKBIC0Oswp9BNK/8ehc5JM5HcLECQEFMGFTp6bXBR7kb
-# +UnVVcMfc1kwN0jEX9yuRJUayFwFjlciNonu8Zwisfqr4QVUtzNNbchuLXAjKv+i
-# 3VrThxz9Nd6EXnCZQdowzIlvhL5lJdOo+ylQkc5iSCLxiPisN9BId04u+RBqRYN5
-# 1ceufqFmAsh9EXMiXCtNuiYK5Ze6IgzQmnWZz9H+j4GEa2pRP/U4y9R6d7aRp9Po
-# 7w==
+# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUcmh/iRgi
+# eCgkWe7A3Few+XrswWEwDQYJKoZIhvcNAQEBBQAEggEAVpRpHM+zZGNHEjdwdgOx
+# wcRmiSll68HNBZI2b1bsY7n1sJKlldbyv9UKfuRxwrTzPMufHF533i892kEYq2Yd
+# gTGp/gSK/PFXxbAptjIiWt/BJlhNKxzKJMn3NxDr4f+gsfGAM/Dq53yN+8givosa
+# fKbYJwCFDKGYMJ+IA7NTYtNqQkR4npien8N7MVoVcw5DdcKv8YkFWuYiKO331PQt
+# O7rLd0u29RYFMpkPHDGteZmpLETw03PsTpWHZeNDBkFuk/XLwsOE8epN91sPmpYS
+# EweEZSk8WhT11zBTTbl1OgfERoSGGCGkKdZW/7hfM89ploV5WxmhumG9NNqJS8hX
+# ew==
 # SIG # End signature block
