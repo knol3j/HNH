@@ -27,18 +27,20 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- STATE ---
 let config = {
-    wallet: 'Rqr113e2e3... (User Wallet)',
-    poolUrl: 'stratum+tcp://rvn.2miners.com:6060', // Default to Ravencoin (GPU)
-    password: 'x',
-    algorithm: 'kawpow' // Default to KawPow (GPU)
+    wallets: {
+        XMR: 'Rqr113e2e3... (User Wallet)',
+    },
+    poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
+    algorithm: 'kawpow',
+    mode: 'cpu' // cpu or gpu
 };
 
 let minerProcess = null;
-let minerStatus = 'OFFLINE'; // OFFLINE, STARTING, MINING, ERROR
+let minerStatus = 'OFFLINE';
 let recentLogs = [];
 let totalShares = 0;
-let feeShares = 0; // Shares owed to platform
-let userTier = 'free'; // Current user's tier
+let feeShares = 0;
+let userTier = 'free';
 let telemetry = {
     hashrate: 0,
     temp: 0,
@@ -52,6 +54,15 @@ try {
         const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
         totalShares = data.totalShares || 0;
         feeShares = data.feeShares || 0;
+
+        // Load Config from setup script
+        if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
+        if (data.miningMode) config.mode = data.miningMode;
+
+        // Set initial wallet if available
+        if (config.wallets[currentCoin]) {
+            config.wallet = config.wallets[currentCoin];
+        }
     }
 } catch (e) { console.error(e); }
 
@@ -96,7 +107,9 @@ const startMiner = () => {
 
     // Add Algorithm if specified (Critical for GPU switching)
     if (config.algorithm) {
-        if (config.algorithm === 'kawpow' || config.algorithm === 'etchash') {
+        if ((config.algorithm === 'kawpow' || config.algorithm === 'etchash') && config.mode === 'gpu') {
+            args.push('--cuda'); // Try to enable CUDA if available (user must have plugin)
+            args.push('--opencl'); // Try OpenCL
         }
         args.push('-a', config.algorithm);
     }
@@ -325,6 +338,11 @@ app.post('/switch-coin', (req, res) => {
 
     currentCoin = coin;
     config.poolUrl = COIN_POOLS[coin];
+    // Switch wallet if available
+    if (config.wallets[coin]) {
+        config.wallet = config.wallets[coin];
+    }
+
     addLog(`💱 Switching to ${coin}...`);
     startMiner();
 
