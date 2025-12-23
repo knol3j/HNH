@@ -26,7 +26,11 @@ const PLATFORM_FEE_TIERS = {
 const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- STATE ---
+// --- STATE ---
+let currentCoin = 'XMR'; // Defined early for usage in persistence loading
+
 let config = {
+    wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
     wallets: {
         XMR: 'Rqr113e2e3... (User Wallet)',
     },
@@ -89,7 +93,8 @@ const startMiner = () => {
 
     addLog(`🚀 Launching XMRig...`);
     addLog(`   Pool: ${cleanUrl}`);
-    addLog(`   User: ${config.wallet.substring(0, 8)}...`);
+    const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
+    addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
     // XMRig Args
     // XMRig Args
@@ -287,7 +292,7 @@ app.post('/config', (req, res) => {
 // --- AUTO-SWITCH ---
 let autoSwitchEnabled = false;
 let autoSwitchInterval = null;
-let currentCoin = 'XMR';
+// currentCoin moved to top state
 
 // Simplified coin->pool mapping
 const COIN_POOLS = {
