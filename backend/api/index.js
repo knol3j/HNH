@@ -17,7 +17,8 @@ const allowedOrigins = [
     'http://localhost:4173',
     'https://hashnhedge-app.up.railway.app',
     'https://app.hashnhedge.com',
-    'https://hashnhedge.com'
+    'https://hashnhedge.com',
+    'https://app-production-374e.up.railway.app'
 ];
 
 app.use(cors({
