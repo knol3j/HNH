@@ -195,10 +195,8 @@ const handleMinerOutput = (rawLine) => {
     lines.forEach(line => {
         if (!line.trim()) return;
 
-        // Passthrough Log (Filtered)
-        if (line.includes('accepted') || line.includes('ready') || line.includes('error') || line.includes('new job')) {
-            addLog(line);
-        }
+        // Passthrough Log (Verbose - All output)
+        addLog(line);
 
         // PARSE: Accepted Share
         if (line.includes('accepted')) {
