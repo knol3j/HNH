@@ -1,6 +1,5 @@
 [build]
 builder = "DOCKERFILE"
-buildCommand = "npx prisma generate --schema=schema.prisma"
 
 [deploy]
-startCommand = "npx prisma db push --schema=schema.prisma && node index.js"
+restartPolicyType = "ON_FAILURE"
