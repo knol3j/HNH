@@ -122,6 +122,41 @@ catch {
 Write-Host "Installing Agent dependencies..." -ForegroundColor Cyan
 npm install
 
+# --- CONFIGURATION ---
+Write-Host "---------------------------------------------------------------" -ForegroundColor Cyan
+Write-Host "CONFIGURATION SETUP" -ForegroundColor Cyan
+Write-Host "---------------------------------------------------------------" -ForegroundColor Cyan
+
+$wallets = @{}
+$coins = @("XMR", "RVN", "ETC", "ERG", "KAS")
+
+foreach ($coin in $coins) {
+    $userInput = Read-Host "Enter your $coin Wallet Address (Leave empty to skip)"
+    if (-not [string]::IsNullOrWhiteSpace($userInput)) {
+        $wallets[$coin] = $userInput.Trim()
+    }
+}
+
+$gpuMining = "false"
+$gpuInput = Read-Host "Enable GPU Mining? (Y/N)"
+if ($gpuInput -match "^[Yy]") {
+    $gpuMining = "true"
+}
+
+$configData = @{
+    wallets     = $wallets
+    miningMode  = if ($gpuMining -eq "true") { "gpu" } else { "cpu" }
+    totalShares = 0
+    feeShares   = 0
+}
+
+$jsonPayload = $configData | ConvertTo-Json -Depth 5
+$DATA_FILE = Join-Path $PSScriptRoot "data.json"
+Set-Content -Path $DATA_FILE -Value $jsonPayload
+
+Write-Host "Configuration saved to $DATA_FILE" -ForegroundColor Green
+
+
 # Create Batch Launcher
 $BATCH_CONTENT = "@echo off`r`ncd /d `"%~dp0`"`r`nnode server.js`r`npause"
 $BATCH_PATH = Join-Path $PSScriptRoot "start_miner.bat"
