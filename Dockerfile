@@ -19,4 +19,5 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Start command
-CMD ["npm", "run", "preview", "--", "--port", "3000", "--host"]
+# Start command
+CMD sh -c "npm run preview -- --port ${PORT:-3000} --host"
