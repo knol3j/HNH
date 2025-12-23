@@ -63,9 +63,23 @@ try {
         if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
         if (data.miningMode) config.mode = data.miningMode;
 
+        // SMART DEFAULTS: switch coin based on mode
+        if (config.mode === 'gpu') {
+            currentCoin = 'RVN';
+            config.poolUrl = COIN_POOLS.RVN;
+            config.algorithm = 'kawpow';
+        } else {
+            currentCoin = 'XMR';
+            config.poolUrl = COIN_POOLS.XMR;
+            config.algorithm = 'rx/0';
+        }
+
         // Set initial wallet if available
         if (config.wallets[currentCoin]) {
             config.wallet = config.wallets[currentCoin];
+        } else {
+            // Fallback to first available wallet or generic placeholder
+            config.wallet = Object.values(config.wallets).find(w => w) || 'UNKNOWN_WALLET';
         }
     }
 } catch (e) { console.error(e); }
