@@ -861,24 +861,26 @@ const Provider: React.FC = () => {
                 </div>
 
                 {/* Windows */}
-                <div className="bg-black/40 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors">
+                <div className="bg-black/40 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-colors group">
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3">
                       <Monitor className="text-blue-400" />
                       <span className="font-bold text-white text-lg">Windows</span>
                     </div>
                   </div>
-                  <a
-                    href="/scripts/setup_miner_windows.ps1"
-                    download
-                    className="flex flex-col items-center justify-center p-4 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl border border-blue-500/30 transition-all group"
-                    onClick={() => addLog("⬇️ Downloading Windows Installer...")}
+                  <code
+                    className="block text-sm font-mono text-blue-400 bg-black p-4 rounded-lg break-all cursor-pointer hover:bg-white/5 transition-colors border border-white/5"
+                    onClick={() => {
+                      const origin = window.location.origin;
+                      const cmd = `powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '${origin}/scripts/setup_miner_windows.ps1' -OutFile 'setup_miner.ps1'; & '.\\setup_miner.ps1'"`;
+                      navigator.clipboard.writeText(cmd);
+                      addLog("📋 Copied Windows install command");
+                    }}
                   >
-                    <Download className="mb-2 w-8 h-8 group-hover:scale-110 transition-transform" />
-                    <span className="font-bold">Download Native Miner (Electron)</span>
-                  </a>
+                    powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '{typeof window !== 'undefined' ? window.location.origin : ''}/scripts/setup_miner_windows.ps1' -OutFile 'setup_miner.ps1'; & '.\setup_miner.ps1'"
+                  </code>
                   <p className="text-xs text-muted mt-3 text-center">
-                    Right-click the downloaded file and select "Run with PowerShell"
+                    Click to copy. Paste into PowerShell terminal.
                   </p>
                 </div>
               </div>
