@@ -11,11 +11,28 @@ try {
     Write-Host "Node.js is installed." -ForegroundColor Green
 }
 catch {
-    Write-Host "CRITICAL ERROR: Node.js is NOT installed." -ForegroundColor Red
-    Write-Host "Please download and install Node.js (LTS) from: https://nodejs.org/" -ForegroundColor Yellow
-    Write-Host "After installing, please RESTART your terminal and run this script again." -ForegroundColor Red
-    Start-Sleep -Seconds 5
-    exit 1
+    Write-Host "Node.js is NOT installed." -ForegroundColor Yellow
+    Write-Host "Attempting to install Node.js (LTS) via winget..." -ForegroundColor Cyan
+    try {
+        winget install -e --id OpenJS.NodeJS
+        Write-Host "Node.js installation initiated. Please wait..." -ForegroundColor Green
+        Start-Sleep -Seconds 10
+        # Check again
+        try {
+            Get-Command node -ErrorAction Stop | Out-Null
+            Write-Host "Node.js successfully installed." -ForegroundColor Green
+        }
+        catch {
+            throw "Installation check failed."
+        }
+    }
+    catch {
+        Write-Host "CRITICAL ERROR: Could not auto-install Node.js." -ForegroundColor Red
+        Write-Host "Please manually download and install Node.js (LTS) from: https://nodejs.org/" -ForegroundColor Yellow
+        Write-Host "After installing, please RESTART your terminal and run this script again." -ForegroundColor Red
+        pause
+        exit 1
+    }
 }
 
 if (!(Test-Path -Path $BIN_DIR)) {
@@ -66,8 +83,13 @@ else {
 Remove-Item -Path $ZIP_PATH -Force
 
 # --- CUDA PLUGIN ---
-$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.21.0/xmrig-cuda-6.21.0-cuda11_4-win64.zip"
-$CUDA_ZIP_NAME = "xmrig-cuda-6.21.0-cuda11_4-win64.zip"
+# --- ANTIVIRUS WARNING ---
+Write-Host "NOTE: Mining software is often flagged by Antivirus/Windows Defender." -ForegroundColor Yellow
+Write-Host "If you see 'Threat Detected' or files disappearing, please add an EXCLUSION for the 'agent' folder." -ForegroundColor Yellow
+Start-Sleep -Seconds 2
+
+$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.22.1/xmrig-cuda-6.22.1-cuda12_9-win64.zip"
+$CUDA_ZIP_NAME = "xmrig-cuda-6.22.1-cuda12_9-win64.zip"
 $CUDA_ZIP_PATH = Join-Path $BIN_DIR $CUDA_ZIP_NAME
 
 if (Test-Path $CUDA_ZIP_PATH) {
@@ -116,8 +138,19 @@ try {
     Invoke-WebRequest -Uri "$BASE_URL/agent-dist/package.json" -OutFile (Join-Path $PSScriptRoot "package.json")
     Write-Host "Downloading server.js..."
     Invoke-WebRequest -Uri "$BASE_URL/agent-dist/server.js" -OutFile (Join-Path $PSScriptRoot "server.js")
+    Write-Host "Downloading main.cjs..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/main.cjs" -OutFile (Join-Path $PSScriptRoot "main.cjs")
     Write-Host "Downloading stratum-proxy.js..."
     Invoke-WebRequest -Uri "$BASE_URL/agent-dist/stratum-proxy.js" -OutFile (Join-Path $PSScriptRoot "stratum-proxy.js")
+    
+    # GUI Files
+    $GUI_DIR = Join-Path $PSScriptRoot "gui"
+    if (!(Test-Path $GUI_DIR)) { New-Item -ItemType Directory -Path $GUI_DIR | Out-Null }
+    
+    Write-Host "Downloading GUI..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/index.html" -OutFile (Join-Path $GUI_DIR "index.html")
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/style.css" -OutFile (Join-Path $GUI_DIR "style.css")
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/app.js" -OutFile (Join-Path $GUI_DIR "app.js")
 }
 catch {
     Write-Host "Agent source download failed: $_" -ForegroundColor Red
@@ -166,7 +199,7 @@ $configData = @{
 
 $jsonPayload = $configData | ConvertTo-Json -Depth 5
 $DATA_FILE = Join-Path $PSScriptRoot "data.json"
-Set-Content -Path $DATA_FILE -Value $jsonPayload
+Set-Content -Path $DATA_FILE -Value $jsonPayload -Encoding UTF8
 
 Write-Host "Configuration saved to $DATA_FILE" -ForegroundColor Green
 

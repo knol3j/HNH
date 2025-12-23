@@ -15,18 +15,57 @@ interface Worker {
     lastSeen: string;
 }
 
-const MOCK_WORKERS: Worker[] = [
-    { id: '1', name: 'Main-Desktop-4090', type: 'GPU', status: 'online', hashrate: '124.5 MH/s', temp: 64, power: 280, efficiency: '0.44 MH/W', uptime: '4d 2h', lastSeen: 'Now' },
-    { id: '2', name: 'Garage-Rig-1', type: 'GPU', status: 'online', hashrate: '450.2 MH/s', temp: 71, power: 950, efficiency: '0.47 MH/W', uptime: '12d 5h', lastSeen: 'Now' },
-    { id: '3', name: 'Bedroom-PC', type: 'CPU', status: 'warning', hashrate: '12.4 kH/s', temp: 82, power: 105, efficiency: '0.11 kH/W', uptime: '1h 30m', lastSeen: '2m ago' },
-    { id: '4', name: 'Old-Laptop', type: 'CPU', status: 'offline', hashrate: '0 H/s', temp: 0, power: 0, efficiency: '-', uptime: '-', lastSeen: '2d ago' },
-];
+
 
 const Workers: React.FC = () => {
     const [currentUser] = useState(getCurrentUser());
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-    const [workers] = useState<Worker[]>(MOCK_WORKERS);
+    const [workers, setWorkers] = useState<Worker[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        const fetchTelemetry = async () => {
+            try {
+                // In a real app, this might be a prop or config. 
+                // For this local agent setup, we point to localhost:4343
+                const res = await fetch('http://localhost:4343/telemetry');
+                if (!res.ok) throw new Error('Agent offline');
+                const data = await res.json();
+
+                const localWorker: Worker = {
+                    id: 'local-agent',
+                    name: 'Local Agent',
+                    type: data.mode === 'gpu' ? 'GPU' : 'CPU', // Infer from config
+                    status: data.status === 'MINING' ? 'online' : 'offline',
+                    hashrate: `${data.hashrate.toFixed(2)} MH/s`, // Adjust unit as needed
+                    temp: Math.round(data.gpu_temp || 0),
+                    power: Math.round(data.power_draw || 0),
+                    efficiency: '-', // Calculate if possible
+                    uptime: 'Active', // Could parse start time
+                    lastSeen: 'Now'
+                };
+                setWorkers([localWorker]);
+            } catch (e) {
+                // If offline, show empty or offline state
+                setWorkers([{
+                    id: 'local-agent',
+                    name: 'Local Agent',
+                    type: 'CPU',
+                    status: 'offline',
+                    hashrate: '0 MH/s',
+                    temp: 0,
+                    power: 0,
+                    efficiency: '-',
+                    uptime: '-',
+                    lastSeen: 'Offline'
+                }]);
+            }
+        };
+
+        fetchTelemetry();
+        const interval = setInterval(fetchTelemetry, 2000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Filter workers based on search term
     const filteredWorkers = workers.filter(worker =>

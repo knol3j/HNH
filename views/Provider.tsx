@@ -875,7 +875,7 @@ const Provider: React.FC = () => {
                     onClick={() => addLog("⬇️ Downloading Windows Installer...")}
                   >
                     <Download className="mb-2 w-8 h-8 group-hover:scale-110 transition-transform" />
-                    <span className="font-bold">Download PowerShell Script</span>
+                    <span className="font-bold">Download Native Miner (Electron)</span>
                   </a>
                   <p className="text-xs text-muted mt-3 text-center">
                     Right-click the downloaded file and select "Run with PowerShell"

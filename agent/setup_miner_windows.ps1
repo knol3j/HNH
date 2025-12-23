@@ -4,6 +4,37 @@
 $ErrorActionPreference = "Stop"
 
 $BIN_DIR = Join-Path $PSScriptRoot "bin"
+
+# --- CHECK DEPENDENCIES ---
+try {
+    Get-Command node -ErrorAction Stop | Out-Null
+    Write-Host "Node.js is installed." -ForegroundColor Green
+}
+catch {
+    Write-Host "Node.js is NOT installed." -ForegroundColor Yellow
+    Write-Host "Attempting to install Node.js (LTS) via winget..." -ForegroundColor Cyan
+    try {
+        winget install -e --id OpenJS.NodeJS
+        Write-Host "Node.js installation initiated. Please wait..." -ForegroundColor Green
+        Start-Sleep -Seconds 10
+        # Check again
+        try {
+            Get-Command node -ErrorAction Stop | Out-Null
+            Write-Host "Node.js successfully installed." -ForegroundColor Green
+        }
+        catch {
+            throw "Installation check failed."
+        }
+    }
+    catch {
+        Write-Host "CRITICAL ERROR: Could not auto-install Node.js." -ForegroundColor Red
+        Write-Host "Please manually download and install Node.js (LTS) from: https://nodejs.org/" -ForegroundColor Yellow
+        Write-Host "After installing, please RESTART your terminal and run this script again." -ForegroundColor Red
+        pause
+        exit 1
+    }
+}
+
 if (!(Test-Path -Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR | Out-Null
 }
@@ -22,7 +53,7 @@ else {
         Invoke-WebRequest -Uri $XMRIG_URL -OutFile $ZIP_PATH
     }
     catch {
-        Write-Host "Download failed: $_" -ForegroundColor Red
+        Write-Error "Download failed: $_"
         Write-Host "---------------------------------------------------------------" -ForegroundColor Red
         Write-Host "Please manually download the file from:" -ForegroundColor Yellow
         Write-Host $XMRIG_URL -ForegroundColor White
@@ -52,8 +83,13 @@ else {
 Remove-Item -Path $ZIP_PATH -Force
 
 # --- CUDA PLUGIN ---
-$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.21.0/xmrig-cuda-6.21.0-cuda11_4-win64.zip"
-$CUDA_ZIP_NAME = "xmrig-cuda-6.21.0-cuda11_4-win64.zip"
+# --- ANTIVIRUS WARNING ---
+Write-Host "NOTE: Mining software is often flagged by Antivirus/Windows Defender." -ForegroundColor Yellow
+Write-Host "If you see 'Threat Detected' or files disappearing, please add an EXCLUSION for the 'agent' folder." -ForegroundColor Yellow
+Start-Sleep -Seconds 2
+
+$CUDA_URL = "https://github.com/xmrig/xmrig-cuda/releases/download/v6.22.1/xmrig-cuda-6.22.1-cuda12_9-win64.zip"
+$CUDA_ZIP_NAME = "xmrig-cuda-6.22.1-cuda12_9-win64.zip"
 $CUDA_ZIP_PATH = Join-Path $BIN_DIR $CUDA_ZIP_NAME
 
 if (Test-Path $CUDA_ZIP_PATH) {
@@ -74,8 +110,6 @@ else {
         Write-Host $CUDA_ZIP_PATH -ForegroundColor White
         Write-Host "Then run this script again." -ForegroundColor Red
         Write-Host "---------------------------------------------------------------" -ForegroundColor Red
-        # We don't exit here because CUDA is optional-ish, but for safety let's exit to avoid partial state confusion
-        # Actually, let's treat it as non-fatal but warn heavily? No, user expects full setup. Exit 1.
         exit 1
     }
 }
@@ -94,6 +128,42 @@ if ($extractedDll) {
 
 Remove-Item -Path $CUDA_ZIP_PATH -Force
 
+
+# Agent Source Download
+$BASE_URL = if ($args[0]) { $args[0] } else { "https://app.hashnhedge.com" }
+Write-Host "Fetching Agent Code from $BASE_URL..." -ForegroundColor Cyan
+
+try {
+    Write-Host "Downloading package.json..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/package.json" -OutFile (Join-Path $PSScriptRoot "package.json")
+    Write-Host "Downloading server.js..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/server.js" -OutFile (Join-Path $PSScriptRoot "server.js")
+    Write-Host "Downloading main.cjs..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/main.cjs" -OutFile (Join-Path $PSScriptRoot "main.cjs")
+    Write-Host "Downloading stratum-proxy.js..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/stratum-proxy.js" -OutFile (Join-Path $PSScriptRoot "stratum-proxy.js")
+    
+    # GUI Files
+    $GUI_DIR = Join-Path $PSScriptRoot "gui"
+    if (!(Test-Path $GUI_DIR)) { New-Item -ItemType Directory -Path $GUI_DIR | Out-Null }
+    
+    Write-Host "Downloading GUI..."
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/index.html" -OutFile (Join-Path $GUI_DIR "index.html")
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/style.css" -OutFile (Join-Path $GUI_DIR "style.css")
+    Invoke-WebRequest -Uri "$BASE_URL/agent-dist/gui/app.js" -OutFile (Join-Path $GUI_DIR "app.js")
+}
+catch {
+    Write-Host "Agent source download failed: $_" -ForegroundColor Red
+    Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+    Write-Host "Please manually download the following files from $BASE_URL/agent-dist/ :" -ForegroundColor Yellow
+    Write-Host "1. package.json" -ForegroundColor White
+    Write-Host "2. server.js" -ForegroundColor White
+    Write-Host "3. stratum-proxy.js" -ForegroundColor White
+    Write-Host "And save them to: $PSScriptRoot" -ForegroundColor Yellow
+    Write-Host "Then run this script again." -ForegroundColor Red
+    Write-Host "---------------------------------------------------------------" -ForegroundColor Red
+    exit 1
+}
 
 # Install Node Deps
 Write-Host "Installing Agent dependencies..." -ForegroundColor Cyan
@@ -129,9 +199,10 @@ $configData = @{
 
 $jsonPayload = $configData | ConvertTo-Json -Depth 5
 $DATA_FILE = Join-Path $PSScriptRoot "data.json"
-Set-Content -Path $DATA_FILE -Value $jsonPayload
+Set-Content -Path $DATA_FILE -Value $jsonPayload -Encoding UTF8
 
 Write-Host "Configuration saved to $DATA_FILE" -ForegroundColor Green
+
 
 # Create Batch Launcher
 $BATCH_CONTENT = "@echo off`r`ncd /d `"%~dp0`"`r`nnode server.js`r`npause"
@@ -140,3 +211,36 @@ Set-Content -Path $BATCH_PATH -Value $BATCH_CONTENT
 
 Write-Host "Setup Complete!" -ForegroundColor Green
 Write-Host "Double-click 'start_miner.bat' to start the native miner agent." -ForegroundColor Yellow
+
+# SIG # Begin signature block
+# MIIFbQYJKoZIhvcNAQcCoIIFXjCCBVoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsG7NldtN/mvKldYSmBt9Y5k3
+# 3/ugggMIMIIDBDCCAeygAwIBAgIQWecOD3GojodJDiddDg7rGDANBgkqhkiG9w0B
+# AQsFADAaMRgwFgYDVQQDDA9IYXNoTkhlZGdlTWluZXIwHhcNMjUxMjIzMDI0NDA5
+# WhcNMjYxMjIzMDMwNDA5WjAaMRgwFgYDVQQDDA9IYXNoTkhlZGdlTWluZXIwggEi
+# MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDHEE0X+vU0iLdwiz5yykOvuRZc
+# v66cwmAI3oHEOkoNOxybewUEVSzWSMQTEm2USqBifzZdiBy8X4eVGMoDqLNAWDXH
+# FoCGt+0ZBNeWx8apsNZzrqDxp+rumlUnB2erqr4SID3kNItbOOfAQ3ei+EhoT6qE
+# U5q7/gPaSSxqusAPMIicefcTabH7pDzMBKaAuWBb2JnJJx3O5I+GMImEl8uRqnmG
+# pMZMKUtYO+4bCucROxlEiBSnCVb6bSZjZRbxlGwuGmZ1gx6OZJdu1dHV080OI1mD
+# LRAWWJCxec1Q+DRQsv1wpXkr7eZYMbX/qg6vO9qmjgvsUnN88u4BqHrRR31xAgMB
+# AAGjRjBEMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDAzAdBgNV
+# HQ4EFgQUHFaVvxiETs+WlYWT0fhammfz9f0wDQYJKoZIhvcNAQELBQADggEBAL7F
+# aMJ6f4EFytaNWBG7Zel9iWESPwo0BkZl7ePfVFKMXoeVvZNmrrIhv8UNEzKElX4B
+# 6Yp6SgiK+nA+NbUcgGdi7y01eiyrDBVKChzyBEt4/bX5U6TbN6RKKhwjx6QqAzRE
+# zscGp0hDpqH69NHR24F2j5AzDxT/VdbbcETxbeTd3/sJ5wQn8uwJbmpcIodGVqTt
+# LPxhSe416c4MSPPMbeyLpypIh3JbMcwGK2vQL71YGCtYspC1bCHWRil+uGJZZpQL
+# Vw2zBR0hiHYqERn+6ef+FQhhSvD8xOhWo8DlwtYCK3nfwgKxlDq8BG5pWYGyRbt4
+# 51aRr/XY35UYq+RJ69cxggHPMIIBywIBATAuMBoxGDAWBgNVBAMMD0hhc2hOSGVk
+# Z2VNaW5lcgIQWecOD3GojodJDiddDg7rGDAJBgUrDgMCGgUAoHgwGAYKKwYBBAGC
+# NwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
+# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUcmh/iRgi
+# eCgkWe7A3Few+XrswWEwDQYJKoZIhvcNAQEBBQAEggEAVpRpHM+zZGNHEjdwdgOx
+# wcRmiSll68HNBZI2b1bsY7n1sJKlldbyv9UKfuRxwrTzPMufHF533i892kEYq2Yd
+# gTGp/gSK/PFXxbAptjIiWt/BJlhNKxzKJMn3NxDr4f+gsfGAM/Dq53yN+8givosa
+# fKbYJwCFDKGYMJ+IA7NTYtNqQkR4npien8N7MVoVcw5DdcKv8YkFWuYiKO331PQt
+# O7rLd0u29RYFMpkPHDGteZmpLETw03PsTpWHZeNDBkFuk/XLwsOE8epN91sPmpYS
+# EweEZSk8WhT11zBTTbl1OgfERoSGGCGkKdZW/7hfM89ploV5WxmhumG9NNqJS8hX
+# ew==
+# SIG # End signature block

@@ -1,1 +1,9 @@
-{"totalShares":9}
+﻿{
+    "totalShares": 0,
+    "feeShares": 0,
+    "wallets": {
+        "XMR": "",
+        "RVN": ""
+    },
+    "miningMode": "gpu"
+}
