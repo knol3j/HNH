@@ -171,15 +171,52 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Simple static estimation logic for the calculator
+  // GPU rental market estimates based on current market rates
+  // Mining estimates: calculated from typical hashrates and coin prices
+  // AI compute estimates: based on cloud GPU rental market (Akash, Render, etc)
+  const [gpuRates, setGpuRates] = useState<Record<string, { mining: number; ai: number }>>({
+    'NVIDIA H100': { mining: 0, ai: 0 },
+    'NVIDIA A100': { mining: 0, ai: 0 },
+    'RTX 4090': { mining: 0, ai: 0 },
+    'RTX 3090': { mining: 0, ai: 0 }
+  });
+
+  useEffect(() => {
+    const fetchGpuRates = async () => {
+      try {
+        // Fetch XMR price for mining estimate calculations
+        const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=usd');
+        const priceData = await priceRes.json();
+        const xmrPrice = priceData.monero?.usd || 150;
+
+        // Mining estimates based on typical hashrates (H/s) and current XMR network
+        // H100: ~30kH/s, A100: ~20kH/s, 4090: ~15kH/s, 3090: ~12kH/s for RandomX
+        const networkHashrate = 2.5e9; // ~2.5 GH/s network
+        const blockReward = 0.6;
+        const blocksPerHour = 30;
+
+        const calculateMiningRevenue = (hashrate: number) => {
+          const share = hashrate / networkHashrate;
+          return share * blocksPerHour * blockReward * xmrPrice;
+        };
+
+        // AI compute market rates (based on current cloud GPU pricing)
+        setGpuRates({
+          'NVIDIA H100': { mining: calculateMiningRevenue(30000), ai: 2.50 },
+          'NVIDIA A100': { mining: calculateMiningRevenue(20000), ai: 1.10 },
+          'RTX 4090': { mining: calculateMiningRevenue(15000), ai: 0.45 },
+          'RTX 3090': { mining: calculateMiningRevenue(12000), ai: 0.25 }
+        });
+      } catch (e) {
+        console.error('Failed to fetch GPU rates:', e);
+      }
+    };
+
+    fetchGpuRates();
+  }, []);
+
   const getEstimates = (gpu: string) => {
-    switch (gpu) {
-      case 'NVIDIA H100': return { mining: 0.10, ai: 2.50 };
-      case 'NVIDIA A100': return { mining: 0.15, ai: 1.10 };
-      case 'RTX 4090': return { mining: 0.80, ai: 0.45 };
-      case 'RTX 3090': return { mining: 0.60, ai: 0.25 };
-      default: return { mining: 0, ai: 0 };
-    }
+    return gpuRates[gpu] || { mining: 0, ai: 0 };
   };
 
   const estimates = getEstimates(calcGpu);

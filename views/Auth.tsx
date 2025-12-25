@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { UserCredentials } from '../types';
 import { loginUser, registerUser } from '../services/authService';
-import { Lock, User, Key, ArrowRight, LayoutDashboard } from 'lucide-react';
+import { Lock, User, Key, ArrowRight } from 'lucide-react';
 
 interface AuthProps {
     onLogin: (user: any) => void;
@@ -40,21 +40,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         } catch (e: any) {
             setError(e.message || (isLogin ? 'Invalid credentials' : 'Registration failed'));
         }
-    };
-
-    const handleDemoLogin = () => {
-        localStorage.setItem('hnh_token', 'demo-mode');
-        // Manually construct the demo user object to match authService
-        const demoUser = {
-            id: 'demo-user',
-            username: 'Demo User',
-            tier: 'pro',
-            createdAt: Date.now(),
-            passwordHash: '',
-            referralCode: 'DEMO123',
-            referralBonus: 50
-        };
-        onLogin(demoUser);
     };
 
     return (
@@ -116,29 +101,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     </button>
                 </form>
 
-                <div className="mt-6 text-center space-y-4">
+                <div className="mt-6 text-center">
                     <button
                         onClick={() => setIsLogin(!isLogin)}
                         className="text-sm text-muted hover:text-white transition-colors underline decoration-dotted"
                     >
                         {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-                    </button>
-
-                    <div className="relative py-2">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-white/10" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-[#0a0a0b] px-2 text-muted">Or explore first</span>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={handleDemoLogin}
-                        className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                        <LayoutDashboard className="w-4 h-4 text-muted" />
-                        Try Demo Mode
                     </button>
                 </div>
             </div>

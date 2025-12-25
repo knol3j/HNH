@@ -21,10 +21,14 @@ const FEATURES: PlanFeature[] = [
     { name: 'White-Label Rights', free: false, pro: false, enterprise: true },
 ];
 
+// Stripe payment links - configure in production
+const STRIPE_PRO_LINK = import.meta.env.VITE_STRIPE_PRO_LINK || '';
+const STRIPE_ENTERPRISE_LINK = import.meta.env.VITE_STRIPE_ENTERPRISE_LINK || '';
+
 const PLANS = [
     { tier: 'free' as UserTier, name: 'Free', price: 0, fee: '2%', color: 'gray', stripeLink: '' },
-    { tier: 'pro' as UserTier, name: 'Pro', price: 20, fee: '1%', color: 'blue', popular: true, stripeLink: 'https://buy.stripe.com/test_pro_link' },
-    { tier: 'enterprise' as UserTier, name: 'Enterprise', price: 100, fee: '0.5%', color: 'purple', stripeLink: 'https://buy.stripe.com/test_ent_link' },
+    { tier: 'pro' as UserTier, name: 'Pro', price: 20, fee: '1%', color: 'blue', popular: true, stripeLink: STRIPE_PRO_LINK },
+    { tier: 'enterprise' as UserTier, name: 'Enterprise', price: 100, fee: '0.5%', color: 'purple', stripeLink: STRIPE_ENTERPRISE_LINK },
 ];
 
 const Upgrade: React.FC = () => {
@@ -36,23 +40,31 @@ const Upgrade: React.FC = () => {
         if (!currentUser || tier === currentUser.tier) return;
 
         const plan = PLANS.find(p => p.tier === tier);
-        if (plan?.stripeLink) {
-            // Redirect to Stripe
-            window.open(plan.stripeLink, '_blank');
-            // Optimistically update tier for demo purposes (in real app, use webhook)
-            setUpgrading(tier);
-            await new Promise(r => setTimeout(r, 2000));
-            updateUserTier(currentUser.id, tier);
-            setUpgrading(null);
-            setSuccess(true);
-            setTimeout(() => window.location.reload(), 1000);
-        } else {
+
+        if (tier === 'free') {
             // Free tier downgrade
             if (confirm('Are you sure you want to downgrade to Free?')) {
-                updateUserTier(currentUser.id, tier);
+                await updateUserTier(currentUser.id, tier);
                 window.location.reload();
             }
+            return;
         }
+
+        if (!plan?.stripeLink) {
+            alert('Payment integration not configured. Contact support for upgrade options.');
+            return;
+        }
+
+        // Redirect to Stripe checkout
+        window.open(plan.stripeLink, '_blank');
+        setUpgrading(tier);
+
+        // Note: In production, tier upgrade should be handled via Stripe webhook
+        // This is a placeholder UI state only
+        setTimeout(() => {
+            setUpgrading(null);
+            alert('Complete payment in the Stripe window. Your tier will update after payment confirmation.');
+        }, 3000);
     };
 
     return (

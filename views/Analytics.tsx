@@ -1,23 +1,103 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Activity, TrendingUp, Zap, DollarSign } from 'lucide-react';
-import { getCurrentUser } from '../services/authService';
+import { Activity, TrendingUp, Zap, DollarSign, Loader2, WifiOff } from 'lucide-react';
+import { fetchCurrentUser } from '../services/authService';
 
-// Mock data generation (since we don't have a real DB yet)
-const generateHistory = (points: number, baseValue: number, variance: number) => {
-    return Array.from({ length: points }).map((_, i) => ({
-        time: `${i}:00`,
-        value: Math.max(0, baseValue + (Math.random() - 0.5) * variance),
-    }));
-};
+interface TelemetryPoint {
+    time: string;
+    value: number;
+}
+
+interface AgentStats {
+    hashrate: number;
+    power: number;
+    temp: number;
+    uptime: number;
+}
 
 const Analytics: React.FC = () => {
-    const [currentUser] = useState(getCurrentUser());
-    const [hashrateData] = useState(generateHistory(24, 2500, 500));
-    const [earningsData] = useState(generateHistory(7, 4.5, 1.2));
-    const [efficiencyData] = useState(generateHistory(24, 0.45, 0.05));
+    const [isLoading, setIsLoading] = useState(true);
+    const [isAgentOnline, setIsAgentOnline] = useState(false);
+    const [hashrateHistory, setHashrateHistory] = useState<TelemetryPoint[]>([]);
+    const [stats, setStats] = useState<AgentStats>({ hashrate: 0, power: 0, temp: 0, uptime: 0 });
+    const [dailyEarnings, setDailyEarnings] = useState(0);
 
-    if (!currentUser) return null;
+    useEffect(() => {
+        const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+        let historyBuffer: TelemetryPoint[] = [];
+
+        const fetchTelemetry = async () => {
+            try {
+                const res = await fetch(`${agentUrl}/telemetry`);
+                if (!res.ok) throw new Error('Agent offline');
+
+                const data = await res.json();
+                setIsAgentOnline(true);
+                setIsLoading(false);
+
+                setStats({
+                    hashrate: data.hashrate || 0,
+                    power: data.power_draw || 0,
+                    temp: data.gpu_temp || 0,
+                    uptime: data.uptime || 0
+                });
+
+                // Add to history buffer
+                const now = new Date();
+                historyBuffer.push({
+                    time: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
+                    value: data.hashrate || 0
+                });
+
+                // Keep last 24 points
+                if (historyBuffer.length > 24) {
+                    historyBuffer = historyBuffer.slice(-24);
+                }
+                setHashrateHistory([...historyBuffer]);
+
+                // Calculate estimated daily earnings based on hashrate
+                // This is a rough estimate - real earnings depend on many factors
+                if (data.hashrate > 0) {
+                    const estimatedDaily = (data.hashrate / 1000) * 0.5; // ~$0.50 per kH/s per day estimate
+                    setDailyEarnings(estimatedDaily);
+                }
+
+            } catch (e) {
+                setIsAgentOnline(false);
+                setIsLoading(false);
+            }
+        };
+
+        fetchTelemetry();
+        const interval = setInterval(fetchTelemetry, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                    <Loader2 className="animate-spin mx-auto mb-4 text-primary" size={48} />
+                    <p className="text-muted">Connecting to mining agent...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isAgentOnline) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                    <WifiOff className="mx-auto mb-4 text-muted" size={48} />
+                    <h2 className="text-xl font-bold text-white mb-2">Agent Offline</h2>
+                    <p className="text-muted mb-4">Start the HashNHedge agent to view analytics.</p>
+                    <p className="text-xs text-muted">Default URL: http://localhost:4343</p>
+                </div>
+            </div>
+        );
+    }
+
+    const efficiency = stats.power > 0 ? (stats.power / stats.hashrate * 1000).toFixed(2) : '0';
 
     return (
         <div className="space-y-6">
@@ -26,102 +106,81 @@ const Analytics: React.FC = () => {
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Activity className="text-primary" /> Performance Analytics
                     </h1>
-                    <p className="text-muted text-sm">Real-time insights into your mining fleet.</p>
+                    <p className="text-muted text-sm">Real-time data from your mining agent.</p>
                 </div>
-                <div className="flex gap-2">
-                    <button className="px-3 py-1 bg-white/10 rounded-lg text-xs font-bold text-white hover:bg-white/20">24H</button>
-                    <button className="px-3 py-1 bg-transparent rounded-lg text-xs font-bold text-muted hover:text-white">7D</button>
-                    <button className="px-3 py-1 bg-transparent rounded-lg text-xs font-bold text-muted hover:text-white">30D</button>
+                <div className="flex items-center gap-2 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span className="text-green-400">Agent Connected</span>
                 </div>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-surface border border-white/10 rounded-xl p-4">
-                    <p className="text-xs text-muted uppercase font-bold mb-1">Avg Hashrate (24h)</p>
+                    <p className="text-xs text-muted uppercase font-bold mb-1">Current Hashrate</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-white">2.45 kH/s</span>
-                        <span className="text-xs text-green-400 flex items-center">
-                            <TrendingUp size={12} className="mr-0.5" /> +5.2%
+                        <span className="text-2xl font-bold text-white">
+                            {stats.hashrate > 1000 ? `${(stats.hashrate / 1000).toFixed(2)} kH/s` : `${stats.hashrate.toFixed(0)} H/s`}
                         </span>
                     </div>
                 </div>
                 <div className="bg-surface border border-white/10 rounded-xl p-4">
                     <p className="text-xs text-muted uppercase font-bold mb-1">Est. Daily Revenue</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-green-400">$4.12</span>
-                        <span className="text-xs text-green-600 flex items-center">
-                            <TrendingUp size={12} className="mr-0.5" /> +1.8%
-                        </span>
+                        <span className="text-2xl font-bold text-green-400">${dailyEarnings.toFixed(2)}</span>
                     </div>
                 </div>
                 <div className="bg-surface border border-white/10 rounded-xl p-4">
-                    <p className="text-xs text-muted uppercase font-bold mb-1">Power Efficiency</p>
+                    <p className="text-xs text-muted uppercase font-bold mb-1">Power Draw</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-blue-400">0.42 W/kH</span>
-                        <span className="text-xs text-red-400 flex items-center">
-                            <TrendingUp size={12} className="mr-0.5 rotate-180" /> -2.1%
-                        </span>
+                        <span className="text-2xl font-bold text-blue-400">{stats.power.toFixed(0)} W</span>
+                        <span className="text-xs text-muted">{efficiency} W/kH</span>
                     </div>
                 </div>
                 <div className="bg-surface border border-white/10 rounded-xl p-4">
-                    <p className="text-xs text-muted uppercase font-bold mb-1">Uptime</p>
+                    <p className="text-xs text-muted uppercase font-bold mb-1">GPU Temperature</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-white">99.8%</span>
-                        <span className="text-xs text-muted">Last 30d</span>
+                        <span className={`text-2xl font-bold ${stats.temp > 80 ? 'text-red-400' : stats.temp > 70 ? 'text-yellow-400' : 'text-green-400'}`}>
+                            {stats.temp}°C
+                        </span>
                     </div>
                 </div>
             </div>
 
             {/* Main Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {/* Hashrate Chart */}
                 <div className="bg-surface border border-white/10 rounded-xl p-6">
                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                         <Zap size={18} className="text-yellow-400" /> Hashrate History
                     </h3>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={hashrateData}>
-                                <defs>
-                                    <linearGradient id="colorHash" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ebb305" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#ebb305" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                <XAxis dataKey="time" stroke="#666" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#666" tick={{ fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff' }}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#ebb305" fillOpacity={1} fill="url(#colorHash)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Earnings Chart */}
-                <div className="bg-surface border border-white/10 rounded-xl p-6">
-                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                        <DollarSign size={18} className="text-green-400" /> Daily Earnings
-                    </h3>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={earningsData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                <XAxis dataKey="time" stroke="#666" tick={{ fontSize: 12 }} />
-                                <YAxis stroke="#666" tick={{ fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff' }}
-                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                />
-                                <Bar dataKey="value" fill="#4ade80" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    {hashrateHistory.length > 1 ? (
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={hashrateHistory}>
+                                    <defs>
+                                        <linearGradient id="colorHash" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ebb305" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#ebb305" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                    <XAxis dataKey="time" stroke="#666" tick={{ fontSize: 12 }} />
+                                    <YAxis stroke="#666" tick={{ fontSize: 12 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid #333', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff' }}
+                                        formatter={(value: number) => [`${value.toFixed(0)} H/s`, 'Hashrate']}
+                                    />
+                                    <Area type="monotone" dataKey="value" stroke="#ebb305" fillOpacity={1} fill="url(#colorHash)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-[300px] flex items-center justify-center text-muted">
+                            <p>Collecting data... Chart will appear shortly.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

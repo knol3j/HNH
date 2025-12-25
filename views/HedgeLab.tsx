@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { JobSpec } from '../types';
 import { analyzeComputeRequirements } from '../services/geminiService';
 import { Bot, Zap, ArrowRight, Loader2, Shield, AlertTriangle, Code, Copy, Check, LayoutTemplate, Brain, Image as ImageIcon, Mic } from 'lucide-react';
-import { DEPLOYMENT_TEMPLATES } from '../services/mockData';
+import { DEPLOYMENT_TEMPLATES } from '../services/networkService';
 
 const DeployJob: React.FC = () => {
   const [taskInput, setTaskInput] = useState('');
