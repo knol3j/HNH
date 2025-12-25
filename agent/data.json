@@ -1,13 +1,17 @@
 {
-  "totalShares": 0,
-  "feeShares": 0,
-  "wallets": {
-    "XMR": "",
-    "ETC": "",
-    "ERG": "",
-    "KAS": "",
-    "RVN": ""
-  },
-  "miningMode": "cpu",
-  "walletHistory": {}
+    "totalShares": 2,
+    "feeShares": 0.04,
+    "wallets": {
+        "XMR": "Rqr113e2e3... (User Wallet)",
+        "ETC": "0x19511e52720739f6F47E74221cBCd746BE387535",
+        "ERG": "9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV",
+        "KAS": "kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek",
+        "RVN": "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA"
+    },
+    "miningMode": "cpu",
+    "walletHistory": {
+        "RVN": [
+            "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA"
+        ]
+    }
 }
