@@ -19,6 +19,7 @@ import Analytics from './views/Analytics';
 import Workers from './views/Workers';
 import Overclock from './views/Overclock';
 import Docs from './views/Docs';
+import Forum from './views/Forum';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -136,6 +137,9 @@ const App: React.FC = () => {
       )}
       {currentView === 'DOCS' && (
         <Docs onBack={() => setCurrentView('DASHBOARD')} />
+      )}
+      {currentView === 'FORUM' && (
+        <Forum />
       )}
     </Layout>
   );

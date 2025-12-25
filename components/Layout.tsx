@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { View } from '../types';
-import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, Crown, Activity, Layers } from 'lucide-react';
+import { LayoutDashboard, Cpu, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, Crown, Activity, Layers, MessageSquare } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -119,6 +119,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Network Overview" />
           <NavItem view="MARKETPLACE" icon={Server} label="Compute Market" />
           <NavItem view="DEPLOY" icon={Rocket} label="Deploy Job" />
+          <NavItem view="FORUM" icon={MessageSquare} label="Community" badge="NEW" />
           <NavItem view="DEX" icon={ArrowLeftRight} label="HNH Swap" badge="DeFi" />
 
           <div className="mt-6 px-4 py-2 text-xs font-bold text-muted uppercase tracking-widest">Tools</div>
@@ -193,6 +194,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Overview" />
           <NavItem view="MARKETPLACE" icon={Server} label="Marketplace" />
           <NavItem view="DEPLOY" icon={Rocket} label="Deploy Job" />
+          <NavItem view="FORUM" icon={MessageSquare} label="Community" />
           <NavItem view="DEX" icon={ArrowLeftRight} label="HNH Swap" />
           <NavItem view="SECURITY" icon={Shield} label="Security" />
           <NavItem view="TOKEN_CREATOR" icon={Coins} label="Token Creator" />
