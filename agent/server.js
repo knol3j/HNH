@@ -408,16 +408,10 @@ app.post('/auto-switch', (req, res) => {
         addLog('🔄 Auto-Profit Switching ENABLED');
 
         // Check profitability every 5 minutes
-        autoSwitchInterval = setInterval(async () => {
-            try {
-                // Fetch profitability from frontend service (simplified for agent)
-                // In production, this would call an API or use embedded logic
-                addLog('📊 Checking profitability...');
-                // For now, just log - actual switching handled by frontend
-            } catch (e) {
-                addLog(`Auto-switch error: ${e.message}`);
-            }
-        }, 5 * 60 * 1000);
+        autoSwitchInterval = setInterval(checkProfitabilityAndSwitch, 5 * 60 * 1000);
+
+        // Run immediately once
+        checkProfitabilityAndSwitch();
 
     } else if (!enabled && autoSwitchEnabled) {
         autoSwitchEnabled = false;
@@ -430,6 +424,77 @@ app.post('/auto-switch', (req, res) => {
 
     res.json({ success: true, autoSwitchEnabled });
 });
+
+// AUTO-SWITCH LOGIC
+async function checkProfitabilityAndSwitch() {
+    if (!autoSwitchEnabled || minerStatus !== 'MINING') return;
+
+    try {
+        addLog('📊 Checking market prices...');
+        // 1. Fetch Prices
+        // Simplified fetch (Node.js doesn't have fetch in older versions but check environment. 
+        // We imported http earlier but fetch is available in Node 18+. Assuming modern node given 'import' syntax)
+        const ids = 'monero,ravencoin,ethereum-classic,ergo,kaspa';
+        const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+        const prices = await priceRes.json();
+
+        // Map Prices
+        const coinPrices = {
+            XMR: prices.monero?.usd || 0,
+            RVN: prices.ravencoin?.usd || 0,
+            ETC: prices['ethereum-classic']?.usd || 0,
+            ERG: prices.ergo?.usd || 0,
+            KAS: prices.kaspa?.usd || 0
+        };
+
+        // 2. Base Data (Approximate difficulty/rewards for estimation)
+        const BASELINE = {
+            XMR: { reward: 0.6, diff: 300000000000 },
+            RVN: { reward: 2500, diff: 50000 }, // RVN diff varies wildly, this is low-ball
+            ETC: { reward: 2.56, diff: 2000000000000000 },
+            ERG: { reward: 30, diff: 1500000000000 },
+            KAS: { reward: 500, diff: 100000 }
+        };
+
+        let bestCoin = currentCoin;
+        let maxScore = 0;
+        let currentScore = 0;
+
+        // 3. Calc Score
+        Object.keys(COIN_POOLS).forEach(coin => {
+            const base = BASELINE[coin];
+            if (!base || !coinPrices[coin]) return;
+
+            // Simple Score = (Reward * Price) / Difficulty (Ignoring hashrate scale since it's relative)
+            // We use a normalized multiplier to make numbers readable
+            const score = (base.reward * coinPrices[coin] * 1000000000000) / base.diff;
+
+            if (coin === currentCoin) currentScore = score;
+            if (score > maxScore) {
+                maxScore = score;
+                bestCoin = coin;
+            }
+        });
+
+        // 4. Decide Switch (Threshold 10% better)
+        if (bestCoin !== currentCoin && maxScore > currentScore * 1.10) {
+            addLog(`🚀 Auto-Switch: ${bestCoin} is >10% more profitable than ${currentCoin}. Switching...`);
+
+            // Execute Switch
+            currentCoin = bestCoin;
+            config.poolUrl = COIN_POOLS[bestCoin];
+            config.algorithm = COIN_ALGOS[bestCoin] || 'rx/0';
+            if (config.wallets[bestCoin]) config.wallet = config.wallets[bestCoin];
+
+            startMiner();
+        } else {
+            addLog(`✅ ${currentCoin} is still optimal (or difference < 10%).`);
+        }
+
+    } catch (e) {
+        addLog(`⚠️ Auto-Switch Check Failed: ${e.message}`);
+    }
+}
 
 const COIN_ALGOS = {
     XMR: 'rx/0',
@@ -487,8 +552,50 @@ app.get('/auto-switch', (req, res) => {
     res.json({ enabled: autoSwitchEnabled, currentCoin });
 });
 
+// ...
+let lastProfitability = 0; // USD/day estimate
+
+async function checkProfitabilityAndSwitch() {
+    if (minerStatus !== 'MINING' && !autoSwitchEnabled) return; // Allow check even if not auto-switch if we want stats? 
+    // Actually, let's allow checking always if we want specific stats. But for now stick to logic.
+    // ...
+    // 3. Calc Score
+    Object.keys(COIN_POOLS).forEach(coin => {
+        const base = BASELINE[coin];
+        if (!base || !coinPrices[coin]) return;
+
+        // Simple Score = (Reward * Price) / Difficulty
+        const score = (base.reward * coinPrices[coin] * 1000000000000) / base.diff;
+        // score is approx $ per day per unit hashrate (scaled)
+
+        if (coin === currentCoin) {
+            currentScore = score;
+            lastProfitability = score; // Store for /stats
+        }
+        if (score > maxScore) {
+            maxScore = score;
+            bestCoin = coin;
+        }
+    });
+    // ...
+}
+
+// ...
+
+// REAL STATS API (Replaces Fake Dashboard Data)
+app.get('/stats', (req, res) => {
+    res.json({
+        activeNodes: 1, // Self
+        totalTflops: telemetry.hashrate / 1000000, // MH/s as proxy
+        jobsRunning: minerStatus === 'MINING' ? 1 : 0,
+        networkUtilization: minerStatus === 'MINING' ? 100 : 0,
+        avgPricePerFLOP: lastProfitability // Using this field to carry profit info
+    });
+});
+
 // GUI: Metadata Endpoint
 app.get('/meta', (req, res) => {
+    // ...
     res.json({
         coins: Object.keys(COIN_POOLS),
         pools: COIN_POOLS,

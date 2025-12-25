@@ -1,22 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowDown, Settings, Info, RefreshCw, ExternalLink } from 'lucide-react'; // Removing unused ArrowRightLeft
+import { RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getWalletState, swapTokens, WalletState } from '../services/walletService';
 
 const Dex: React.FC = () => {
-   const [fromAmount, setFromAmount] = useState('1');
-   const [toAmount, setToAmount] = useState('');
-
    // Real Data States
    const [solPrice, setSolPrice] = useState<number | null>(null);
    const [rndrPrice, setRndrPrice] = useState<number | null>(null);
    const [chartData, setChartData] = useState<any[]>([]);
    const [isLoading, setIsLoading] = useState(true);
-
-   // Wallet State
-   const [wallet, setWallet] = useState<WalletState>(getWalletState());
-   const [isSwapping, setIsSwapping] = useState(false);
 
    // Fetch Real Data
    useEffect(() => {
@@ -54,47 +46,10 @@ const Dex: React.FC = () => {
       fetchData();
       const interval = setInterval(fetchData, 60000); // Refresh every minute
 
-      // Listen for wallet updates
-      const handleWalletUpdate = () => setWallet(getWalletState());
-      window.addEventListener('wallet-updated', handleWalletUpdate);
-
       return () => {
          clearInterval(interval);
-         window.removeEventListener('wallet-updated', handleWalletUpdate);
       };
    }, []);
-
-   // Calculate Exchange Rate
-   const exchangeRate = (solPrice && rndrPrice) ? (solPrice / rndrPrice) : 0;
-
-   useEffect(() => {
-      const val = parseFloat(fromAmount);
-      if (!isNaN(val) && exchangeRate > 0) {
-         setToAmount((val * exchangeRate).toFixed(4));
-      }
-   }, [exchangeRate, fromAmount]);
-
-   const handleSwap = async () => {
-      const amount = parseFloat(fromAmount);
-      if (isNaN(amount) || amount <= 0) return;
-
-      setIsSwapping(true);
-      try {
-         const result = await swapTokens('SOL', 'RNDR', amount, exchangeRate);
-         if (result.success) {
-            setWallet(getWalletState()); // Ensure UI sync
-            alert(result.message);
-            setFromAmount('');
-            setToAmount('');
-         } else {
-            alert(`Swap Failed: ${result.message}`);
-         }
-      } catch (e) {
-         alert('Swap failed due to an error');
-      } finally {
-         setIsSwapping(false);
-      }
-   };
 
    return (
       <div className="max-w-6xl mx-auto space-y-6">
@@ -169,107 +124,30 @@ const Dex: React.FC = () => {
                </div>
             </div>
 
-            {/* Swap Interface */}
-            <div className="bg-surface border border-white/10 rounded-2xl p-6 h-fit relative">
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-bold text-white">Swap</h3>
-                  <button className="text-muted hover:text-white transition-colors" aria-label="Settings"><Settings size={20} /></button>
+            {/* Swap Interface (Live Widget) */}
+            <div className="bg-surface border border-white/10 rounded-2xl overflow-hidden min-h-[460px] relative flex flex-col">
+               <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/20">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                     <RefreshCw size={16} className="text-primary" /> Multi-Chain Swap
+                  </h3>
+                  <span className="text-xs text-green-400 flex items-center gap-1">
+                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live
+                  </span>
                </div>
 
-               <div className="space-y-1">
-                  {/* From Token */}
-                  <div className="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                     <div className="flex justify-between text-xs text-muted mb-2">
-                        <span>Pay</span>
-                        <span>Balance: {wallet.solBalance.toFixed(4)} SOL</span>
-                     </div>
-                     <div className="flex items-center justify-between">
-                        <input
-                           type="number"
-                           value={fromAmount}
-                           onChange={(e) => setFromAmount(e.target.value)}
-                           className="bg-transparent text-2xl font-bold text-white focus:outline-none w-full"
-                           placeholder="0.0"
-                           disabled={isSwapping}
-                        />
-                        <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors text-white font-bold shrink-0">
-                           <img src="https://cryptologos.cc/logos/solana-sol-logo.svg?v=032" className="w-5 h-5" alt="SOL" />
-                           SOL
-                        </button>
-                     </div>
-                     <div className="text-xs text-muted mt-2">
-                        ≈ ${(parseFloat(fromAmount || '0') * (solPrice || 0)).toFixed(2)} USD
-                     </div>
-                  </div>
+               <iframe
+                  id="iframe-widget"
+                  src="https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=true&amount=0.1&amountFiat=1500&backgroundColor=000000&darkMode=true&from=sol&horizontal=false&isFiat=false&lang=en-US&link_id=89234823&locales=true&logo=false&primaryColor=8b5cf6&to=rndr&toTheMoon=true"
+                  className="w-full flex-1 border-none"
+                  style={{ height: '360px', minHeight: '100%' }} // Ensure it takes up space
+                  title="ChangeNow Crypto Exchange"
+               ></iframe>
 
-                  {/* Swap Direction Arrow */}
-                  <div className="flex justify-center -my-3 relative z-10">
-                     <button className="bg-surface border border-white/10 p-2 rounded-xl hover:scale-110 transition-transform" aria-label="Swap Direction">
-                        <ArrowDown className="text-primary" size={18} />
-                     </button>
-                  </div>
-
-                  {/* To Token */}
-                  <div className="bg-black/40 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                     <div className="flex justify-between text-xs text-muted mb-2">
-                        <span>Receive</span>
-                        <span>Balance: {wallet.rndrBalance.toFixed(4)} RNDR</span>
-                     </div>
-                     <div className="flex items-center justify-between">
-                        <input
-                           type="text"
-                           readOnly
-                           value={isLoading ? '...' : toAmount}
-                           className="bg-transparent text-2xl font-bold text-primary focus:outline-none w-full"
-                           placeholder="0.0"
-                        />
-                        <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors text-white font-bold shrink-0">
-                           <img src="https://cryptologos.cc/logos/render-token-rndr-logo.svg?v=032" className="w-5 h-5" alt="RNDR" />
-                           RNDR
-                        </button>
-                     </div>
-                     <div className="text-xs text-muted mt-2">
-                        Best Price via Jupiter
-                     </div>
-                  </div>
+               <div className="p-3 bg-black/40 text-center border-t border-white/5">
+                  <p className="text-[10px] text-muted">
+                     Real-time swaps provided by ChangeNow. Non-custodial.
+                  </p>
                </div>
-
-               {/* Details Accordion */}
-               <div className="mt-4 space-y-2 text-xs text-muted">
-                  <div className="flex justify-between">
-                     <span>Rate</span>
-                     <span className="text-white">1 SOL ≈ {exchangeRate.toFixed(2)} RNDR</span>
-                  </div>
-                  <div className="flex justify-between">
-                     <span className="flex items-center gap-1">Network Cost <Info size={10} /></span>
-                     <span className="text-white">~$0.00025</span>
-                  </div>
-                  <div className="flex justify-between">
-                     <span>Price Impact</span>
-                     <span className="text-green-500">&lt; 0.05%</span>
-                  </div>
-                  <div className="flex justify-between">
-                     <span>Route</span>
-                     <span className="text-white">SOL &gt; RAY &gt; RNDR</span>
-                  </div>
-               </div>
-
-               <button
-                  onClick={handleSwap}
-                  disabled={isSwapping || isLoading || !solPrice}
-                  className={`w-full mt-6 text-black font-bold py-4 rounded-xl text-lg transition-all shadow-lg flex items-center justify-center gap-2 ${isSwapping ? 'bg-primary/50 cursor-wait' : 'bg-primary hover:bg-primary-hover shadow-primary/20'
-                     }`}
-               >
-                  {isSwapping ? (
-                     <>Processing <RefreshCw className="animate-spin" size={16} /></>
-                  ) : (
-                     <>Swap Assets <ExternalLink size={16} /></>
-                  )}
-               </button>
-
-               <p className="text-[10px] text-muted text-center mt-4">
-                  Powered by Solana On-Chain Liquidity
-               </p>
             </div>
          </div>
       </div>

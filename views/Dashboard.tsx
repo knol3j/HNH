@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Coins
 } from 'lucide-react';
+import { calculateProfitability } from '../services/profitabilityService';
 import {
   Area,
   AreaChart,
@@ -171,55 +172,68 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // GPU rental market estimates based on current market rates
-  // Mining estimates: calculated from typical hashrates and coin prices
-  // AI compute estimates: based on cloud GPU rental market (Akash, Render, etc)
-  const [gpuRates, setGpuRates] = useState<Record<string, { mining: number; ai: number }>>({
-    'NVIDIA H100': { mining: 0, ai: 0 },
-    'NVIDIA A100': { mining: 0, ai: 0 },
-    'RTX 4090': { mining: 0, ai: 0 },
-    'RTX 3090': { mining: 0, ai: 0 }
-  });
+  // Profitability Logic
+  const [profitEstimates, setProfitEstimates] = useState<{ mining: number, ai: number }>({ mining: 0, ai: 0 });
 
   useEffect(() => {
-    const fetchGpuRates = async () => {
-      try {
-        // Fetch XMR price for mining estimate calculations
-        const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=monero&vs_currencies=usd');
-        const priceData = await priceRes.json();
-        const xmrPrice = priceData.monero?.usd || 150;
+    const updateEstimates = async () => {
+      // Fetch base profitability (USD/day for 1 GH/s or similar baseline)
+      // ProfitabilityService returns "estimatedDailyUsd" for baseline hashrate (1000 H/s ?)
+      const profs = await calculateProfitability(1000); // 1000 H/s baseline
 
-        // Mining estimates based on typical hashrates (H/s) and current XMR network
-        // H100: ~30kH/s, A100: ~20kH/s, 4090: ~15kH/s, 3090: ~12kH/s for RandomX
-        const networkHashrate = 2.5e9; // ~2.5 GH/s network
-        const blockReward = 0.6;
-        const blocksPerHour = 30;
+      // Map GPU to approximate Hashrates
+      // RTX 4090: KawPow ~50 MH/s, Autolykos ~250 MH/s, Etchash ~130 MH/s. RandomX (CPU) irrelevant.
+      // Let's use RVN (KawPow) as reference for GPU mining profitability on consumer cards.
+      const rvn = profs.find(p => p.symbol === 'RVN');
+      const etc = profs.find(p => p.symbol === 'ETC');
 
-        const calculateMiningRevenue = (hashrate: number) => {
-          const share = hashrate / networkHashrate;
-          return share * blocksPerHour * blockReward * xmrPrice;
-        };
+      // Base Unit in Service is 1000 H/s? Service says:
+      // dailyCoins = (hashrateHs * 86400 * reward) / ...
+      // So passed hashrate is in H/s.
 
-        // AI compute market rates (based on current cloud GPU pricing)
-        setGpuRates({
-          'NVIDIA H100': { mining: calculateMiningRevenue(30000), ai: 2.50 },
-          'NVIDIA A100': { mining: calculateMiningRevenue(20000), ai: 1.10 },
-          'RTX 4090': { mining: calculateMiningRevenue(15000), ai: 0.45 },
-          'RTX 3090': { mining: calculateMiningRevenue(12000), ai: 0.25 }
-        });
-      } catch (e) {
-        console.error('Failed to fetch GPU rates:', e);
+      // 4090 Hashrates (approx)
+      // RVN: 50 MH/s = 50,000,000 H/s
+      // ETC: 130 MH/s = 130,000,000 H/s
+
+      // Profit calc:
+      let miningRevenue = 0;
+      if (rvn) {
+        // Re-calc for 50MH/s
+        // Service calc was for 1000 H/s. So multiply result by 50,000.
+        miningRevenue = (rvn.estimatedDailyUsd * 50000);
       }
+
+      // AI Revenue is usually higher but market dependent. 
+      // Real logic: Vast.ai/Runpod 4090 prices ~ $0.40 - $0.50 / hr = $9.6 - $12 / day.
+      // Mining revenue for 4090 on RVN is ~ $2.50 / day (very rough).
+      // To be safe and "real data" driven, let's just stick to fixed AI market rates (hard to API fetch without auth)
+      // and dynamic mining rates.
+
+      // Adjust for selected GPU
+      let mult = 1;
+      if (calcGpu === 'RTX 3090') mult = 0.8;
+      if (calcGpu === 'NVIDIA A100') mult = 3; // Mining A100 is bad idea, but AI is high
+      if (calcGpu === 'NVIDIA H100') mult = 6;
+
+      // Daily -> Hourly
+      const miningHourly = (miningRevenue * mult) / 24;
+
+      // AI Hourly (Static Market Averages 2024)
+      let aiHourly = 0.45; // 4090
+      if (calcGpu === 'RTX 3090') aiHourly = 0.25;
+      if (calcGpu === 'NVIDIA A100') aiHourly = 1.20;
+      if (calcGpu === 'NVIDIA H100') aiHourly = 2.50;
+
+      setProfitEstimates({
+        mining: miningHourly,
+        ai: aiHourly
+      });
     };
 
-    fetchGpuRates();
-  }, []);
+    updateEstimates();
+  }, [calcGpu]); // Recalc when GPU changes
 
-  const getEstimates = (gpu: string) => {
-    return gpuRates[gpu] || { mining: 0, ai: 0 };
-  };
-
-  const estimates = getEstimates(calcGpu);
+  const estimates = profitEstimates;
   const aiPremium = ((estimates.ai - estimates.mining) / estimates.mining * 100).toFixed(0);
   const isAiProfitable = estimates.ai > estimates.mining;
 
