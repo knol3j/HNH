@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ComputeNode } from '../types';
-import { MOCK_NODES } from '../services/mockData';
-import { Server, Cpu, MapPin, Zap, Filter, BadgeCheck, ShieldCheck } from 'lucide-react';
+import { fetchComputeNodes } from '../services/networkService';
+import { Server, Cpu, MapPin, Zap, Filter, BadgeCheck, ShieldCheck, Loader2 } from 'lucide-react';
 
 const Marketplace: React.FC = () => {
   const [filterGpu, setFilterGpu] = useState('All');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-  
-  const filteredNodes = MOCK_NODES.filter(n => {
+  const [nodes, setNodes] = useState<ComputeNode[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadNodes = async () => {
+      setIsLoading(true);
+      const fetchedNodes = await fetchComputeNodes();
+      setNodes(fetchedNodes);
+      setIsLoading(false);
+    };
+    loadNodes();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadNodes, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredNodes = nodes.filter(n => {
     const matchesGpu = filterGpu === 'All' || n.gpuModel.includes(filterGpu);
     const matchesVerified = verifiedOnly ? n.isVerified : true;
     return matchesGpu && matchesVerified;
@@ -52,10 +67,16 @@ const Marketplace: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 gap-4">
-        {filteredNodes.length === 0 && (
+        {isLoading && (
+           <div className="text-center py-20 text-muted">
+             <Loader2 size={48} className="mx-auto mb-4 opacity-50 animate-spin" />
+             <p>Loading available nodes...</p>
+           </div>
+        )}
+        {!isLoading && filteredNodes.length === 0 && (
            <div className="text-center py-20 text-muted">
              <Server size={48} className="mx-auto mb-4 opacity-20" />
-             <p>No nodes found matching criteria.</p>
+             <p>No nodes currently available. Check back later or register your own!</p>
            </div>
         )}
         {filteredNodes.map((node) => (

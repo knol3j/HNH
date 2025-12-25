@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Palette, Download, Layout, Globe, CheckCircle } from 'lucide-react';
+import { getWalletState } from '../services/walletService';
 
 const WhiteLabel: React.FC = () => {
   const [config, setConfig] = useState({
@@ -10,6 +11,9 @@ const WhiteLabel: React.FC = () => {
     logoUrl: '',
     domain: 'myminer.io'
   });
+
+  const walletState = getWalletState();
+  const previewBalance = walletState.solBalance > 0 ? walletState.solBalance.toFixed(2) : '0.00';
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -117,8 +121,8 @@ const WhiteLabel: React.FC = () => {
               {/* Content */}
               <div className="p-4 space-y-4">
                 <div className="rounded-xl p-4 text-white" style={{ backgroundColor: config.primaryColor }}>
-                  <p className="text-xs opacity-80">Total Balance</p>
-                  <p className="text-2xl font-bold">$12,450.00</p>
+                  <p className="text-xs opacity-80">SOL Balance</p>
+                  <p className="text-2xl font-bold">{previewBalance} SOL</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

@@ -1,51 +1,62 @@
 /**
  * Profitability Service
- * 
- * Fetches real-time coin prices and calculates mining profitability.
+ *
+ * Fetches real-time coin prices from CoinGecko and calculates mining profitability.
  * Used for auto-profit switching feature.
  */
 
-// Coin profitability data structure
 export interface CoinProfitability {
     symbol: string;
     name: string;
-    price: number; // USD
+    price: number;
     algorithm: string;
     networkDifficulty: number;
     blockReward: number;
-    estimatedDailyUsd: number; // Per MH/s
-    profitabilityScore: number; // Higher = better
+    estimatedDailyUsd: number;
+    profitabilityScore: number;
 }
 
-// Hardcoded baseline data (fallback when API fails)
-const BASELINE_DATA: Record<string, Partial<CoinProfitability>> = {
-    XMR: { algorithm: 'RandomX', blockReward: 0.6, networkDifficulty: 300000000000 },
-    RVN: { algorithm: 'KawPow', blockReward: 2500, networkDifficulty: 50000 },
-    ETC: { algorithm: 'Etchash', blockReward: 2.56, networkDifficulty: 2000000000000000 },
-    ERG: { algorithm: 'Autolykos2', blockReward: 30, networkDifficulty: 1500000000000 },
-    KAS: { algorithm: 'kHeavyHash', blockReward: 500, networkDifficulty: 100000 }
+// Blockchain parameters - these are static protocol values
+const COIN_PARAMS: Record<string, { algorithm: string; blockReward: number; networkHashrate: number }> = {
+    XMR: { algorithm: 'RandomX', blockReward: 0.6, networkHashrate: 2.5e9 },
+    RVN: { algorithm: 'KawPow', blockReward: 2500, networkHashrate: 5e12 },
+    ETC: { algorithm: 'Etchash', blockReward: 2.56, networkHashrate: 150e12 },
+    ERG: { algorithm: 'Autolykos2', blockReward: 30, networkHashrate: 50e12 },
+    KAS: { algorithm: 'kHeavyHash', blockReward: 500, networkHashrate: 200e12 }
+};
+
+const COINGECKO_IDS: Record<string, string> = {
+    XMR: 'monero',
+    RVN: 'ravencoin',
+    ETC: 'ethereum-classic',
+    ERG: 'ergo',
+    KAS: 'kaspa'
 };
 
 /**
- * Fetch current prices from CoinGecko
+ * Fetch current prices from CoinGecko API
  */
-export const fetchCoinPrices = async (): Promise<Record<string, number>> => {
+export const fetchCoinPrices = async (): Promise<Record<string, number> | null> => {
     try {
-        const ids = 'monero,ravencoin,ethereum-classic,ergo,kaspa';
+        const ids = Object.values(COINGECKO_IDS).join(',');
         const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+
+        if (!res.ok) {
+            console.error('CoinGecko API error:', res.status);
+            return null;
+        }
+
         const data = await res.json();
 
-        return {
-            XMR: data.monero?.usd || 150,
-            RVN: data.ravencoin?.usd || 0.02,
-            ETC: data['ethereum-classic']?.usd || 20,
-            ERG: data.ergo?.usd || 1.5,
-            KAS: data.kaspa?.usd || 0.10
-        };
+        const prices: Record<string, number> = {};
+        for (const [symbol, geckoId] of Object.entries(COINGECKO_IDS)) {
+            prices[symbol] = data[geckoId]?.usd || 0;
+        }
+
+        return prices;
     } catch (e) {
         console.error('Failed to fetch prices:', e);
-        // Fallback prices
-        return { XMR: 150, RVN: 0.02, ETC: 20, ERG: 1.5, KAS: 0.10 };
+        return null;
     }
 };
 
@@ -56,25 +67,32 @@ export const fetchCoinPrices = async (): Promise<Record<string, number>> => {
 export const calculateProfitability = async (hashrateHs: number = 1000): Promise<CoinProfitability[]> => {
     const prices = await fetchCoinPrices();
 
-    const results: CoinProfitability[] = Object.keys(BASELINE_DATA).map(symbol => {
-        const base = BASELINE_DATA[symbol];
-        const price = prices[symbol] || 1;
+    if (!prices) {
+        // Return empty array if prices unavailable
+        return [];
+    }
 
-        // Simplified profitability calculation
-        // Real formula would use network hashrate, but this gives relative comparison
-        const dailyCoins = (hashrateHs * 86400 * (base.blockReward || 1)) / ((base.networkDifficulty || 1) * 1000);
+    const results: CoinProfitability[] = Object.keys(COIN_PARAMS).map(symbol => {
+        const params = COIN_PARAMS[symbol];
+        const price = prices[symbol] || 0;
+
+        // Calculate expected daily earnings
+        // Formula: (your_hashrate / network_hashrate) * blocks_per_day * block_reward * price
+        const blocksPerDay = 720; // ~2 minute block time average
+        const yourShare = hashrateHs / params.networkHashrate;
+        const dailyCoins = yourShare * blocksPerDay * params.blockReward;
         const dailyUsd = dailyCoins * price;
 
-        // Normalize to a 0-100 score
-        const profitabilityScore = Math.min(100, dailyUsd * 1000);
+        // Score is simply the daily USD earnings scaled
+        const profitabilityScore = Math.min(100, dailyUsd * 100);
 
         return {
             symbol,
             name: symbol,
             price,
-            algorithm: base.algorithm || 'Unknown',
-            networkDifficulty: base.networkDifficulty || 0,
-            blockReward: base.blockReward || 0,
+            algorithm: params.algorithm,
+            networkDifficulty: params.networkHashrate,
+            blockReward: params.blockReward,
             estimatedDailyUsd: dailyUsd,
             profitabilityScore
         };
@@ -94,16 +112,14 @@ export const getMostProfitableCoin = async (): Promise<CoinProfitability | null>
 
 /**
  * Check if we should switch coins based on profitability threshold
- * Returns the new coin symbol if switch is recommended, null otherwise
  */
 export const shouldSwitchCoin = async (currentCoin: string, thresholdPercent: number = 10): Promise<string | null> => {
     const rankings = await calculateProfitability();
     const current = rankings.find(c => c.symbol === currentCoin);
     const best = rankings[0];
 
-    if (!current || !best) return null;
+    if (!current || !best || current.profitabilityScore === 0) return null;
 
-    // Switch if best coin is X% more profitable than current
     const improvement = ((best.profitabilityScore - current.profitabilityScore) / current.profitabilityScore) * 100;
 
     if (improvement >= thresholdPercent && best.symbol !== currentCoin) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Cpu, Zap, Shield, TrendingUp, DollarSign } from 'lucide-react';
 import { CoinProfitability, calculateProfitability } from '../services/profitabilityService';
+import { fetchUserCount } from '../services/networkService';
 
 interface LandingProps {
     onEnterApp: () => void;
@@ -11,20 +12,26 @@ const Landing: React.FC<LandingProps> = ({ onEnterApp, onViewDocs }) => {
     const [hashrate, setHashrate] = useState(1000);
     const [estimatedEarnings, setEstimatedEarnings] = useState(0);
     const [bestCoin, setBestCoin] = useState<CoinProfitability | null>(null);
+    const [userCount, setUserCount] = useState<number>(0);
 
     useEffect(() => {
         const fetchStats = async () => {
             const rankings = await calculateProfitability(hashrate);
             if (rankings.length > 0) {
                 setBestCoin(rankings[0]);
-                // Simple estimation: score is daily USD * 1000. So daily USD = score / 1000
-                // But calculateProfitability actually returns estimatedDailyUsd correctly now?
-                // Let's re-check the service later. For now, trust the object.
                 setEstimatedEarnings(rankings[0].estimatedDailyUsd);
             }
         };
         fetchStats();
     }, [hashrate]);
+
+    useEffect(() => {
+        const loadUserCount = async () => {
+            const count = await fetchUserCount();
+            setUserCount(count);
+        };
+        loadUserCount();
+    }, []);
 
     return (
         <div className="min-h-screen bg-black text-white selection:bg-primary selection:text-black overflow-hidden relative">
@@ -86,14 +93,16 @@ const Landing: React.FC<LandingProps> = ({ onEnterApp, onViewDocs }) => {
                             View Documentation
                         </button>
                     </div>
-                    <div className="mt-8 flex items-center gap-4 text-sm text-muted">
-                        <div className="flex -space-x-2">
-                            {[1, 2, 3, 4].map(i => (
-                                <div key={i} className="w-8 h-8 rounded-full bg-gray-600 border-2 border-black" />
-                            ))}
+                    {userCount > 0 && (
+                        <div className="mt-8 flex items-center gap-4 text-sm text-muted">
+                            <div className="flex -space-x-2">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="w-8 h-8 rounded-full bg-gray-600 border-2 border-black" />
+                                ))}
+                            </div>
+                            <p>Joined by {userCount.toLocaleString()} users</p>
                         </div>
-                        <p>Trusted by 10,000+ miners</p>
-                    </div>
+                    )}
                 </div>
 
                 {/* Profit Calculator */}

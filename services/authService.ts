@@ -64,47 +64,36 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
 
 export const logoutUser = () => {
     localStorage.removeItem('hnh_token');
-    // window.location.reload(); // Optional: reset state
+    cachedUser = null;
 };
+
+// Cache for user data fetched from backend
+let cachedUser: User | null = null;
 
 export const getCurrentUser = (): User | null => {
-    // With JWT, we can't fully know user details without decoding or fetching profile.
-    // For sync checks, we check token existence.
-    // Ideally we should use a React Context/Hook for async auth state.
-    // This function signature is synchronous which is tricky for async backend.
+    // Check for cached user from fetchCurrentUser
+    if (cachedUser) return cachedUser;
 
-    // TEMPORARY ADAPTER: Return minimal user if token exists to satisfy TS
+    // Check if token exists - if so, we're logged in but need to fetch user data
     const token = localStorage.getItem('hnh_token');
     if (!token) return null;
 
-    if (token === 'demo-mode') {
-        return {
-            id: 'demo-user',
-            username: 'Demo User',
-            tier: 'pro',
-            createdAt: Date.now(),
-            passwordHash: '',
-            referralCode: 'DEMO123',
-            referralBonus: 50
-        };
-    }
-
-    // In a real app we 'decode' the token here or return a cached user object
-    return {
-        id: 'session',
-        username: 'User',
-        tier: 'free',
-        createdAt: 0,
-        passwordHash: '',
-        referralCode: '',
-        referralBonus: 0
-    };
+    // Return a placeholder that indicates we need to fetch real user data
+    // Components should use fetchCurrentUser() for accurate data
+    return null;
 };
 
-// Async version recommended for real backend
+export const setCachedUser = (user: User | null) => {
+    cachedUser = user;
+};
+
+// Async version - fetches real user data from backend
 export const fetchCurrentUser = async (): Promise<User | null> => {
     const token = localStorage.getItem('hnh_token');
-    if (!token) return null;
+    if (!token) {
+        cachedUser = null;
+        return null;
+    }
 
     try {
         const res = await fetch(`${API_URL}/user/profile`, {
@@ -112,9 +101,15 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
         });
         if (res.ok) {
             const user = await res.json();
+            cachedUser = user;
             return user;
         }
-    } catch (e) { }
+        // Token invalid, clear it
+        localStorage.removeItem('hnh_token');
+        cachedUser = null;
+    } catch (e) {
+        console.error('Failed to fetch user profile:', e);
+    }
     return null;
 }
 
