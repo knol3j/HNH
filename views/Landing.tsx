@@ -4,9 +4,10 @@ import { CoinProfitability, calculateProfitability } from '../services/profitabi
 
 interface LandingProps {
     onEnterApp: () => void;
+    onViewDocs: () => void;
 }
 
-const Landing: React.FC<LandingProps> = ({ onEnterApp }) => {
+const Landing: React.FC<LandingProps> = ({ onEnterApp, onViewDocs }) => {
     const [hashrate, setHashrate] = useState(1000);
     const [estimatedEarnings, setEstimatedEarnings] = useState(0);
     const [bestCoin, setBestCoin] = useState<CoinProfitability | null>(null);
@@ -78,7 +79,10 @@ const Landing: React.FC<LandingProps> = ({ onEnterApp }) => {
                         >
                             Start Earning Now <ArrowRight size={20} />
                         </button>
-                        <button className="bg-white/5 border border-white/10 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all">
+                        <button
+                            onClick={onViewDocs}
+                            className="bg-white/5 border border-white/10 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all font-sans"
+                        >
                             View Documentation
                         </button>
                     </div>

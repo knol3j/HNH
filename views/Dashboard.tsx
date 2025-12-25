@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Zap,
   Terminal,
-  ArrowRight
+  ArrowRight,
+  Coins
 } from 'lucide-react';
 import {
   Area,
@@ -115,6 +116,61 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
     fetchSectorData();
   }, []);
 
+  // Live Mining Balance (New Feature)
+  const [miningBalance, setMiningBalance] = useState<{ unpaid: number, currency: string, usdValue: number }>({ unpaid: 0, currency: '', usdValue: 0 });
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const agentUrl = 'http://localhost:4343'; // Default local agent
+        const res = await fetch(`${agentUrl}/telemetry`);
+        if (!res.ok) return;
+        const telemetry = await res.json();
+
+        if (telemetry.wallet && telemetry.coin) {
+          const coin = telemetry.coin.toLowerCase();
+          // Only support 2miners coins for this demo
+          if (['xmr', 'rvn', 'eth', 'etc'].includes(coin)) {
+            try {
+              const poolRes = await fetch(`https://${coin}.2miners.com/api/accounts/${telemetry.wallet}`);
+              const poolData = await poolRes.json();
+
+              // 2miners returns stats.balance (unpaid) in base units, need to divide (usually 1e9 for XMR/RVN/ETH is 1e18, simplified here assuming API returns formatted or we need to normalize)
+              // ACTUALLY 2miners API returns 'stats.balance' in wei/pico. 
+              // RVN: 1e8, XMR: 1e12, ETH: 1e18. 
+              let divisor = 1e9;
+              if (coin === 'xmr') divisor = 1e12;
+              if (coin === 'rvn') divisor = 1e8;
+              if (coin === 'eth' || coin === 'etc') divisor = 1e18;
+
+              const unpaid = (poolData.stats?.balance || 0) / divisor;
+
+              // Get Price
+              const priceRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coin === 'rvn' ? 'ravencoin' : coin === 'xmr' ? 'monero' : coin}&vs_currencies=usd`);
+              const priceData = await priceRes.json();
+              const priceId = coin === 'rvn' ? 'ravencoin' : coin === 'xmr' ? 'monero' : coin;
+              const price = priceData[priceId]?.usd || 0;
+
+              setMiningBalance({
+                unpaid,
+                currency: telemetry.coin,
+                usdValue: unpaid * price
+              });
+            } catch (poolErr) {
+              console.error("Pool fetch error", poolErr);
+            }
+          }
+        }
+      } catch (e) {
+        // Agent offline
+      }
+    };
+
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000); // 10s poll
+    return () => clearInterval(interval);
+  }, []);
+
   // Simple static estimation logic for the calculator
   const getEstimates = (gpu: string) => {
     switch (gpu) {
@@ -198,6 +254,18 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
           </p>
           <p className="text-sm text-gray-300 mt-2 line-clamp-3 leading-relaxed">
             {aiAnalysis || "Analyzing network liquidity..."}
+          </p>
+        </div>
+
+        {/* Live Payout (New) */}
+        <div className="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Coins size={48} className="text-emerald-500" />
+          </div>
+          <p className="text-muted text-sm font-medium uppercase tracking-wider">Live Payout</p>
+          <h3 className="text-2xl font-bold text-white mt-1">${miningBalance.usdValue.toFixed(4)}</h3>
+          <p className="text-xs text-emerald-400 mt-2 font-mono">
+            {miningBalance.unpaid.toFixed(6)} {miningBalance.currency || 'PENDING'}
           </p>
         </div>
       </div>
@@ -373,7 +441,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

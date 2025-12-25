@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com', 'http://localhost:4343', 'http://127.0.0.1:4343'];
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -73,6 +73,7 @@ const COIN_POOLS = {
 
 // --- STATE ---
 // --- STATE ---
+// --- STATE ---
 let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 
 let config = {
@@ -87,6 +88,8 @@ let config = {
     algorithm: 'kawpow',
     mode: 'cpu' // cpu or gpu
 };
+
+let walletHistory = {}; // Map<Coin, Array<Address>>
 
 let minerProcess = null;
 let minerStatus = 'OFFLINE';
@@ -109,9 +112,10 @@ try {
         totalShares = data.totalShares || 0;
         feeShares = data.feeShares || 0;
 
-        // Load Config from setup script
+        // Load Config from setup script or previous save
         if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
         if (data.miningMode) config.mode = data.miningMode;
+        if (data.walletHistory) walletHistory = data.walletHistory;
 
         // SMART DEFAULTS: switch coin based on mode
         if (config.mode === 'gpu') {
@@ -134,8 +138,17 @@ try {
     }
 } catch (e) { console.error(e); }
 
-const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+const saveData = () => {
+    try {
+        const data = {
+            totalShares,
+            feeShares,
+            wallets: config.wallets,
+            miningMode: config.mode,
+            walletHistory
+        };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (e) { console.error("Failed to save data:", e); }
 };
 
 // --- LOGGING ---
@@ -297,7 +310,7 @@ const handleMinerOutput = (rawLine) => {
             totalShares++;
             const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
             feeShares += feeRate;
-            saveStats();
+            saveData();
         }
     });
 };
@@ -335,6 +348,7 @@ app.get('/telemetry', (req, res) => {
             progress: 0
         } : null,
         wallet: config.wallet,
+        coin: currentCoin,
         platform_wallet: PLATFORM_WALLET,
         status: minerStatus,
         logs: recentLogs
@@ -350,6 +364,14 @@ app.post('/config', (req, res) => {
         // PERSISTENCE: Save to specific coin slot
         if (currentCoin) {
             config.wallets[currentCoin] = wallet;
+
+            // Add to History
+            if (!walletHistory[currentCoin]) walletHistory[currentCoin] = [];
+            if (!walletHistory[currentCoin].includes(wallet)) {
+                walletHistory[currentCoin].unshift(wallet); // Add to top
+                // Limit history to 5
+                if (walletHistory[currentCoin].length > 5) walletHistory[currentCoin].pop();
+            }
         }
         changed = true;
     }
@@ -363,6 +385,7 @@ app.post('/config', (req, res) => {
     }
 
     if (changed) {
+        saveData(); // Save new config
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
@@ -428,6 +451,22 @@ app.post('/switch-coin', (req, res) => {
     res.json({ success: true, coin });
 });
 
+app.post('/stop-miner', (req, res) => {
+    if (minerStatus === 'MINING' || minerStatus === 'STARTING') {
+        killMiner();
+        minerStatus = 'STOPPED';
+        addLog('⏹️ Miner stopped by user');
+    }
+    res.json({ success: true, status: minerStatus });
+});
+
+app.post('/start-miner', (req, res) => {
+    if (minerStatus !== 'MINING') {
+        startMiner();
+    }
+    res.json({ success: true, status: minerStatus });
+});
+
 app.get('/auto-switch', (req, res) => {
     res.json({ enabled: autoSwitchEnabled, currentCoin });
 });
@@ -439,7 +478,8 @@ app.get('/meta', (req, res) => {
         pools: COIN_POOLS,
         wallet: config.wallet,
         currentCoin: currentCoin,
-        config: config
+        config: config,
+        walletHistory: walletHistory
     });
 });
 

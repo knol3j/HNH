@@ -41,9 +41,19 @@ async function init() {
     els.coin.addEventListener('change', handleCoinChange);
 
     // Wallet Dropdown Change
-    els.walletSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'NEW') {
+    els.walletSelect.addEventListener('change', async (e) => {
+        const val = e.target.value;
+        if (val === 'NEW') {
             toggleWalletEdit(true);
+        } else {
+            // Selected an existing wallet from history
+            // Send update to backend immediately
+            if (val !== meta.wallet) {
+                await sendAction('config', { wallet: val });
+                meta.wallet = val;
+                meta.config.wallets[els.coin.value] = val;
+                showSave();
+            }
         }
     });
 
@@ -56,8 +66,8 @@ async function init() {
     });
 
     // Start/Stop
-    els.startBtn.addEventListener('click', () => sendAction('switch-coin', { coin: els.coin.value }));
-    els.stopBtn.addEventListener('click', () => alert('Please close the window to stop the miner.'));
+    els.startBtn.addEventListener('click', () => sendAction('start-miner', {}));
+    els.stopBtn.addEventListener('click', () => sendAction('stop-miner', {}));
 
     // Start Polling
     setInterval(pollTelemetry, 1000);
@@ -76,29 +86,42 @@ function populateDropdown(el, items, selected) {
 
 function renderWalletUI(coin) {
     const savedWallet = meta.config.wallets[coin];
+    const history = meta.walletHistory ? meta.walletHistory[coin] : [];
+
     els.walletSelect.innerHTML = '';
 
-    if (savedWallet) {
-        // Option 1: Saved Wallet
+    // 1. Add History Items
+    if (history && history.length > 0) {
+        history.forEach(addr => {
+            const opt = document.createElement('option');
+            opt.value = addr;
+            // Show truncated address
+            opt.textContent = `${addr.substring(0, 8)}...${addr.substring(addr.length - 4)}`;
+            if (addr === savedWallet) opt.selected = true;
+            els.walletSelect.appendChild(opt);
+        });
+    }
+
+    // 2. Add current saved wallet if not in history (edge case)
+    if (savedWallet && (!history || !history.includes(savedWallet))) {
         const opt = document.createElement('option');
         opt.value = savedWallet;
-        opt.textContent = `Saved: ${savedWallet.substring(0, 10)}...${savedWallet.substring(savedWallet.length - 4)}`;
+        opt.textContent = `Saved: ${savedWallet.substring(0, 8)}...${savedWallet.substring(savedWallet.length - 4)}`;
         opt.selected = true;
         els.walletSelect.appendChild(opt);
+    }
 
-        // Option 2: New
-        const optNew = document.createElement('option');
-        optNew.value = 'NEW';
-        optNew.textContent = 'Enter New Address...';
-        els.walletSelect.appendChild(optNew);
+    // 3. Option New
+    const optNew = document.createElement('option');
+    optNew.value = 'NEW';
+    optNew.textContent = '+ Add New Address';
+    els.walletSelect.appendChild(optNew);
 
-        toggleWalletEdit(false);
-    } else {
-        // No saved wallet, force edit mode
-        const opt = document.createElement('option');
-        opt.textContent = 'No Wallet Saved';
-        els.walletSelect.appendChild(opt);
+    // If no wallets at all, force edit
+    if (!savedWallet && (!history || history.length === 0)) {
         toggleWalletEdit(true);
+    } else {
+        toggleWalletEdit(false);
     }
 }
 
@@ -159,11 +182,19 @@ async function handleCoinChange() {
     // 1. Tell backend to switch
     await sendAction('switch-coin', { coin: newCoin });
 
-    // 2. Refresh Meta immediately to get the wallet for this coin
+    // 2. Refresh Meta immediately to get the wallet for this coin and pool info
     const res = await fetch(`${API_URL}/meta`);
     meta = await res.json();
 
-    // 3. Update Wallet UI
+    // 3. Update Pool UI to match new coin
+    // Use the pool URL from meta.pools[newCoin] to select the correct option
+    const poolUrl = meta.pools[newCoin];
+    if (poolUrl) {
+        // Re-populate pool dropdown in case pools changed (optional, but good practice)
+        populateDropdown(els.pool, Object.values(meta.pools), poolUrl);
+    }
+
+    // 4. Update Wallet UI
     renderWalletUI(newCoin);
 }
 

@@ -18,6 +18,7 @@ import Landing from './views/Landing';
 import Analytics from './views/Analytics';
 import Workers from './views/Workers';
 import Overclock from './views/Overclock';
+import Docs from './views/Docs';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -78,13 +79,14 @@ const App: React.FC = () => {
     fetchInsight();
   }, [stats.activeNodes]); // Re-run when node count changes
 
-  // Show Landing if not logged in and not explicitly in Auth view
-  if (!currentUser && currentView === 'LANDING') {
-    return <Landing onEnterApp={() => setCurrentView('DASHBOARD')} />; // Dashboard redirects to Auth if no user
-  }
-
-  // Auth Guard
+  // Show Landing or Docs if not logged in and not explicitly in Auth view
   if (!currentUser) {
+    if (currentView === 'LANDING') {
+      return <Landing onEnterApp={() => setCurrentView('DASHBOARD')} onViewDocs={() => setCurrentView('DOCS')} />;
+    }
+    if (currentView === 'DOCS') {
+      return <Docs onBack={() => setCurrentView('LANDING')} />;
+    }
     return <Auth onLogin={(user) => {
       setCurrentUser(user);
       setCurrentView('DASHBOARD');
@@ -131,6 +133,9 @@ const App: React.FC = () => {
       )}
       {currentView === 'OVERCLOCK' && (
         <Overclock />
+      )}
+      {currentView === 'DOCS' && (
+        <Docs onBack={() => setCurrentView('DASHBOARD')} />
       )}
     </Layout>
   );

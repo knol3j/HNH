@@ -66,6 +66,8 @@ export interface HardwareTelemetry {
   hashrate: number;
   logs?: string[];
   verified_shares?: number;
+  coin?: string;
+  wallet?: string;
 }
 
 // New: Preconfigured Deployment Templates
@@ -93,7 +95,8 @@ export type View =
   | 'LANDING'
   | 'ANALYTICS'
   | 'WORKERS'
-  | 'OVERCLOCK';
+  | 'OVERCLOCK'
+  | 'DOCS';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
