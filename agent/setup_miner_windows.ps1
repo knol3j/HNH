@@ -175,7 +175,7 @@ Write-Host "CONFIGURATION SETUP" -ForegroundColor Cyan
 Write-Host "---------------------------------------------------------------" -ForegroundColor Cyan
 
 $wallets = @{}
-$coins = @("XMR", "RVN", "ETC", "ERG", "KAS")
+$coins = @("XMR", "ZEPH", "RVN", "ETC", "ERG", "KAS")
 
 foreach ($coin in $coins) {
     $userInput = Read-Host "Enter your $coin Wallet Address (Leave empty to skip)"

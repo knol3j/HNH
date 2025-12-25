@@ -15,6 +15,7 @@ const Docs: React.FC<DocsProps> = ({ onBack }) => {
                         <button
                             onClick={onBack}
                             className="p-2 hover:bg-white/5 rounded-lg transition-colors text-muted hover:text-white"
+                            title="Go Back"
                         >
                             <ArrowLeft size={20} />
                         </button>

@@ -138,8 +138,7 @@ const Dex: React.FC = () => {
                <iframe
                   id="iframe-widget"
                   src="https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=true&amount=0.1&amountFiat=1500&backgroundColor=000000&darkMode=true&from=sol&horizontal=false&isFiat=false&lang=en-US&link_id=89234823&locales=true&logo=false&primaryColor=8b5cf6&to=rndr&toTheMoon=true"
-                  className="w-full flex-1 border-none"
-                  style={{ height: '360px', minHeight: '100%' }} // Ensure it takes up space
+                  className="w-full flex-1 border-none h-[360px] min-h-full"
                   title="ChangeNow Crypto Exchange"
                ></iframe>
 

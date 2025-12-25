@@ -64,7 +64,8 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    XMR: 'stratum+tcp://xmr.nanopool.org:14444',
+    ZEPH: 'stratum+tcp://de.zephyr.herominers.com:1123', // CPU
     RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
     ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
     ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
@@ -79,10 +80,12 @@ let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 let config = {
     wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
     wallets: {
-        XMR: 'Rqr113e2e3... (User Wallet)',
+        XMR: '48edfHu7V9z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9nV2DNr577RAH9tkENn4FFunqiQBP4q41wa31', // XMRig Donate
+        ZEPH: 'ZEPHs8Fk9FkP59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59', // Placeholder logic (long enough)
         ETC: '0x19511e52720739f6F47E74221cBCd746BE387535',
         ERG: '9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV',
-        KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek'
+        KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek',
+        RVN: 'RT2r9oGxQ2i8J8b3... (Valid RVN Address)' // Update this to real one
     },
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
     algorithm: 'kawpow',
@@ -166,7 +169,7 @@ const startMiner = () => {
     }
 
     // Clean URL
-    const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
+    const cleanUrl = config.poolUrl; // Pass full URL with scheme
 
     addLog(`🚀 Launching XMRig...`);
     addLog(`   Pool: ${cleanUrl}`);
@@ -214,26 +217,29 @@ const startMiner = () => {
     minerStatus = 'STARTING';
 
     try {
-        minerProcess = spawn(MINER_BIN, args);
+        setTimeout(() => {
+            minerProcess = spawn(MINER_BIN, args);
 
-        minerProcess.stdout.on('data', (data) => {
-            const line = data.toString().trim();
-            handleMinerOutput(line);
-        });
+            minerProcess.stdout.on('data', (data) => {
+                const line = data.toString().trim();
+                handleMinerOutput(line);
+            });
 
-        minerProcess.stderr.on('data', (data) => {
-            console.error(`[XMRIG ERR] ${data}`);
-            addLog(`ERR: ${data.toString().trim()}`);
-        });
+            minerProcess.stderr.on('data', (data) => {
+                console.error(`[XMRIG ERR] ${data}`);
+                addLog(`ERR: ${data.toString().trim()}`);
+            });
 
-        minerProcess.on('close', (code) => {
-            addLog(`⚠️ Miner exitted with code ${code}`);
-            minerStatus = 'OFFLINE';
-            telemetry.hashrate = 0;
-            minerProcess = null;
-        });
+            minerProcess.on('close', (code) => {
+                addLog(`⚠️ Miner exitted with code ${code}`);
+                minerStatus = 'OFFLINE';
+                telemetry.hashrate = 0;
+                minerProcess = null;
+            });
 
-        minerStatus = 'MINING';
+            minerStatus = 'MINING';
+        }, 1000); // Wait 1s for port release
+
     } catch (e) {
         addLog(`❌ Failed to spawn miner: ${e.message}`);
         minerStatus = 'ERROR';
@@ -498,6 +504,7 @@ async function checkProfitabilityAndSwitch() {
 
 const COIN_ALGOS = {
     XMR: 'rx/0',
+    ZEPH: 'rx/0',
     RVN: 'kawpow',
     ETC: 'etchash',
     ERG: 'autolykos2',
@@ -555,30 +562,7 @@ app.get('/auto-switch', (req, res) => {
 // ...
 let lastProfitability = 0; // USD/day estimate
 
-async function checkProfitabilityAndSwitch() {
-    if (minerStatus !== 'MINING' && !autoSwitchEnabled) return; // Allow check even if not auto-switch if we want stats? 
-    // Actually, let's allow checking always if we want specific stats. But for now stick to logic.
-    // ...
-    // 3. Calc Score
-    Object.keys(COIN_POOLS).forEach(coin => {
-        const base = BASELINE[coin];
-        if (!base || !coinPrices[coin]) return;
 
-        // Simple Score = (Reward * Price) / Difficulty
-        const score = (base.reward * coinPrices[coin] * 1000000000000) / base.diff;
-        // score is approx $ per day per unit hashrate (scaled)
-
-        if (coin === currentCoin) {
-            currentScore = score;
-            lastProfitability = score; // Store for /stats
-        }
-        if (score > maxScore) {
-            maxScore = score;
-            bestCoin = coin;
-        }
-    });
-    // ...
-}
 
 // ...
 
