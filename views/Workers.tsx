@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Grid, List, Search, MoreHorizontal, Power, RefreshCw, Smartphone, Monitor } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
+import MobileConnectModal from '../components/MobileConnectModal';
 
 interface Worker {
     id: string;
@@ -22,6 +23,7 @@ const Workers: React.FC = () => {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchTelemetry = async () => {
@@ -115,11 +117,16 @@ const Workers: React.FC = () => {
                             <Grid size={16} />
                         </button>
                     </div>
-                    <button className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-hover flex items-center gap-2">
+                    <button
+                        onClick={() => setIsMobileModalOpen(true)}
+                        className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-hover flex items-center gap-2"
+                    >
                         <Smartphone size={16} /> Connect Mobile
                     </button>
                 </div>
             </div>
+
+            <MobileConnectModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)} />
 
             {viewMode === 'list' ? (
                 <div className="bg-surface border border-white/10 rounded-2xl overflow-hidden">
