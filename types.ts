@@ -120,6 +120,7 @@ export interface User {
   passwordHash: string; // SHA-256
   createdAt: number;
   tier: UserTier;
+  role: 'USER' | 'ADMIN'; // Added Admin Role
   referralCode: string;
   referredBy?: string; // referralCode of who invited this user
   referralBonus: number; // Accumulated bonus shares from referrals

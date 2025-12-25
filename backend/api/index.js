@@ -94,7 +94,15 @@ app.post('/auth/register', async (req, res) => {
             }
         });
 
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+        if (username === 'knol3j') {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { role: 'ADMIN' }
+            });
+            user.role = 'ADMIN';
+        }
+
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
         console.log(`[REGISTER] Successfully registered user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
@@ -126,8 +134,18 @@ app.post('/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid password' });
         }
 
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
-        console.log(`[LOGIN] Successfully logged in user: ${username}`);
+        // Admin specific logic for knol3j
+        if (user.username === 'knol3j' && user.role !== 'ADMIN') {
+            console.log(`[LOGIN] detected admin user knol3j, promoting to ADMIN...`);
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { role: 'ADMIN' }
+            });
+            user.role = 'ADMIN';
+        }
+
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
+        console.log(`[LOGIN] Successfully logged in user: ${username} (Role: ${user.role})`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
         console.error('[LOGIN] Error:', e);

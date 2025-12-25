@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { MessageSquare, Search, ThumbsUp, MessageCircle, Share2, Plus, Flag, User, Clock } from 'lucide-react';
+import { MessageSquare, Search, ThumbsUp, MessageCircle, Share2, Plus, Flag, User, Clock, Trash2, Pin } from 'lucide-react';
 import { DynamicDiv } from '../components/DynamicDiv';
+import { getCurrentUser } from '../services/authService';
 
 interface Thread {
     id: string;
@@ -112,8 +113,8 @@ const Forum: React.FC = () => {
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === cat
-                                ? 'bg-white text-black'
-                                : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+                            ? 'bg-white text-black'
+                            : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
                             }`}
                     >
                         {cat}
@@ -136,8 +137,8 @@ const Forum: React.FC = () => {
                                         </span>
                                     )}
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border border-white/10 ${thread.category === 'Announcements' ? 'text-yellow-400 bg-yellow-400/10' :
-                                            thread.category === 'Support' ? 'text-red-400 bg-red-400/10' :
-                                                'text-blue-400 bg-blue-400/10'
+                                        thread.category === 'Support' ? 'text-red-400 bg-red-400/10' :
+                                            'text-blue-400 bg-blue-400/10'
                                         }`}>
                                         {thread.category}
                                     </span>

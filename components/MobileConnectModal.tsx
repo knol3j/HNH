@@ -72,7 +72,7 @@ const MobileConnectModal: React.FC<MobileConnectModalProps> = ({ isOpen, onClose
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Smartphone className="text-primary" /> Connect Mobile
                     </h2>
-                    <button onClick={onClose} className="text-muted hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-muted hover:text-white transition-colors" aria-label="Close Modal" title="Close">
                         <X size={24} />
                     </button>
                 </div>
