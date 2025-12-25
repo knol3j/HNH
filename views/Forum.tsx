@@ -67,6 +67,19 @@ const MOCK_THREADS: Thread[] = [
 const Forum: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const user = getCurrentUser(); // Get user for admin check
+
+    const handleDelete = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (confirm('Admin Action: Are you sure you want to delete this thread?')) {
+            alert(`Thread ${id} deleted.`);
+        }
+    };
+
+    const handlePin = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        alert(`Thread ${id} pinned status toggled.`);
+    };
 
     const categories = ['All', 'Announcements', 'General', 'Support', 'Feature Request'];
 
@@ -125,7 +138,28 @@ const Forum: React.FC = () => {
             {/* Thread List */}
             <div className="space-y-4">
                 {filteredThreads.map(thread => (
-                    <div key={thread.id} className="bg-surface border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all cursor-pointer group">
+                    <div key={thread.id} className="bg-surface border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all cursor-pointer group relative">
+
+                        {/* Admin Controls */}
+                        {user?.role === 'ADMIN' && (
+                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button
+                                    onClick={(e) => handlePin(e, thread.id)}
+                                    className={`p-2 rounded-lg ${thread.isPinned ? 'text-primary bg-primary/10' : 'text-muted hover:text-white hover:bg-white/10'}`}
+                                    title="Pin Thread"
+                                >
+                                    <Pin size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => handleDelete(e, thread.id)}
+                                    className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                                    title="Delete Thread"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-start gap-4">
 
                             {/* Main Content */}
