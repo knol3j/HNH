@@ -11,9 +11,10 @@ const Provider: React.FC = () => {
     const [config, setConfig] = useState({
         coin: 'XMR',
         wallet: '',
-        cpuEnabled: true,
         gpuEnabled: false
     });
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [customAgentUrl, setCustomAgentUrl] = useState(localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
 
     // Earnings State
     const [balance, setBalance] = useState({ unpaid: 0, usd: 0, currency: 'XMR' });
@@ -113,6 +114,13 @@ const Provider: React.FC = () => {
                     <p className="text-muted">Manage your local compute resources and earnings.</p>
                 </div>
                 <div className="flex gap-4">
+                    <button
+                        onClick={() => setIsConfigOpen(true)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted hover:text-white transition-colors border border-white/5"
+                        title="Miner Settings"
+                    >
+                        <Settings size={20} />
+                    </button>
                     <div className={`px-4 py-2 rounded-lg border ${minerStatus === 'ONLINE' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'} flex items-center gap-2`}>
                         <div className={`w-2 h-2 rounded-full ${minerStatus === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
                         <span className={`font-mono font-bold ${minerStatus === 'ONLINE' ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -171,8 +179,8 @@ const Provider: React.FC = () => {
                     <button
                         onClick={handleStartStop}
                         className={`w-full h-full rounded-xl flex flex-col items-center justify-center gap-2 transition-all ${minerStatus === 'ONLINE'
-                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
-                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 border border-emerald-500/50'
+                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
+                            : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 border border-emerald-500/50'
                             }`}
                     >
                         {minerStatus === 'ONLINE' ? <Square size={32} /> : <Play size={32} />}
@@ -203,6 +211,50 @@ const Provider: React.FC = () => {
                     )}
                 </div>
             </div>
+            {/* Config Modal */}
+            {isConfigOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                        <h2 className="text-xl font-bold text-white mb-4">Miner Configuration</h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-muted uppercase font-bold block mb-2">Agent API URL</label>
+                                <input
+                                    type="text"
+                                    value={customAgentUrl}
+                                    onChange={(e) => setCustomAgentUrl(e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm"
+                                    placeholder="http://localhost:4343"
+                                />
+                                <p className="text-[10px] text-muted mt-1">
+                                    Default: http://localhost:4343. Ensure this URL is reachable.
+                                    <br />Note: HTTPS sites may block HTTP local requests.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    localStorage.setItem('hnh_agent_url', customAgentUrl);
+                                    setIsConfigOpen(false);
+                                    window.location.reload();
+                                }}
+                                className="flex-1 bg-primary text-black py-2 rounded-lg font-bold hover:bg-primary-hover"
+                            >
+                                Save & Reload
+                            </button>
+                            <button
+                                onClick={() => setIsConfigOpen(false)}
+                                className="flex-1 bg-white/5 text-white py-2 rounded-lg hover:bg-white/10"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
