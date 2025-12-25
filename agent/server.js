@@ -431,6 +431,16 @@ app.post('/auto-switch', (req, res) => {
     res.json({ success: true, autoSwitchEnabled });
 });
 
+const COIN_ALGOS = {
+    XMR: 'rx/0',
+    RVN: 'kawpow',
+    ETC: 'etchash',
+    ERG: 'autolykos2',
+    KAS: 'heavyhash'
+};
+
+// ... (existing code)
+
 app.post('/switch-coin', (req, res) => {
     const { coin } = req.body;
 
@@ -440,12 +450,18 @@ app.post('/switch-coin', (req, res) => {
 
     currentCoin = coin;
     config.poolUrl = COIN_POOLS[coin];
+    config.algorithm = COIN_ALGOS[coin] || 'rx/0';
+
     // Switch wallet if available
     if (config.wallets[coin]) {
         config.wallet = config.wallets[coin];
+    } else {
+        // Fallback or generic logic if needed, but usually we keep last or use placeholder
+        // If "add same mapping for wallet" means default wallets constants:
+        // We already have config.wallets loaded from defaults.
     }
 
-    addLog(`💱 Switching to ${coin}...`);
+    addLog(`💱 Switching to ${coin} (${config.algorithm})...`);
     startMiner();
 
     res.json({ success: true, coin });
