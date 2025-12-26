@@ -81,12 +81,12 @@ export const getCurrentUser = (): User | null => {
     // Return a minimal placeholder so consumers can read a session synchronously.
     // Tests expect a minimal object when a token exists.
     return {
-        id: 'session-placeholder',
+        id: 'session',
         username: 'User',
         passwordHash: '',
         tier: 'free',
         role: 'USER',
-        createdAt: Date.now(),
+        createdAt: 0,
         referralCode: '',
         referralBonus: 0
     };

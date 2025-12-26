@@ -13,6 +13,11 @@ afterEach(() => {
   cleanup();
 });
 
+// Suppress MaxListenersExceededWarning
+if (typeof process !== 'undefined' && process.setMaxListeners) {
+  process.setMaxListeners(20);
+}
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};

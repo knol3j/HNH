@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Layout } from '../../components/Layout';
 import { User, View } from '../../types';
 
@@ -26,6 +26,7 @@ describe('Layout', () => {
     passwordHash: 'hash',
     createdAt: Date.now(),
     tier: 'pro',
+    role: 'USER',
     referralCode: 'REF123',
     referralBonus: 0,
   };
@@ -181,7 +182,15 @@ describe('Layout', () => {
     // Check for badges
     expect(screen.getByText('DeFi')).toBeInTheDocument();
     expect(screen.getByText('EARN')).toBeInTheDocument();
-    expect(screen.getByText('NEW')).toBeInTheDocument();
+
+    // NEW appears twice, so check specific items using testid
+    const forumNav = screen.getByTestId('nav-item-forum');
+    expect(within(forumNav).getByText('NEW')).toBeInTheDocument();
+
+    // Note: AI Tuner also has NEW, but checking one is sufficient or check both
+    // const tunerNav = screen.getByTestId('nav-item-overclock'); 
+    // expect(within(tunerNav).getByText('NEW')).toBeInTheDocument();
+
     expect(screen.getByText('$$$')).toBeInTheDocument();
     expect(screen.getByText('PRO')).toBeInTheDocument();
   });

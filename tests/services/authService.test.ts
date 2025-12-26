@@ -139,6 +139,7 @@ describe('authService', () => {
         id: 'session',
         username: 'User',
         tier: 'free',
+        role: 'USER',
         createdAt: 0,
         passwordHash: '',
         referralCode: '',

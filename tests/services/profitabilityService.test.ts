@@ -25,6 +25,7 @@ describe('profitabilityService', () => {
   describe('fetchCoinPrices', () => {
     it('should fetch and return coin prices from CoinGecko', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: async () => ({
           monero: { usd: 160 },
           ravencoin: { usd: 0.025 },
@@ -54,16 +55,17 @@ describe('profitabilityService', () => {
       const prices = await fetchCoinPrices();
 
       expect(prices).toEqual({
-        XMR: 150,
-        RVN: 0.02,
-        ETC: 20,
-        ERG: 1.5,
-        KAS: 0.10,
+        XMR: 155.20,
+        RVN: 0.024,
+        ETC: 23.50,
+        ERG: 1.45,
+        KAS: 0.12,
       });
     });
 
     it('should handle partial API response', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: async () => ({
           monero: { usd: 155 },
           // Missing other coins
@@ -73,14 +75,15 @@ describe('profitabilityService', () => {
       const prices = await fetchCoinPrices();
 
       expect(prices.XMR).toBe(155);
-      expect(prices.RVN).toBe(0.02); // Fallback
-      expect(prices.ETC).toBe(20); // Fallback
+      expect(prices.RVN).toBe(0.024); // Fallback
+      expect(prices.ETC).toBe(23.50); // Fallback
     });
   });
 
   describe('calculateProfitability', () => {
     beforeEach(() => {
       mockFetch.mockResolvedValue({
+        ok: true,
         json: async () => ({
           monero: { usd: 150 },
           ravencoin: { usd: 0.02 },
@@ -146,6 +149,7 @@ describe('profitabilityService', () => {
   describe('getMostProfitableCoin', () => {
     it('should return the most profitable coin', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: async () => ({
           monero: { usd: 150 },
           ravencoin: { usd: 0.02 },
@@ -164,6 +168,7 @@ describe('profitabilityService', () => {
 
     it('should return coin with highest profitability score', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: async () => ({
           monero: { usd: 150 },
           ravencoin: { usd: 0.02 },
@@ -187,6 +192,7 @@ describe('profitabilityService', () => {
   describe('shouldSwitchCoin', () => {
     beforeEach(() => {
       mockFetch.mockResolvedValue({
+        ok: true,
         json: async () => ({
           monero: { usd: 150 },
           ravencoin: { usd: 0.02 },
