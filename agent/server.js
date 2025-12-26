@@ -79,6 +79,7 @@ let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 
 let config = {
     wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
+    password: 'x', // Default password (required for spawn)
     wallets: {
         XMR: '48edfHu7V9z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9nV2DNr577RAH9tkENn4FFunqiQBP4q41wa31', // XMRig Donate
         ZEPH: 'ZEPHs8Fk9FkP59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59', // Placeholder logic (long enough)
@@ -181,7 +182,7 @@ const startMiner = () => {
     const args = [
         '-o', cleanUrl,
         '-u', config.wallet,
-        '-p', config.password,
+        '-p', config.password || 'x',
         '--no-color',
         '--api-worker-id', 'AntigravityAgent',
         '--http-host', '127.0.0.1', // SECURITY: Bind to localhost only
