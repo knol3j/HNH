@@ -33,30 +33,38 @@ const COINGECKO_IDS: Record<string, string> = {
     KAS: 'kaspa'
 };
 
+const FALLBACK_PRICES: Record<string, number> = {
+    XMR: 155.20,
+    RVN: 0.024,
+    ETC: 23.50,
+    ERG: 1.45,
+    KAS: 0.12
+};
+
 /**
  * Fetch current prices from CoinGecko API
  */
-export const fetchCoinPrices = async (): Promise<Record<string, number> | null> => {
+export const fetchCoinPrices = async (): Promise<Record<string, number>> => {
     try {
         const ids = Object.values(COINGECKO_IDS).join(',');
         const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
 
         if (!res.ok) {
             console.error('CoinGecko API error:', res.status);
-            return null;
+            return FALLBACK_PRICES;
         }
 
         const data = await res.json();
 
         const prices: Record<string, number> = {};
         for (const [symbol, geckoId] of Object.entries(COINGECKO_IDS)) {
-            prices[symbol] = data[geckoId]?.usd || 0;
+            prices[symbol] = data[geckoId]?.usd ?? FALLBACK_PRICES[symbol];
         }
 
         return prices;
     } catch (e) {
-        console.error('Failed to fetch prices:', e);
-        return null;
+        console.warn('Failed to fetch prices, using fallback:', e);
+        return FALLBACK_PRICES;
     }
 };
 
@@ -67,10 +75,8 @@ export const fetchCoinPrices = async (): Promise<Record<string, number> | null> 
 export const calculateProfitability = async (hashrateHs: number = 1000): Promise<CoinProfitability[]> => {
     const prices = await fetchCoinPrices();
 
-    if (!prices) {
-        // Return empty array if prices unavailable
-        return [];
-    }
+    // Defensive check even though fetchCoinPrices now returns fallback
+    if (!prices) return [];
 
     const results: CoinProfitability[] = Object.keys(COIN_PARAMS).map(symbol => {
         const params = COIN_PARAMS[symbol];

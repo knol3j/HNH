@@ -76,6 +76,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
 
   const NavItem = ({ view, icon: Icon, label, badge }: { view: View; icon: React.ElementType; label: string, badge?: string }) => (
     <button
+      data-testid={`nav-item-${view.toLowerCase()}`}
       onClick={() => {
         setCurrentView(view);
         setIsMobileMenuOpen(false);
