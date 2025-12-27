@@ -363,9 +363,37 @@ app.get('/telemetry', (req, res) => {
 });
 
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password, tier } = req.body;
+    const { wallet, poolUrl, password, tier, mode, coin, algorithm } = req.body;
     let changed = false;
 
+    // 1. Mode Update (CPU/GPU)
+    if (mode && ['cpu', 'gpu'].includes(mode) && mode !== config.mode) {
+        config.mode = mode;
+        // Smart Defaults when switching mode
+        if (mode === 'gpu' && currentCoin === 'XMR') {
+            currentCoin = 'RVN'; // Default to GPU coin
+            config.poolUrl = COIN_POOLS.RVN;
+            config.algorithm = 'kawpow';
+        } else if (mode === 'cpu' && currentCoin !== 'XMR' && currentCoin !== 'ZEPH') {
+            currentCoin = 'XMR'; // Default to CPU coin
+            config.poolUrl = COIN_POOLS.XMR;
+            config.algorithm = 'rx/0';
+        }
+        changed = true;
+    }
+
+    // 2. Coin Update
+    if (coin && coin !== currentCoin) {
+        if (COIN_POOLS[coin] || config.mode === 'custom') { // Allow custom if we support that later
+            currentCoin = coin;
+            // If user didn't provide specific pool, use default
+            if (!poolUrl) config.poolUrl = COIN_POOLS[coin];
+            config.algorithm = COIN_ALGOS[coin] || config.algorithm;
+            changed = true;
+        }
+    }
+
+    // 3. Wallet Update
     if (wallet && wallet !== config.wallet) {
         config.wallet = wallet;
         // PERSISTENCE: Save to specific coin slot
@@ -382,10 +410,24 @@ app.post('/config', (req, res) => {
         }
         changed = true;
     }
+
+    // 4. Pool/Algo Manual Overrides
     if (poolUrl && poolUrl !== config.poolUrl) {
         config.poolUrl = poolUrl;
         changed = true;
     }
+    if (algorithm && algorithm !== config.algorithm) {
+        config.algorithm = algorithm;
+        changed = true;
+    }
+
+    // 5. Password
+    if (password && password !== config.password) {
+        config.password = password;
+        changed = true;
+    }
+
+    // 6. Tier
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
         userTier = tier;
         addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);

@@ -8,13 +8,42 @@ const Provider: React.FC = () => {
     const [minerStatus, setMinerStatus] = useState<'ONLINE' | 'OFFLINE' | 'STARTING'>('OFFLINE');
     const [telemetry, setTelemetry] = useState<any>(null);
     const [logs, setLogs] = useState<string[]>([]);
-    const [config, setConfig] = useState({
+    const [config, setConfig] = useState<any>({
         coin: 'XMR',
         wallet: '',
-        gpuEnabled: false
+        mode: 'cpu',
+        poolUrl: '',
+        algorithm: 'rx/0'
     });
+    const [meta, setMeta] = useState<any>(null); // Available coins, pools, history
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [customAgentUrl, setCustomAgentUrl] = useState(localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
+
+    // Fetch Meta for Config
+    useEffect(() => {
+        if (isConfigOpen) {
+            const fetchMeta = async () => {
+                try {
+                    const res = await fetch(`${customAgentUrl}/meta`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setMeta(data);
+                        // Sync config with current agent state if not already modified? 
+                        // Actually better to let user see current state
+                        setConfig(prev => ({
+                            ...prev,
+                            ...data.config,
+                            mode: data.config.mode || 'cpu',
+                            wallet: data.config.wallet || prev.wallet
+                        }));
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch meta", e);
+                }
+            };
+            fetchMeta();
+        }
+    }, [isConfigOpen, customAgentUrl]);
 
     // Earnings State
     const [balance, setBalance] = useState({ unpaid: 0, usd: 0, currency: 'XMR' });
@@ -211,43 +240,205 @@ const Provider: React.FC = () => {
                     )}
                 </div>
             </div>
-            {/* Config Modal */}
+            {/* Complex Config Modal */}
             {isConfigOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h2 className="text-xl font-bold text-white mb-4">Miner Configuration</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-xs text-muted uppercase font-bold block mb-2">Agent API URL</label>
-                                <input
-                                    type="text"
-                                    value={customAgentUrl}
-                                    onChange={(e) => setCustomAgentUrl(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm"
-                                    placeholder="http://localhost:4343"
-                                />
-                                <p className="text-[10px] text-muted mt-1">
-                                    Default: http://localhost:4343. Ensure this URL is reachable.
-                                    <br />Note: HTTPS sites may block HTTP local requests.
-                                </p>
-                            </div>
+                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Settings size={20} className="text-primary" /> Miner Configuration
+                            </h2>
+                            <button onClick={() => setIsConfigOpen(false)} className="text-muted hover:text-white">✕</button>
                         </div>
 
-                        <div className="flex gap-3 mt-6">
+                        <div className="space-y-6">
+                            {/* Mode Selection */}
+                            <div className="p-1 bg-black/40 rounded-lg flex border border-white/5">
+                                <button
+                                    onClick={() => setConfig(prev => ({ ...prev, mode: 'cpu' }))}
+                                    className={`flex-1 py-2 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${config.mode === 'cpu' ? 'bg-white/10 text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                                >
+                                    <Cpu size={16} /> CPU (RandomX)
+                                </button>
+                                <button
+                                    onClick={() => setConfig(prev => ({ ...prev, mode: 'gpu' }))}
+                                    className={`flex-1 py-2 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${config.mode === 'gpu' ? 'bg-white/10 text-white shadow-sm' : 'text-muted hover:text-white'}`}
+                                >
+                                    <Zap size={16} /> GPU (KawPow/Etch)
+                                </button>
+                            </div>
+
+                            {/* Coin Selection */}
+                            <div>
+                                <label className="text-xs text-muted uppercase font-bold block mb-2">Target Coin</label>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={meta?.coins?.includes(config.coin) ? config.coin : 'CUSTOM'}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === 'CUSTOM') {
+                                                setConfig(prev => ({ ...prev, coin: 'CUSTOM' }));
+                                            } else {
+                                                setConfig(prev => ({
+                                                    ...prev,
+                                                    coin: val,
+                                                    poolUrl: meta.pools[val] || '',
+                                                    algorithm: val === 'XMR' || val === 'ZEPH' ? 'rx/0' :
+                                                        val === 'RVN' ? 'kawpow' :
+                                                            val === 'ETC' ? 'etchash' :
+                                                                val === 'KAS' ? 'heavyhash' : ''
+                                                }));
+                                            }
+                                        }}
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-primary/50 outline-none"
+                                    >
+                                        {meta?.coins?.map((coin: string) => (
+                                            <option key={coin} value={coin}>{coin}</option>
+                                        ))}
+                                        <option value="CUSTOM">+ Custom Coin</option>
+                                    </select>
+                                    {config.coin === 'CUSTOM' && (
+                                        <input
+                                            type="text"
+                                            placeholder="SYMBOL"
+                                            className="w-24 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                                            onChange={(e) => setConfig(prev => ({ ...prev, coin: e.target.value.toUpperCase() }))}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pool Selection */}
+                            <div>
+                                <label className="text-xs text-muted uppercase font-bold block mb-2">Mining Pool</label>
+                                <div className="space-y-2">
+                                    <select
+                                        value={Object.values(meta?.pools || {}).includes(config.poolUrl) ? config.poolUrl : 'CUSTOM'}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val !== 'CUSTOM') {
+                                                setConfig(prev => ({ ...prev, poolUrl: val }));
+                                            } else {
+                                                // Keep existing custom URL or clear if switching to custom
+                                                if (Object.values(meta?.pools || {}).includes(config.poolUrl)) {
+                                                    setConfig(prev => ({ ...prev, poolUrl: '' }));
+                                                }
+                                            }
+                                        }}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:border-primary/50 outline-none"
+                                    >
+                                        {meta?.pools && config.coin && meta.pools[config.coin] && (
+                                            <option value={meta.pools[config.coin]}>Default {config.coin} Pool</option>
+                                        )}
+                                        {Object.entries(meta?.pools || {}).map(([key, url]) => (
+                                            <option key={key} value={url as string}>{key} Official Pool</option>
+                                        ))}
+                                        <option value="CUSTOM">Custom Pool URL...</option>
+                                    </select>
+
+                                    {(!Object.values(meta?.pools || {}).includes(config.poolUrl)) && (
+                                        <input
+                                            type="text"
+                                            value={config.poolUrl}
+                                            onChange={(e) => setConfig(prev => ({ ...prev, poolUrl: e.target.value }))}
+                                            placeholder="stratum+tcp://pool.example.com:3333"
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm font-mono"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Wallet Selection */}
+                            <div>
+                                <label className="text-xs text-muted uppercase font-bold block mb-2">Wallet Address</label>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={config.wallet}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, wallet: e.target.value }))}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white text-sm font-mono focus:border-primary/50 outline-none"
+                                        placeholder="Enter wallet address..."
+                                    />
+                                    {/* Wallet History Chips */}
+                                    {meta?.walletHistory && meta.walletHistory[config.coin]?.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {meta.walletHistory[config.coin].slice(0, 3).map((w: string) => (
+                                                <button
+                                                    key={w}
+                                                    onClick={() => setConfig(prev => ({ ...prev, wallet: w }))}
+                                                    className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded-md text-muted hover:text-white transition-colors truncate max-w-[150px]"
+                                                    title={w}
+                                                >
+                                                    {w.substring(0, 6)}...{w.substring(w.length - 4)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Advanced Toggle */}
+                            <details className="text-xs text-muted">
+                                <summary className="cursor-pointer hover:text-white transition-colors list-none flex items-center gap-1">
+                                    <span>Advanced Settings</span>
+                                </summary>
+                                <div className="mt-4 space-y-4 pl-2 border-l border-white/10">
+                                    <div>
+                                        <label className="text-xs text-muted uppercase font-bold block mb-2">Algorithm</label>
+                                        <input
+                                            type="text"
+                                            value={config.algorithm || 'rx/0'}
+                                            onChange={(e) => setConfig(prev => ({ ...prev, algorithm: e.target.value }))}
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm font-mono"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-muted uppercase font-bold block mb-2">Agent API URL</label>
+                                        <input
+                                            type="text"
+                                            value={customAgentUrl}
+                                            onChange={(e) => setCustomAgentUrl(e.target.value)}
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </details>
+
+                        </div>
+
+                        <div className="flex gap-3 mt-8">
                             <button
-                                onClick={() => {
-                                    localStorage.setItem('hnh_agent_url', customAgentUrl);
-                                    setIsConfigOpen(false);
-                                    window.location.reload();
+                                onClick={async () => {
+                                    const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+                                    try {
+                                        // Update Local Config First
+                                        if (customAgentUrl !== agentUrl) {
+                                            localStorage.setItem('hnh_agent_url', customAgentUrl);
+                                        }
+
+                                        // Send Config to Agent
+                                        await fetch(`${customAgentUrl}/config`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(config)
+                                        });
+
+                                        setIsConfigOpen(false);
+                                        // Trigger a reload or just let telemetry pick it up?
+                                        // Let's reload to be safe and clean state
+                                        // window.location.reload(); 
+                                        // Actually better to just close and let telemetry update status to 'STARTING'
+                                    } catch (e) {
+                                        alert("Failed to save config: " + e);
+                                    }
                                 }}
-                                className="flex-1 bg-primary text-black py-2 rounded-lg font-bold hover:bg-primary-hover"
+                                className="flex-1 bg-primary text-black py-3 rounded-lg font-bold hover:bg-primary-hover shadow-lg shadow-primary/20"
                             >
-                                Save & Reload
+                                Save & Restart
                             </button>
                             <button
                                 onClick={() => setIsConfigOpen(false)}
-                                className="flex-1 bg-white/5 text-white py-2 rounded-lg hover:bg-white/10"
+                                className="px-6 bg-white/5 text-white py-3 rounded-lg hover:bg-white/10"
                             >
                                 Cancel
                             </button>
