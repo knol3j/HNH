@@ -4,16 +4,51 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 import 'dotenv/config';
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
 if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET environment variable is required');
     process.exit(1);
 }
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// --- VALIDATION SCHEMAS ---
+const registerSchema = z.object({
+    username: z.string()
+        .min(3, 'Username must be at least 3 characters')
+        .max(30, 'Username must be at most 30 characters')
+        .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
+    password: z.string()
+        .min(8, 'Password must be at least 8 characters')
+        .max(128, 'Password is too long'),
+    referralCode: z.string().optional()
+});
+
+const loginSchema = z.object({
+    username: z.string().min(1, 'Username is required'),
+    password: z.string().min(1, 'Password is required')
+});
+
+const tierSchema = z.object({
+    tier: z.enum(['free', 'pro', 'enterprise'], {
+        errorMap: () => ({ message: 'Tier must be free, pro, or enterprise' })
+    })
+});
+
+const telemetrySchema = z.object({
+    workerName: z.string().min(1, 'Worker name is required').max(100),
+    hashrate: z.number().min(0).or(z.string().transform(val => parseFloat(val))),
+    temp: z.number().optional(),
+    power: z.number().optional()
+});
 
 // CORS Configuration
 const allowedOrigins = [
@@ -25,6 +60,27 @@ const allowedOrigins = [
     'https://app-production-374e.up.railway.app',
     'https://app-production-564e.up.railway.app'
 ];
+
+// Security Headers
+app.use(helmet({
+    contentSecurityPolicy: NODE_ENV === 'production',
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+    }
+}));
+
+// HTTPS Redirect (only in production)
+if (NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+        if (req.header('x-forwarded-proto') !== 'https') {
+            res.redirect(`https://${req.header('host')}${req.url}`);
+        } else {
+            next();
+        }
+    });
+}
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -38,7 +94,53 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Limit payload size
+
+// Rate Limiting
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 requests per window
+    message: { error: 'Too many authentication attempts, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+        console.warn(`[RATE_LIMIT] Blocked ${req.ip} on ${req.path}`);
+        res.status(429).json({
+            error: 'Too many requests',
+            retryAfter: Math.ceil(req.rateLimit.resetTime / 1000)
+        });
+    }
+});
+
+const generalLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 100, // 100 requests per minute
+    message: { error: 'Too many requests, please slow down' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+app.use(generalLimiter); // Apply to all routes
+
+// Request Logging Middleware
+app.use((req, res, next) => {
+    const start = Date.now();
+
+    // Log response after it's sent
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
+        const logMessage = `[${req.method}] ${req.path} - ${res.statusCode} (${duration}ms)`;
+
+        if (logLevel === 'warn') {
+            console.warn(logMessage, { ip: req.ip, userAgent: req.get('user-agent') });
+        } else if (NODE_ENV === 'development') {
+            console.log(logMessage);
+        }
+    });
+
+    next();
+});
 
 // Health check endpoint
 app.get(['/', '/health', '/healthck'], async (req, res) => {
@@ -66,16 +168,28 @@ const authenticateToken = (req, res, next) => {
 
 // --- ROUTES ---
 
+// Validation Middleware
+const validate = (schema) => (req, res, next) => {
+    try {
+        schema.parse(req.body);
+        next();
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: err.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+            });
+        }
+        next(err);
+    }
+};
+
 // Register
-app.post('/auth/register', async (req, res) => {
+app.post('/auth/register', authLimiter, validate(registerSchema), async (req, res) => {
     const { username, password, referralCode } = req.body;
 
     try {
         console.log(`[REGISTER] Attempting to register user: ${username}`);
-
-        if (!username || !password) {
-            return res.status(400).json({ error: 'Username and password are required' });
-        }
 
         const existing = await prisma.user.findUnique({ where: { username } });
         if (existing) {
@@ -105,15 +219,11 @@ app.post('/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/auth/login', async (req, res) => {
+app.post('/auth/login', authLimiter, validate(loginSchema), async (req, res) => {
     const { username, password } = req.body;
 
     try {
         console.log(`[LOGIN] Attempting login for user: ${username}`);
-
-        if (!username || !password) {
-            return res.status(400).json({ error: 'Username and password are required' });
-        }
 
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user) {
@@ -191,13 +301,8 @@ app.get('/user/referrals', authenticateToken, async (req, res) => {
 });
 
 // Update user tier
-app.patch('/user/tier', authenticateToken, async (req, res) => {
+app.patch('/user/tier', authenticateToken, validate(tierSchema), async (req, res) => {
     const { tier } = req.body;
-
-    const validTiers = ['free', 'pro', 'enterprise'];
-    if (!tier || !validTiers.includes(tier)) {
-        return res.status(400).json({ error: 'Invalid tier. Must be free, pro, or enterprise.' });
-    }
 
     try {
         const updatedUser = await prisma.user.update({
@@ -214,11 +319,9 @@ app.patch('/user/tier', authenticateToken, async (req, res) => {
 });
 
 // Telemetry from Agent - requires authentication
-app.post('/miner/telemetry', authenticateToken, async (req, res) => {
+app.post('/miner/telemetry', authenticateToken, validate(telemetrySchema), async (req, res) => {
     const { workerName, hashrate, temp, power } = req.body;
     const userId = req.user.id;
-
-    if (!workerName) return res.status(400).json({ error: "Missing workerName" });
 
     try {
         // Upsert Worker
@@ -245,16 +348,33 @@ app.post('/miner/telemetry', authenticateToken, async (req, res) => {
     }
 });
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('[ERROR]', {
+        path: req.path,
+        method: req.method,
+        error: err.message,
+        stack: NODE_ENV === 'development' ? err.stack : undefined
+    });
+
+    res.status(err.status || 500).json({
+        error: NODE_ENV === 'production' ? 'Internal server error' : err.message
+    });
+});
+
 // Test database connection on startup
 prisma.$connect()
     .then(() => {
-        console.log('Database connected successfully');
+        console.log('✅ Database connected successfully');
         app.listen(PORT, () => {
-            console.log(`Backend API running on port ${PORT}`);
+            console.log(`✅ Backend API running on port ${PORT}`);
+            console.log(`   Environment: ${NODE_ENV}`);
+            console.log(`   Rate limiting: ${NODE_ENV === 'production' ? 'ENABLED' : 'ENABLED (dev)'}`);
+            console.log(`   HTTPS redirect: ${NODE_ENV === 'production' ? 'ENABLED' : 'DISABLED (dev)'}`);
         });
     })
     .catch((e) => {
-        console.error('Failed to connect to database:', e.message);
+        console.error('❌ Failed to connect to database:', e.message);
         console.error('Make sure DATABASE_URL is set correctly and the database is running');
         process.exit(1);
     });
