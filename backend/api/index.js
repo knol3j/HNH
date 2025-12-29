@@ -9,7 +9,11 @@ import 'dotenv/config';
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET environment variable is required');
+    process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // CORS Configuration
 const allowedOrigins = [
@@ -27,11 +31,8 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
-            // Optional: for development, you might want to log this
             console.log('Blocked by CORS:', origin);
-            // return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
-            // Default to allowing for now to debug user issue, but warn
-            return callback(null, true);
+            return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
         }
         return callback(null, true);
     },
@@ -57,7 +58,7 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (!!err) return res.sendStatus(403);
+        if (err) return res.sendStatus(403);
         req.user = user;
         next();
     });
@@ -94,20 +95,12 @@ app.post('/auth/register', async (req, res) => {
             }
         });
 
-        if (username === 'knol3j') {
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { role: 'ADMIN' }
-            });
-            user.role = 'ADMIN';
-        }
-
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
         console.log(`[REGISTER] Successfully registered user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
-        console.error('[REGISTER] Error:', e);
-        res.status(500).json({ error: e.message, details: process.env.NODE_ENV === 'development' ? e.stack : undefined });
+        console.error('[REGISTER] Error:', e.message);
+        res.status(500).json({ error: 'Registration failed' });
     }
 });
 
@@ -134,22 +127,12 @@ app.post('/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid password' });
         }
 
-        // Admin specific logic for knol3j
-        if (user.username === 'knol3j' && user.role !== 'ADMIN') {
-            console.log(`[LOGIN] detected admin user knol3j, promoting to ADMIN...`);
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { role: 'ADMIN' }
-            });
-            user.role = 'ADMIN';
-        }
-
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
         console.log(`[LOGIN] Successfully logged in user: ${username} (Role: ${user.role})`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
-        console.error('[LOGIN] Error:', e);
-        res.status(500).json({ error: e.message, details: process.env.NODE_ENV === 'development' ? e.stack : undefined });
+        console.error('[LOGIN] Error:', e.message);
+        res.status(500).json({ error: 'Login failed' });
     }
 });
 
@@ -230,13 +213,12 @@ app.patch('/user/tier', authenticateToken, async (req, res) => {
     }
 });
 
-// Telemetry from Agent (Authenticated via User Token or special Agent Key - simplified to Token for now)
-app.post('/miner/telemetry', async (req, res) => {
-    // In a real app, agents would have their own API keys.
-    // We'll trust the payload contains a valid userId for this PoC.
-    const { userId, workerName, hashrate, temp, power } = req.body;
+// Telemetry from Agent - requires authentication
+app.post('/miner/telemetry', authenticateToken, async (req, res) => {
+    const { workerName, hashrate, temp, power } = req.body;
+    const userId = req.user.id;
 
-    if (!userId) return res.status(400).json({ error: "Missing userId" });
+    if (!workerName) return res.status(400).json({ error: "Missing workerName" });
 
     try {
         // Upsert Worker
@@ -244,14 +226,16 @@ app.post('/miner/telemetry', async (req, res) => {
             where: { userId, name: workerName }
         });
 
+        const parsedHashrate = parseFloat(hashrate) || 0;
+
         if (!worker) {
             worker = await prisma.worker.create({
-                data: { userId, name: workerName, hashrate: parseFloat(hashrate) }
+                data: { userId, name: workerName, hashrate: parsedHashrate }
             });
         } else {
             await prisma.worker.update({
                 where: { id: worker.id },
-                data: { hashrate: parseFloat(hashrate), lastSeen: new Date() }
+                data: { hashrate: parsedHashrate, lastSeen: new Date() }
             });
         }
 

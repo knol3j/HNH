@@ -30,6 +30,9 @@ const GUI_PATH = path.join(__dirname, 'gui');
 app.use(express.static(GUI_PATH));
 
 // SECURITY: Auth Middleware
+if (!process.env.AGENT_SECRET) {
+    console.warn('WARNING: AGENT_SECRET not set in environment, using default. Set AGENT_SECRET for production use.');
+}
 const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
     // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
@@ -63,6 +66,15 @@ const PLATFORM_FEE_TIERS = {
 const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
+const COIN_ALGOS = {
+    XMR: 'rx/0',
+    ZEPH: 'rx/0',
+    RVN: 'kawpow',
+    ETC: 'etchash',
+    ERG: 'autolykos2',
+    KAS: 'heavyhash'
+};
+
 const COIN_POOLS = {
     XMR: 'stratum+tcp://xmr.nanopool.org:14444',
     ZEPH: 'stratum+tcp://de.zephyr.herominers.com:1123', // CPU
@@ -197,10 +209,9 @@ const startMiner = () => {
         addLog(`❌ Security: Invalid Pool URL detected: ${config.poolUrl}`);
         return;
     }
-    if (config.wallet && !config.wallet.match(/^[a-zA-Z0-9]+$/)) {
-        // Basic alphanumeric check - might need adjustment for specific coin formats
-        // but prevents obvious shell injection chars like ; | &
-        // addLog(`⚠️ Warning: Wallet contains special characters`); 
+    // Validate wallet address - allow alphanumeric and common crypto address chars (: for some coins)
+    if (config.wallet && !config.wallet.match(/^[a-zA-Z0-9:]+$/)) {
+        addLog(`⚠️ Warning: Wallet contains potentially unsafe characters`);
     }
 
     // Add Algorithm if specified (Critical for GPU switching)
@@ -293,11 +304,15 @@ const fetchXmrigStats = () => {
                     telemetry.power = totalPower;
                     telemetry.fan = avgFan;
                 }
-            } catch (e) { }
+            } catch (e) {
+                console.error('[TELEMETRY] Failed to parse XMRig stats:', e.message);
+            }
         });
     });
 
-    req.on('error', (e) => { /* Silent fail if miner busy/restarting */ });
+    req.on('error', (e) => {
+        console.error('[TELEMETRY] Failed to fetch XMRig stats:', e.message);
+    });
     req.end();
 };
 
@@ -545,14 +560,7 @@ async function checkProfitabilityAndSwitch() {
     }
 }
 
-const COIN_ALGOS = {
-    XMR: 'rx/0',
-    ZEPH: 'rx/0',
-    RVN: 'kawpow',
-    ETC: 'etchash',
-    ERG: 'autolykos2',
-    KAS: 'heavyhash'
-};
+// COIN_ALGOS already defined at top of file
 
 // ... (existing code)
 

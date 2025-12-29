@@ -63,6 +63,7 @@ const App: React.FC = () => {
       setCurrentUser(user);
       if (currentView === 'LANDING') setCurrentView('DASHBOARD');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = () => {
@@ -72,13 +73,15 @@ const App: React.FC = () => {
   };
 
   // Initial AI Load for Network Status (Dependent on stats)
+  // Debounced to prevent excessive API calls
   useEffect(() => {
-    const fetchInsight = async () => {
+    const timeoutId = setTimeout(async () => {
       const analysis = await getNetworkStatusAnalysis(stats);
       setAiAnalysis(analysis);
-    };
-    fetchInsight();
-  }, [stats.activeNodes]); // Re-run when node count changes
+    }, 1000); // Wait 1 second before fetching to debounce rapid changes
+
+    return () => clearTimeout(timeoutId);
+  }, [stats.activeNodes, stats.jobsRunning, stats.totalTflops]); // Re-run when key stats change
 
   // Show Landing or Docs if not logged in and not explicitly in Auth view
   if (!currentUser) {
