@@ -3,12 +3,20 @@ import { Activity, Cpu, Zap, Server, Coins, Terminal, Play, Square, Settings } f
 import { DynamicDiv } from '../components/DynamicDiv';
 import './Provider.css';
 
+interface MinerConfig {
+    coin: string;
+    wallet: string;
+    mode: 'cpu' | 'gpu';
+    poolUrl: string;
+    algorithm: string;
+}
+
 const Provider: React.FC = () => {
     // State
     const [minerStatus, setMinerStatus] = useState<'ONLINE' | 'OFFLINE' | 'STARTING'>('OFFLINE');
     const [telemetry, setTelemetry] = useState<any>(null);
     const [logs, setLogs] = useState<string[]>([]);
-    const [config, setConfig] = useState<any>({
+    const [config, setConfig] = useState<MinerConfig>({
         coin: 'XMR',
         wallet: '',
         mode: 'cpu',
@@ -273,6 +281,8 @@ const Provider: React.FC = () => {
                                 <label className="text-xs text-muted uppercase font-bold block mb-2">Target Coin</label>
                                 <div className="flex gap-2">
                                     <select
+                                        aria-label="Target Coin"
+                                        title="Target Coin"
                                         value={meta?.coins?.includes(config.coin) ? config.coin : 'CUSTOM'}
                                         onChange={(e) => {
                                             const val = e.target.value;
@@ -313,6 +323,8 @@ const Provider: React.FC = () => {
                                 <label className="text-xs text-muted uppercase font-bold block mb-2">Mining Pool</label>
                                 <div className="space-y-2">
                                     <select
+                                        aria-label="Mining Pool"
+                                        title="Mining Pool"
                                         value={Object.values(meta?.pools || {}).includes(config.poolUrl) ? config.poolUrl : 'CUSTOM'}
                                         onChange={(e) => {
                                             const val = e.target.value;

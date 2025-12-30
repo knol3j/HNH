@@ -230,6 +230,53 @@ app.patch('/user/tier', authenticateToken, async (req, res) => {
     }
 });
 
+// --- WALLETS ---
+
+// Get User Wallets
+app.get('/user/wallets', authenticateToken, async (req, res) => {
+    try {
+        const wallets = await prisma.userWallet.findMany({
+            where: { userId: req.user.id }
+        });
+        res.json(wallets);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Save/Update User Wallet
+app.post('/user/wallets', authenticateToken, async (req, res) => {
+    const { coin, address, label } = req.body;
+
+    if (!coin || !address) {
+        return res.status(400).json({ error: "Coin and Address are required" });
+    }
+
+    try {
+        const wallet = await prisma.userWallet.upsert({
+            where: {
+                userId_coin_address: {
+                    userId: req.user.id,
+                    coin,
+                    address
+                }
+            },
+            update: { label, createdAt: new Date() }, // Update timestamp to bring to top
+            create: {
+                userId: req.user.id,
+                coin,
+                address,
+                label
+            }
+        });
+        res.json(workerResponse(wallet)); // Typo mock
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+
+    function workerResponse(w) { return w; }
+});
+
 // Telemetry from Agent (Authenticated via User Token or special Agent Key - simplified to Token for now)
 app.post('/miner/telemetry', async (req, res) => {
     // In a real app, agents would have their own API keys.

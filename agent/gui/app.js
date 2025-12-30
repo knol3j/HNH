@@ -1,4 +1,5 @@
 const API_URL = ''; // Relative path
+const PLATFORM_API_URL = 'http://localhost:8080'; // In prod, this would be https://api.hashnhedge.com
 const SECRET = 'HNH_LOCAL_AGENT_SECRET';
 
 // Elements
@@ -9,36 +10,97 @@ const els = {
     power: document.getElementById('power'),
     shares: document.getElementById('shares'),
     logs: document.getElementById('terminal'),
-    coin: document.getElementById('coin-select'),
-    pool: document.getElementById('pool-select'),
-    wallet: document.getElementById('wallet-input'),
-    saveStatus: document.getElementById('save-status'),
+
+    coinSelect: document.getElementById('coin-select'),
+    coinInput: document.getElementById('coin-input'),
+
+    poolSelect: document.getElementById('pool-select'),
+    poolInput: document.getElementById('pool-input'),
+
     walletSelect: document.getElementById('wallet-select'),
     walletInput: document.getElementById('wallet-input'),
     cancelEdit: document.getElementById('cancel-edit-btn'),
+    saveStatus: document.getElementById('save-status'),
+
     startBtn: document.getElementById('start-btn'),
-    stopBtn: document.getElementById('stop-btn')
+    stopBtn: document.getElementById('stop-btn'),
+
+    loginBtn: document.getElementById('login-btn'),
+    logoutBtn: document.getElementById('logout-btn'),
+    userInfo: document.getElementById('user-info'),
+    usernameDisplay: document.getElementById('username-display')
 };
 
 // State
 let meta = null;
-let lastLogTime = 0;
+let authToken = localStorage.getItem('hnh_auth_token');
+let currentUser = null;
 
 // Init
 async function init() {
+    // Check Auth
+    if (authToken) {
+        await verifyToken();
+    }
+    updateAuthUI();
+
     // Fetch Meta
     const res = await fetch(`${API_URL}/meta`);
     meta = await res.json();
 
     // Populate UI
-    populateDropdown(els.coin, meta.coins, meta.currentCoin);
-    populateDropdown(els.pool, Object.values(meta.pools), meta.pools[meta.currentCoin]);
+    populateDropdown(els.coinSelect, meta.coins, meta.currentCoin);
+    populateDropdown(els.poolSelect, Object.values(meta.pools), meta.pools[meta.currentCoin]);
+
+    // Handle Custom Default State? 
+    // If currentCoin is not in list, set to CUSTOM
+    if (!meta.coins.includes(meta.currentCoin)) {
+        els.coinSelect.value = 'CUSTOM';
+        toggleInput(els.coinSelect, els.coinInput, true);
+        els.coinInput.value = meta.currentCoin;
+    }
 
     // Wallet UI Init
-    renderWalletUI(meta.currentCoin);
+    await renderWalletUI(meta.currentCoin);
 
     // Listeners
-    els.coin.addEventListener('change', handleCoinChange);
+    setupListeners();
+
+    // Start Polling
+    setInterval(pollTelemetry, 1000);
+}
+
+function setupListeners() {
+    // Coin Change
+    els.coinSelect.addEventListener('change', async (e) => {
+        const val = e.target.value;
+        if (val === 'CUSTOM') {
+            toggleInput(els.coinSelect, els.coinInput, true);
+            els.coinInput.focus();
+        } else {
+            toggleInput(els.coinSelect, els.coinInput, false);
+            // Switch Coin Logic
+            await handleCoinChange(val);
+        }
+    });
+
+    // Custom Coin Input
+    els.coinInput.addEventListener('change', async (e) => {
+        const val = e.target.value.toUpperCase();
+        if (val) await handleCoinChange(val);
+    });
+
+    // Pool Change
+    els.poolSelect.addEventListener('change', async (e) => {
+        const val = e.target.value;
+        if (val === 'CUSTOM') {
+            toggleInput(els.poolSelect, els.poolInput, true);
+            els.poolInput.focus();
+        } else {
+            toggleInput(els.poolSelect, els.poolInput, false);
+            // We don't auto-save pool config yet in this MVP, but we could
+        }
+    });
 
     // Wallet Dropdown Change
     els.walletSelect.addEventListener('change', async (e) => {
@@ -46,19 +108,15 @@ async function init() {
         if (val === 'NEW') {
             toggleWalletEdit(true);
         } else {
-            // Selected an existing wallet from history
-            // Send update to backend immediately
-            if (val !== meta.wallet) {
-                await sendAction('config', { wallet: val });
-                meta.wallet = val;
-                meta.config.wallets[els.coin.value] = val;
-                showSave();
-            }
+            await saveWalletConfig(val);
         }
     });
 
     // Wallet Input Save
-    els.walletInput.addEventListener('input', debounce(handleWalletInput, 1000));
+    els.walletInput.addEventListener('input', debounce(async () => {
+        const val = els.walletInput.value;
+        if (val) await saveWalletConfig(val);
+    }, 1000));
 
     // Cancel Edit
     els.cancelEdit.addEventListener('click', () => {
@@ -69,12 +127,15 @@ async function init() {
     els.startBtn.addEventListener('click', () => sendAction('start-miner', {}));
     els.stopBtn.addEventListener('click', () => sendAction('stop-miner', {}));
 
-    // Start Polling
-    setInterval(pollTelemetry, 1000);
+    // Auth
+    els.loginBtn.addEventListener('click', handleLogin);
+    els.logoutBtn.addEventListener('click', handleLogout);
 }
 
 function populateDropdown(el, items, selected) {
     el.innerHTML = '';
+
+    // Standard Items
     items.forEach(item => {
         const opt = document.createElement('option');
         opt.value = item;
@@ -82,11 +143,38 @@ function populateDropdown(el, items, selected) {
         if (item === selected) opt.selected = true;
         el.appendChild(opt);
     });
+
+    // Custom Option
+    const optCustom = document.createElement('option');
+    optCustom.value = 'CUSTOM';
+    optCustom.textContent = 'Custom...';
+    el.appendChild(optCustom);
 }
 
-function renderWalletUI(coin) {
+function toggleInput(selectEl, inputEl, showInput) {
+    if (showInput) {
+        inputEl.classList.remove('hidden');
+    } else {
+        inputEl.classList.add('hidden');
+    }
+}
+
+async function renderWalletUI(coin) {
     const savedWallet = meta.config.wallets[coin];
-    const history = meta.walletHistory ? meta.walletHistory[coin] : [];
+    let history = meta.walletHistory ? meta.walletHistory[coin] : [];
+
+    // If logged in, fetch cloud wallets too
+    if (authToken && currentUser) {
+        try {
+            const cloudWallets = await fetchCloudWallets();
+            // Filter for current coin
+            const cloudForCoin = cloudWallets.filter(w => w.coin === coin).map(w => w.address);
+            // Merge
+            history = [...new Set([...history, ...cloudForCoin])];
+        } catch (e) {
+            console.error("Failed to fetch cloud wallets", e);
+        }
+    }
 
     els.walletSelect.innerHTML = '';
 
@@ -95,14 +183,13 @@ function renderWalletUI(coin) {
         history.forEach(addr => {
             const opt = document.createElement('option');
             opt.value = addr;
-            // Show truncated address
             opt.textContent = `${addr.substring(0, 8)}...${addr.substring(addr.length - 4)}`;
             if (addr === savedWallet) opt.selected = true;
             els.walletSelect.appendChild(opt);
         });
     }
 
-    // 2. Add current saved wallet if not in history (edge case)
+    // 2. Add current saved wallet if not in history
     if (savedWallet && (!history || !history.includes(savedWallet))) {
         const opt = document.createElement('option');
         opt.value = savedWallet;
@@ -131,11 +218,8 @@ function toggleWalletEdit(showInput) {
         els.walletInput.classList.remove('hidden');
         els.cancelEdit.classList.remove('hidden');
         els.walletInput.focus();
-
-        // Pre-fill input if there was a saved wallet, else empty
-        const saved = meta.config.wallets[els.coin.value];
+        const saved = meta.config.wallets[els.coinSelect.value];
         if (!els.walletInput.value && saved) els.walletInput.value = saved;
-
     } else {
         els.walletSelect.classList.remove('hidden');
         els.walletInput.classList.add('hidden');
@@ -143,20 +227,147 @@ function toggleWalletEdit(showInput) {
     }
 }
 
+async function handleCoinChange(newCoin) {
+    // 1. Tell backend to switch (assuming backend handles custom coins by just taking the string)
+    await sendAction('switch-coin', { coin: newCoin });
+
+    // 2. Update local state
+    const res = await fetch(`${API_URL}/meta`);
+    meta = await res.json();
+
+    // 3. Update Pool UI
+    const poolUrl = meta.pools[newCoin];
+    if (poolUrl) {
+        populateDropdown(els.poolSelect, Object.values(meta.pools), poolUrl);
+        toggleInput(els.poolSelect, els.poolInput, false);
+    } else {
+        // Unknown coin, maybe custom? Set pool to custom
+        els.poolSelect.value = 'CUSTOM';
+        toggleInput(els.poolSelect, els.poolInput, true);
+    }
+
+    // 4. Update Wallet UI
+    await renderWalletUI(newCoin);
+}
+
+async function saveWalletConfig(wallet) {
+    if (wallet !== meta.wallet) {
+        // Local Save
+        await sendAction('config', { wallet });
+        meta.wallet = wallet;
+        meta.config.wallets[els.coinSelect.value] = wallet;
+
+        // Cloud Save
+        if (authToken) {
+            await saveCloudWallet(els.coinSelect.value, wallet);
+            els.saveStatus.textContent = "Saved to Cloud";
+        } else {
+            els.saveStatus.textContent = "Saved Locally";
+        }
+
+        showSave();
+    }
+}
+
+async function fetchCloudWallets() {
+    const res = await fetch(`${PLATFORM_API_URL}/user/wallets`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (res.ok) return await res.json();
+    return [];
+}
+
+async function saveCloudWallet(coin, address) {
+    await fetch(`${PLATFORM_API_URL}/user/wallets`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ coin, address, label: 'Agent Wallet' })
+    });
+}
+
+
+// --- AUTH ---
+async function handleLogin() {
+    // MVP: Prompt for token OR username/password.
+    // Ideally we'd open a window or have inputs. 
+    // Let's ask for username/password via prompt for simplicity in this Electron view.
+    const username = prompt("Enter Username:");
+    if (!username) return;
+    const password = prompt("Enter Password:");
+    if (!password) return;
+
+    try {
+        const res = await fetch(`${PLATFORM_API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.token) {
+            authToken = data.token;
+            currentUser = data.user;
+            localStorage.setItem('hnh_auth_token', authToken);
+            updateAuthUI();
+            // Refresh wallets
+            renderWalletUI(meta.currentCoin);
+        } else {
+            alert("Login Failed: " + data.error);
+        }
+    } catch (e) {
+        alert("Login Error: " + e.message);
+    }
+}
+
+function handleLogout() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('hnh_auth_token');
+    updateAuthUI();
+    renderWalletUI(meta.currentCoin);
+}
+
+async function verifyToken() {
+    try {
+        const res = await fetch(`${PLATFORM_API_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+            currentUser = await res.json();
+        } else {
+            handleLogout();
+        }
+    } catch (e) {
+        handleLogout();
+    }
+}
+
+function updateAuthUI() {
+    if (authToken && currentUser) {
+        els.loginBtn.classList.add('hidden');
+        els.userInfo.classList.remove('hidden');
+        els.usernameDisplay.textContent = currentUser.username;
+    } else {
+        els.loginBtn.classList.remove('hidden');
+        els.userInfo.classList.add('hidden');
+    }
+}
+
+
+// --- GENERIC ---
 async function pollTelemetry() {
     try {
         const res = await fetch(`${API_URL}/telemetry`);
         const data = await res.json();
-
-        // Update Stats
         els.status.textContent = data.status;
         els.status.className = `badge ${data.status}`;
         els.hashrate.textContent = `${data.hashrate.toFixed(2)} MH/s`;
         els.temp.textContent = `${Math.round(data.gpu_temp)}°C`;
         els.power.textContent = `${Math.round(data.power_draw)} W`;
         els.shares.textContent = data.gross_shares;
-
-        // Update Logs
         updateLogs(data.logs);
     } catch (e) {
         els.status.textContent = 'DISCONNECTED';
@@ -165,7 +376,6 @@ async function pollTelemetry() {
 }
 
 function updateLogs(logs) {
-    // Simple clear & redraw for MVP (optimize later)
     els.logs.innerHTML = '';
     logs.forEach(log => {
         const div = document.createElement('div');
@@ -174,41 +384,6 @@ function updateLogs(logs) {
         els.logs.appendChild(div);
     });
     els.logs.scrollTop = els.logs.scrollHeight;
-}
-
-async function handleCoinChange() {
-    const newCoin = els.coin.value;
-
-    // 1. Tell backend to switch
-    await sendAction('switch-coin', { coin: newCoin });
-
-    // 2. Refresh Meta immediately to get the wallet for this coin and pool info
-    const res = await fetch(`${API_URL}/meta`);
-    meta = await res.json();
-
-    // 3. Update Pool UI to match new coin
-    // Use the pool URL from meta.pools[newCoin] to select the correct option
-    const poolUrl = meta.pools[newCoin];
-    if (poolUrl) {
-        // Re-populate pool dropdown in case pools changed (optional, but good practice)
-        populateDropdown(els.pool, Object.values(meta.pools), poolUrl);
-    }
-
-    // 4. Update Wallet UI
-    renderWalletUI(newCoin);
-}
-
-async function handleWalletInput() {
-    const newWallet = els.walletInput.value;
-
-    // Only save if changed
-    if (newWallet !== meta.wallet) {
-        await sendAction('config', { wallet: newWallet });
-        // Update local meta so we don't save again unnecessarily
-        meta.wallet = newWallet;
-        meta.config.wallets[els.coin.value] = newWallet; // Update local cache
-        showSave();
-    }
 }
 
 async function sendAction(endpoint, body) {

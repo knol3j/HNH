@@ -23,6 +23,19 @@ model User {
   workers       Worker[]
   shares        Share[]
   transactions  Transaction[]
+  savedWallets  UserWallet[]
+}
+
+model UserWallet {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  coin      String
+  address   String
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, coin, address])
 }
 
 model Worker {
