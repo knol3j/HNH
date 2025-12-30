@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import { Layout } from '../../components/Layout';
 import { User, View } from '../../types';
 
@@ -33,8 +33,10 @@ describe('Layout', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    window.ethereum = mockEthereum;
+    // Reset the mock implementation for each test
+    mockEthereum.request.mockReset();
     mockEthereum.request.mockResolvedValue([]);
+    window.ethereum = mockEthereum;
   });
 
   it('should render children content', () => {
@@ -216,23 +218,28 @@ describe('Layout', () => {
         </Layout>
       );
 
-      fireEvent.click(screen.getByText('Connect Wallet'));
-
-      expect(mockEthereum.request).toHaveBeenCalledWith({
-        method: 'eth_requestAccounts',
+      await act(async () => {
+        fireEvent.click(screen.getByText('Connect Wallet'));
+        await waitFor(() => {
+          expect(mockEthereum.request).toHaveBeenCalledWith({
+            method: 'eth_requestAccounts',
+          });
+        });
       });
     });
 
-    it('should check for existing wallet connection on mount', () => {
+    it('should check for existing wallet connection on mount', async () => {
       render(
         <Layout currentView="DASHBOARD" setCurrentView={mockSetCurrentView}>
           <div>Content</div>
         </Layout>
       );
 
-      expect(mockEthereum.request).toHaveBeenCalledWith({
-        method: 'eth_accounts',
-      });
+      await waitFor(() => {
+        expect(mockEthereum.request).toHaveBeenCalledWith({
+          method: 'eth_accounts',
+        });
+      }, { timeout: 3000 });
     });
   });
 
