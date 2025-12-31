@@ -113,7 +113,7 @@ const Dex: React.FC = () => {
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Chart */}
             <div className="lg:col-span-2 bg-black border border-white/10 rounded-2xl p-0 flex flex-col min-h-[500px] overflow-hidden">
-               <div id="tradingview_widget" className="w-full h-full flex-1" style={{ minHeight: '500px' }} />
+               <div id="tradingview_widget" className="w-full h-full flex-1 min-h-[500px]" />
                <ScriptInjector />
             </div>
 

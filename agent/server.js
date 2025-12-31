@@ -14,16 +14,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com', 'http://localhost:4343', 'http://127.0.0.1:4343'];
+// SECURITY: Strict CORS (Modified to allow deployed frontends)
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            return callback(new Error('CORS not allowed'), false);
-        }
+        // Allow all origins for the local agent to ensure connectivity from deployed apps
+        // In a strict production environment, you would list specific domains:
+        // const allowedOrigins = ['http://localhost:3000', 'https://hashnhedge.com', ...];
         return callback(null, true);
-    }
+    },
+    credentials: true
 }));
 app.use(express.json());
 

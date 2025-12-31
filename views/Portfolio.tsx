@@ -51,7 +51,7 @@ const MinersMarket: React.FC = () => {
           <h2 className="text-3xl font-bold text-white mb-2">Miner's Market</h2>
           <p className="text-muted">Live prices for top Proof-of-Work coins from CoinGecko.</p>
         </div>
-        <button onClick={fetchPrices} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-white transition-all">
+        <button onClick={fetchPrices} aria-label="Refresh Prices" className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-white transition-all">
           <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
         </button>
       </header>
@@ -80,6 +80,7 @@ const MinersMarket: React.FC = () => {
                   href={`https://www.coingecko.com/en/coins/${id}`}
                   target="_blank"
                   rel="noreferrer"
+                  aria-label={`View ${meta.name} on CoinGecko`}
                   className="text-white/20 hover:text-white transition-colors"
                 >
                   <ExternalLink size={18} />

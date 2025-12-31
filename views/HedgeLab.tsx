@@ -67,6 +67,7 @@ const HardwareDatabase: React.FC = () => {
           />
         </div>
         <select
+          aria-label="Filter by Algorithm"
           className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none"
           value={algoFilter}
           onChange={e => setAlgoFilter(e.target.value)}

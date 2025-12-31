@@ -221,6 +221,7 @@ const Security: React.FC = () => {
               <div>
                 <label className="text-xs text-muted uppercase font-bold mb-2 block">Token Address (Solana)</label>
                 <input
+                  aria-label="Token Address"
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-purple-500 focus:outline-none font-mono text-sm"
                   placeholder="e.g. Dejz..."
                   value={tokenAddr}
@@ -233,6 +234,7 @@ const Security: React.FC = () => {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  aria-label="Select Hash File"
                   accept=".cap,.hccapx,.hash,.txt"
                   onChange={handleFileSelect}
                   className="hidden"
@@ -252,7 +254,7 @@ const Security: React.FC = () => {
             {mode !== 'AUDIT' && (
               <div>
                 <label className="text-xs text-muted uppercase font-bold mb-2 block">Wordlist</label>
-                <select className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-red-500 focus:outline-none">
+                <select aria-label="Select Wordlist" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-red-500 focus:outline-none">
                   <option>rockyou.txt</option>
                   <option>darkc0de.txt</option>
                   <option>Custom (agent-side)</option>
