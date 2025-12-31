@@ -119,25 +119,22 @@ const Dex: React.FC = () => {
 
             {/* Script Helper for TV */}
             {/* Swap Card (Responsive) */}
-            <div className="bg-surface border border-white/10 rounded-2xl p-0 overflow-hidden flex flex-col h-full min-h-[600px]">
-               <iframe
-                  title="Jupiter Exchange"
-                  src="https://terminal.jup.ag/"
-                  className="w-full h-full border-none min-h-[600px]"
-               />
-               <div className="p-2 text-center text-xs text-muted border-t border-white/10">
-                  Powered by <a href="https://jup.ag" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Jupiter Aggregator</a>.
-                  Connect your wallet directly inside the terminal.
-               </div>
+            {/* Swap Card (Responsive) */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-4 overflow-hidden flex flex-col h-full min-h-[600px] relative">
+               <div id="jupiter-terminal" className="w-full h-full min-h-[550px]" />
+               <JupiterScript />
             </div>
          </div>
       </div>
    );
 };
 
+// TradingView
 const ScriptInjector = () => {
    React.useEffect(() => {
+      if (document.getElementById('tv-script')) return;
       const script = document.createElement('script');
+      script.id = 'tv-script';
       script.src = "https://s3.tradingview.com/tv.js";
       script.async = true;
       script.onload = () => {
@@ -161,7 +158,38 @@ const ScriptInjector = () => {
          }
       };
       document.head.appendChild(script);
-      return () => { document.head.removeChild(script); }
+   }, []);
+   return null;
+};
+
+// Jupiter
+const JupiterScript = () => {
+   React.useEffect(() => {
+      if (document.getElementById('jup-script')) return;
+      const script = document.createElement('script');
+      script.id = 'jup-script';
+      script.src = "https://terminal.jup.ag/main-v2.js";
+      script.async = true;
+      script.onload = () => {
+         // @ts-ignore
+         if (window.Jupiter) {
+            // @ts-ignore
+            window.Jupiter.init({
+               displayMode: "integrated",
+               integratedTargetId: "jupiter-terminal",
+               endpoint: "https://api.mainnet-beta.solana.com",
+               strictTokenList: false,
+               defaultExplorer: "SolanaFM",
+               formProps: {
+                  fixedOutputMint: true,
+                  initialAmount: "8888888800",
+                  initialInputMint: "So11111111111111111111111111111111111111112",
+                  initialOutputMint: "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof",
+               },
+            });
+         }
+      };
+      document.head.appendChild(script);
    }, []);
    return null;
 };
