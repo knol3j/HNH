@@ -223,7 +223,7 @@ const addLog = (msg) => {
 };
 
 // --- MINER MANAGER ---
-import StratumProxy from './stratum-proxy.js'; // Ensure this is top-level import in reality
+// import StratumProxy ... (Moved to top)
 
 // ... (Requires logic change, better to instantiate inside startMiner or globally)
 let proxyInstance = null;
