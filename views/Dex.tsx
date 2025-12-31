@@ -143,86 +143,17 @@ const Dex: React.FC = () => {
                </div>
             </div>
 
-            {/* Swap Card */}
-            <div className="bg-surface border border-white/10 rounded-2xl p-6 flex flex-col gap-6 h-fit">
-               <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-white">Swap</h3>
-                  <Settings className="text-muted hover:text-white cursor-pointer" size={20} />
+            {/* Swap Card (Responsive) */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-0 overflow-hidden flex flex-col h-full min-h-[600px]">
+               <iframe
+                  title="Jupiter Exchange"
+                  src="https://terminal.jup.ag/"
+                  className="w-full h-full border-none min-h-[600px]"
+               />
+               <div className="p-2 text-center text-xs text-muted border-t border-white/10">
+                  Powered by <a href="https://jup.ag" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Jupiter Aggregator</a>.
+                  Connect your wallet directly inside the terminal.
                </div>
-
-               {/* Pay Input */}
-               <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                  <div className="flex justify-between text-sm mb-2">
-                     <span className="text-muted">Pay</span>
-                     <span className="text-muted">Balance: {wallet.solBalance.toFixed(4)} SOL</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <input
-                        type="number"
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        className="bg-transparent text-2xl font-bold text-white outline-none w-full"
-                        placeholder="0.0"
-                     />
-                     <div className="bg-white/10 px-3 py-1 rounded-lg flex items-center gap-2 shrink-0">
-                        <img src="https://cryptologos.cc/logos/solana-sol-logo.svg?v=032" className="w-6 h-6" alt="SOL" />
-                        <span className="font-bold text-white">SOL</span>
-                     </div>
-                  </div>
-                  <p className="text-xs text-muted mt-2">≈ ${(parseFloat(payAmount || '0') * (solPrice || 0)).toFixed(2)} USD</p>
-               </div>
-
-               {/* Divider */}
-               <div className="relative h-4 flex items-center justify-center">
-                  <div className="absolute w-full h-px bg-white/10"></div>
-                  <div className="bg-surface border border-white/10 p-2 rounded-full relative z-10 text-primary">
-                     <ArrowDown size={16} />
-                  </div>
-               </div>
-
-               {/* Receive Input */}
-               <div className="bg-black/40 rounded-xl p-4 border border-white/5">
-                  <div className="flex justify-between text-sm mb-2">
-                     <span className="text-muted">Receive</span>
-                     <span className="text-muted">Balance: {wallet.rndrBalance.toFixed(4)} RNDR</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <input
-                        type="text"
-                        value={receiveAmount}
-                        readOnly
-                        className="bg-transparent text-2xl font-bold text-emerald-400 outline-none w-full"
-                        placeholder="0.0"
-                     />
-                     <div className="bg-white/10 px-3 py-1 rounded-lg flex items-center gap-2 shrink-0">
-                        <img src="https://cryptologos.cc/logos/render-token-rndr-logo.svg?v=032" className="w-6 h-6" alt="" />
-                        <span className="font-bold text-white">RNDR</span>
-                     </div>
-                  </div>
-                  <p className="text-xs text-muted mt-2">Best Price via Jupiter</p>
-               </div>
-
-               {/* Details */}
-               <div className="bg-white/5 rounded-lg p-3 text-xs space-y-2">
-                  <div className="flex justify-between">
-                     <span className="text-muted">Rate</span>
-                     <span className="text-white">1 SOL ≈ {(solPrice && rndrPrice ? solPrice / rndrPrice : 0).toFixed(2)} RNDR</span>
-                  </div>
-                  <div className="flex justify-between">
-                     <span className="text-muted">Network Cost</span>
-                     <span className="text-white flex items-center gap-1">~$0.00025 <Zap size={10} className="text-yellow-500" /></span>
-                  </div>
-               </div>
-
-               <button
-                  onClick={handleSwap}
-                  disabled={isSwapping}
-                  className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                  {isSwapping ? 'Swapping...' : 'Swap Assets'}
-               </button>
-
-               <p className="text-[10px] text-center text-muted">Powered by Solana On-Chain Liquidity</p>
             </div>
          </div>
       </div>

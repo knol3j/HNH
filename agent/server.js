@@ -58,6 +58,7 @@ app.use(requireAuth);
 const PORT = 4343;
 const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
+const POSTS_FILE = path.join(__dirname, 'posts.json');
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -682,6 +683,58 @@ app.get('/meta', (req, res) => {
         walletHistory: walletHistory
     });
 });
+
+// --- FORUM (Real Persistence) ---
+let posts = [];
+try {
+    if (fs.existsSync(POSTS_FILE)) {
+        posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8'));
+    }
+} catch (e) { }
+
+app.get('/forum', (req, res) => {
+    res.json(posts);
+});
+
+app.post('/forum', (req, res) => {
+    const { title, content, category, author } = req.body;
+    const newPost = {
+        id: Date.now().toString(),
+        title,
+        content,
+        category,
+        author: author || 'Anonymous',
+        timestamp: new Date().toLocaleTimeString(),
+        likes: 0,
+        replies: 0,
+        isPinned: false
+    };
+    posts.unshift(newPost);
+    if (posts.length > 100) posts.pop(); // Limit
+    fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2));
+    res.json(newPost);
+});
+
+// --- SECURITY (Real Port Scan) ---
+app.get('/hashcat/status', (req, res) => {
+    // Legacy mock support or new real scan status
+    res.json({ logs: [], hashrate: 0, status: 'idle' });
+});
+
+import { exec } from 'child_process';
+
+app.post('/security/scan', (req, res) => {
+    // REAL COMMAND: Netstat to check open ports
+    const cmd = process.platform === 'win32' ? 'netstat -ano | findstr LISTEN' : 'netstat -tuln';
+    exec(cmd, (err, stdout, stderr) => {
+        res.json({
+            success: true,
+            output: stdout || stderr,
+            ports: stdout.split('\n').length
+        });
+    });
+});
+
 
 httpServer.listen(PORT, () => {
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);

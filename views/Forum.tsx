@@ -16,58 +16,49 @@ interface Thread {
     isPinned?: boolean;
 }
 
-const MOCK_THREADS: Thread[] = [
-    {
-        id: '1',
-        title: 'Welcome to the HashNHedge Community!',
-        author: 'Admin',
-        avatar: 'bg-primary',
-        category: 'Announcements',
-        replies: 45,
-        likes: 128,
-        timestamp: '2h ago',
-        content: 'We are excited to launch our new community forum. Please read the rules before posting...',
-        isPinned: true
-    },
-    {
-        id: '2',
-        title: 'How to optimize RTX 4090 for maximum RNDR yield?',
-        author: 'MinerMike',
-        avatar: 'bg-purple-500',
-        category: 'General',
-        replies: 12,
-        likes: 34,
-        timestamp: '5h ago',
-        content: 'I have been tweaking my OC settings but only getting 85% efficiency. Anyone have a stable config?'
-    },
-    {
-        id: '3',
-        title: '[Feature Request] Mobile App Dark Mode',
-        author: 'DarkThemeLover',
-        avatar: 'bg-gray-700',
-        category: 'Feature Request',
-        replies: 8,
-        likes: 56,
-        timestamp: '1d ago',
-        content: 'My eyes hurt at night checking my miner stats. Please add dark mode to the mobile app!'
-    },
-    {
-        id: '4',
-        title: 'Worker showing offline but still hashing?',
-        author: 'NewbieMiner',
-        avatar: 'bg-blue-500',
-        category: 'Support',
-        replies: 3,
-        likes: 2,
-        timestamp: '3d ago',
-        content: 'My dashboard says offline but the console shows accepted shares. Is this a bug?'
-    }
-];
-
 const Forum: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
-    const user = getCurrentUser(); // Get user for admin check
+    const [threads, setThreads] = useState<Thread[]>([]);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newThreadData, setNewThreadData] = useState({ title: '', content: '', category: 'General' });
+    const user = getCurrentUser();
+
+    // Fetch Real Threads
+    const fetchThreads = async () => {
+        try {
+            const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+            const res = await fetch(`${agentUrl}/forum`);
+            if (res.ok) {
+                const data = await res.json();
+                setThreads(data);
+            }
+        } catch (e) { console.error("Forum offline"); }
+    };
+
+    React.useEffect(() => {
+        fetchThreads();
+        const interval = setInterval(fetchThreads, 10000); // Live updates
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleCreate = async () => {
+        if (!newThreadData.title || !newThreadData.content) return;
+        try {
+            const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+            await fetch(`${agentUrl}/forum`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newThreadData,
+                    author: user?.username || 'Miner'
+                })
+            });
+            setIsCreating(false);
+            setNewThreadData({ title: '', content: '', category: 'General' });
+            fetchThreads(); // Refresh
+        } catch (e) { alert("Failed to post"); }
+    };
 
     const handleDelete = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
@@ -83,7 +74,7 @@ const Forum: React.FC = () => {
 
     const categories = ['All', 'Announcements', 'General', 'Support', 'Feature Request'];
 
-    const filteredThreads = MOCK_THREADS.filter(thread => {
+    const filteredThreads = threads.filter(thread => {
         const matchesSearch = thread.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             thread.content.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === 'All' || thread.category === selectedCategory;
@@ -113,11 +104,42 @@ const Forum: React.FC = () => {
                             className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
                         />
                     </div>
-                    <button className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-hover flex items-center gap-2 whitespace-nowrap">
-                        <Plus size={16} /> New Topic
+                    <button
+                        onClick={() => setIsCreating(!isCreating)}
+                        className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-hover flex items-center gap-2 whitespace-nowrap">
+                        <Plus size={16} /> {isCreating ? 'Cancel' : 'New Topic'}
                     </button>
                 </div>
             </div>
+
+            {/* Create Post Form */}
+            {isCreating && (
+                <div className="bg-surface border border-white/10 rounded-xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <input
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white"
+                        placeholder="Title"
+                        value={newThreadData.title}
+                        onChange={e => setNewThreadData({ ...newThreadData, title: e.target.value })}
+                    />
+                    <textarea
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white h-24"
+                        placeholder="Content..."
+                        value={newThreadData.content}
+                        onChange={e => setNewThreadData({ ...newThreadData, content: e.target.value })}
+                    />
+                    <div className="flex justify-between">
+                        <select
+                            aria-label="Select Category"
+                            className="bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white"
+                            value={newThreadData.category}
+                            onChange={e => setNewThreadData({ ...newThreadData, category: e.target.value })}
+                        >
+                            {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button onClick={handleCreate} className="bg-green-500 text-black px-6 py-2 rounded-lg font-bold">Post</button>
+                    </div>
+                </div>
+            )}
 
             {/* Categories */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -216,7 +238,7 @@ const Forum: React.FC = () => {
 
                 {filteredThreads.length === 0 && (
                     <div className="text-center py-12">
-                        <p className="text-muted">No topics found matching your criteria.</p>
+                        <p className="text-muted">No topics found matching your criteria. Be the first to post!</p>
                         <button
                             onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
                             className="text-primary hover:underline text-sm mt-2"
