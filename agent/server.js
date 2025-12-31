@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
+import { exec } from 'child_process';
 import StratumProxy from './stratum-proxy.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -721,8 +722,6 @@ app.get('/hashcat/status', (req, res) => {
     // Legacy mock support or new real scan status
     res.json({ logs: [], hashrate: 0, status: 'idle' });
 });
-
-import { exec } from 'child_process';
 
 app.post('/security/scan', (req, res) => {
     // REAL COMMAND: Netstat to check open ports
