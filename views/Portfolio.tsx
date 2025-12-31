@@ -1,154 +1,117 @@
 import React, { useState, useEffect } from 'react';
-import { ComputeNode } from '../types';
-import { fetchComputeNodes } from '../services/networkService';
-import { Server, Cpu, MapPin, Zap, Filter, BadgeCheck, ShieldCheck, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, RefreshCw, ExternalLink } from 'lucide-react';
 
-const Marketplace: React.FC = () => {
-  const [filterGpu, setFilterGpu] = useState('All');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [nodes, setNodes] = useState<ComputeNode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface CoinPrice {
+  usd: number;
+  btc: number;
+  usd_24h_change: number;
+}
+interface PriceResponse {
+  [key: string]: CoinPrice;
+}
+
+const MinersMarket: React.FC = () => {
+  const [prices, setPrices] = useState<PriceResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  const fetchPrices = async () => {
+    setLoading(true);
+    try {
+      const backendUrl = 'https://hashnhedge-app.up.railway.app';
+      const res = await fetch(`${backendUrl}/api/public/prices`);
+      if (res.ok) {
+        const data = await res.json();
+        setPrices(data);
+        setLastUpdated(new Date());
+      }
+    } catch (e) { console.error("Market Data Offline"); }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const loadNodes = async () => {
-      setIsLoading(true);
-      const fetchedNodes = await fetchComputeNodes();
-      setNodes(fetchedNodes);
-      setIsLoading(false);
-    };
-    loadNodes();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadNodes, 30000);
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000); // 1 min update
     return () => clearInterval(interval);
   }, []);
 
-  const filteredNodes = nodes.filter(n => {
-    const matchesGpu = filterGpu === 'All' || n.gpuModel.includes(filterGpu);
-    const matchesVerified = verifiedOnly ? n.isVerified : true;
-    return matchesGpu && matchesVerified;
-  });
+  const COIN_META: { [key: string]: { name: string, symbol: string, icon: string } } = {
+    'monero': { name: 'Monero', symbol: 'XMR', icon: 'https://cryptologos.cc/logos/monero-xmr-logo.svg?v=032' },
+    'zephyr': { name: 'Zephyr Protocol', symbol: 'ZEPH', icon: 'https://zephyrprotocol.com/logo.svg' }, // Fallback if no specific icon
+    'ravencoin': { name: 'Ravencoin', symbol: 'RVN', icon: 'https://cryptologos.cc/logos/ravencoin-rvn-logo.svg?v=032' },
+    'ethereum-classic': { name: 'Ethereum Classic', symbol: 'ETC', icon: 'https://cryptologos.cc/logos/ethereum-classic-etc-logo.svg?v=032' },
+    'kaspa': { name: 'Kaspa', symbol: 'KAS', icon: 'https://cryptologos.cc/logos/kaspa-kas-logo.svg?v=032' },
+    'ergo': { name: 'Ergo', symbol: 'ERG', icon: 'https://cryptologos.cc/logos/ergo-erg-logo.svg?v=032' },
+  };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="max-w-6xl mx-auto space-y-8">
+      <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Compute Marketplace</h2>
-          <p className="text-muted">Rent high-performance decentralized GPU nodes for AI training and rendering.</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Miner's Market</h2>
+          <p className="text-muted">Live prices for top Proof-of-Work coins from CoinGecko.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-4">
-           {/* Trust Filter */}
-           <button 
-             onClick={() => setVerifiedOnly(!verifiedOnly)}
-             className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
-                verifiedOnly 
-                ? 'bg-blue-500/20 border-blue-500 text-blue-400' 
-                : 'bg-surface border-white/10 text-muted hover:text-white'
-             }`}
-           >
-             <BadgeCheck size={16} /> Verified Only
-           </button>
-
-           <div className="flex gap-2 bg-surface p-1 rounded-xl border border-white/10 overflow-x-auto">
-             {['All', 'H100', 'A100', '4090'].map(type => (
-               <button
-                 key={type}
-                 onClick={() => setFilterGpu(type)}
-                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                   filterGpu === type 
-                   ? 'bg-primary text-black shadow-lg' 
-                   : 'text-muted hover:text-white'
-                 }`}
-               >
-                 {type}
-               </button>
-             ))}
-           </div>
-        </div>
+        <button onClick={fetchPrices} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-white transition-all">
+          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+        </button>
       </header>
 
-      <div className="grid grid-cols-1 gap-4">
-        {isLoading && (
-           <div className="text-center py-20 text-muted">
-             <Loader2 size={48} className="mx-auto mb-4 opacity-50 animate-spin" />
-             <p>Loading available nodes...</p>
-           </div>
-        )}
-        {!isLoading && filteredNodes.length === 0 && (
-           <div className="text-center py-20 text-muted">
-             <Server size={48} className="mx-auto mb-4 opacity-20" />
-             <p>No nodes currently available. Check back later or register your own!</p>
-           </div>
-        )}
-        {filteredNodes.map((node) => (
-          <div key={node.id} className="bg-surface border border-white/5 rounded-xl p-5 hover:border-primary/50 transition-all group flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden">
-             
-             {/* Verified Background Gradient */}
-             {node.isVerified && <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>}
+      {!prices && loading && <div className="text-white py-10 text-center">Loading Market Data...</div>}
 
-             {/* Icon/Status */}
-             <div className="flex-shrink-0 relative ml-2">
-               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 ${node.status === 'IDLE' ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
-                 <Server className={node.status === 'IDLE' ? 'text-emerald-500' : 'text-amber-500'} size={32} />
-               </div>
-               <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-surface ${node.status === 'IDLE' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-             </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {prices && Object.entries(prices).map(([id, data]) => {
+          const meta = COIN_META[id] || { name: id, symbol: id.toUpperCase(), icon: '' };
+          const isPositive = data.usd_24h_change >= 0;
 
-             {/* Details */}
-             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-               <div>
-                 <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{node.gpuModel}</h3>
-                    {node.isVerified && (
-                      <span title="Verified Provider">
-                        <BadgeCheck size={16} className="text-blue-500" />
-                      </span>
-                    )}
-                 </div>
-                 <p className="text-sm text-muted">{node.name}</p>
-                 <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                   <MapPin size={12} /> {node.region}
-                   <span className="text-white/20">|</span>
-                   <span className="font-mono text-[10px]">{node.provider}</span>
-                 </div>
-               </div>
+          return (
+            <div key={id} className="bg-surface border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-primary/30 transition-all">
+              {/* Background Glow */}
+              <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-10 ${isPositive ? 'bg-green-500' : 'bg-red-500'}`}></div>
 
-               <div className="flex items-center gap-6">
-                 <div>
-                   <p className="text-xs text-muted uppercase">VRAM</p>
-                   <p className="font-mono text-white flex items-center gap-1"><Cpu size={14} className="text-accent"/> {node.vram} GB</p>
-                 </div>
-                 <div>
-                   <p className="text-xs text-muted uppercase">SLA Tier</p>
-                   <p className={`font-mono flex items-center gap-1 text-sm ${node.slaTier === 'Enterprise' ? 'text-purple-400 font-bold' : 'text-white'}`}>
-                      <ShieldCheck size={14} /> {node.slaTier}
-                   </p>
-                 </div>
-               </div>
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <img src={meta.icon} className="w-10 h-10 rounded-full bg-white/5 p-1" alt={meta.symbol} onError={(e: any) => e.target.style.display = 'none'} />
+                  <div>
+                    <h3 className="font-bold text-white text-lg">{meta.name}</h3>
+                    <span className="text-xs text-muted font-mono">{meta.symbol}</span>
+                  </div>
+                </div>
+                <a
+                  href={`https://www.coingecko.com/en/coins/${id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white/20 hover:text-white transition-colors"
+                >
+                  <ExternalLink size={18} />
+                </a>
+              </div>
 
-               <div className="flex flex-col items-end justify-center">
-                  <p className="text-2xl font-bold text-white">${node.pricePerHour.toFixed(2)}<span className="text-sm text-muted font-normal">/hr</span></p>
-                  <p className="text-xs text-green-500 mb-2">{node.availability}% Availability</p>
-               </div>
-             </div>
+              <div className="space-y-1 relative z-10">
+                <div className="text-3xl font-bold text-white font-mono flex items-center">
+                  ${data.usd < 1 ? data.usd.toFixed(6) : data.usd.toFixed(2)}
+                </div>
+                <div className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {data.usd_24h_change.toFixed(2)}% (24h)
+                </div>
+              </div>
 
-             {/* Action */}
-             <div>
-               <button 
-                 disabled={node.status !== 'IDLE'}
-                 className={`px-6 py-3 rounded-xl font-bold min-w-[120px] transition-all ${
-                   node.status === 'IDLE' 
-                   ? 'bg-white text-black hover:bg-primary hover:text-white shadow-lg hover:shadow-primary/20' 
-                   : 'bg-white/5 text-muted cursor-not-allowed border border-white/5'
-                 }`}
-               >
-                 {node.status === 'IDLE' ? 'Rent Node' : 'Busy'}
-               </button>
-             </div>
-          </div>
-        ))}
+              <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] text-muted uppercase">Sats (BTC)</p>
+                  <p className="font-mono text-sm text-gray-300">{(data.btc * 100000000).toFixed(0)} sats</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="text-center text-xs text-muted mt-8">
+        Data provided by CoinGecko API. Last updated: {lastUpdated.toLocaleTimeString()}
       </div>
     </div>
   );
 };
 
-export default Marketplace;
+export default MinersMarket;

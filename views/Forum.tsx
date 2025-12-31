@@ -27,8 +27,8 @@ const Forum: React.FC = () => {
     // Fetch Real Threads
     const fetchThreads = async () => {
         try {
-            const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-            const res = await fetch(`${agentUrl}/forum`);
+            const backendUrl = 'https://hashnhedge-app.up.railway.app';
+            const res = await fetch(`${backendUrl}/api/public/forum`);
             if (res.ok) {
                 const data = await res.json();
                 setThreads(data);
@@ -45,8 +45,8 @@ const Forum: React.FC = () => {
     const handleCreate = async () => {
         if (!newThreadData.title || !newThreadData.content) return;
         try {
-            const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-            await fetch(`${agentUrl}/forum`, {
+            const backendUrl = 'https://hashnhedge-app.up.railway.app';
+            await fetch(`${backendUrl}/api/public/forum`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

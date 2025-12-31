@@ -59,6 +59,7 @@ const PORT = 4343;
 const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
 const POSTS_FILE = path.join(__dirname, 'posts.json');
+const HARDWARE_FILE = path.join(__dirname, 'hardware_data.json');
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -689,6 +690,26 @@ let posts = [];
 try {
     if (fs.existsSync(POSTS_FILE)) {
         posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8'));
+    } else {
+        // SEEDING: Community Seeding (Feature #5)
+        posts = [
+            {
+                id: 'seed1', title: 'Official Overclocking Database (Wiki)', author: 'System', category: 'General',
+                content: 'Check the new Hardware tab for optimized settings. RTX 4090 efficiency targets updated.',
+                timestamp: 'Just now', likes: 42, replies: 0, isPinned: true
+            },
+            {
+                id: 'seed2', title: 'Spec Mining Alert: Karlsen (KLS)', author: 'MinerMike', category: 'Announcements',
+                content: 'New fork of Kaspa. Difficulty is low. Worth pointing hash for 24h?',
+                timestamp: '1h ago', likes: 12, replies: 5
+            },
+            {
+                id: 'seed3', title: 'Setting up local node for Zephyr', author: 'PrivacyMod', category: 'Support',
+                content: 'Guide: 1. Download zephyrd. 2. Sync chain (approx 40GB). 3. Point miner to 127.0.0.1:17750.',
+                timestamp: '3h ago', likes: 8, replies: 2
+            }
+        ];
+        fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2));
     }
 } catch (e) { }
 
@@ -733,6 +754,73 @@ app.post('/security/scan', (req, res) => {
             ports: stdout.split('\n').length
         });
     });
+});
+
+// --- REAL WORLD FEATURES (Batch 1) ---
+
+// 1. Hardware Database API
+app.get('/api/hardware', (req, res) => {
+    try {
+        if (fs.existsSync(HARDWARE_FILE)) {
+            const data = JSON.parse(fs.readFileSync(HARDWARE_FILE, 'utf8'));
+            res.json(data);
+        } else {
+            res.json([]);
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2. Miner's Market Proxy
+app.get('/api/prices', async (req, res) => {
+    try {
+        // Fetch Top PoW Coins
+        const ids = 'monero,zephyr,ravencoin,ethereum-classic,kaspa,ergo,karlsen';
+        const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,btc&include_24hr_change=true`);
+        const data = await r.json();
+        res.json(data);
+    } catch (e) { res.status(500).json({ error: "Failed to fetch prices" }); }
+});
+
+// 3. Token Audit (Real RPC Check)
+app.post('/api/audit', async (req, res) => {
+    const { tokenAddress } = req.body;
+    try {
+        // Call Solana Mainnet RPC
+        const rpcRes = await fetch('https://api.mainnet-beta.solana.com', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getAccountInfo',
+                params: [
+                    tokenAddress,
+                    { encoding: "jsonParsed" }
+                ]
+            })
+        });
+        const data = await rpcRes.json();
+
+        if (!data.result || !data.result.value) {
+            return res.json({ valid: false, message: "Token not found or invalid address" });
+        }
+
+        const info = data.result.value;
+        const parsed = info.data.parsed?.info;
+
+        // Basic Safety Checks
+        const checks = {
+            isMint: info.data.program === 'spl-token' || info.owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+            mintAuthority: parsed?.mintAuthority,
+            freezeAuthority: parsed?.freezeAuthority,
+            decimals: parsed?.decimals,
+            supply: parsed?.supply
+        };
+
+        res.json({ valid: true, checks });
+    } catch (e) {
+        res.status(500).json({ error: "RPC Audit Failed" });
+    }
 });
 
 

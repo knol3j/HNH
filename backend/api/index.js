@@ -8,6 +8,30 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const HARDWARE_FILE = path.join(__dirname, 'hardware_data.json');
+const POSTS_FILE = path.join(__dirname, 'posts.json');
+
+// --- FORUM SEEDING (Ephemeral) ---
+let posts = [];
+try {
+    if (fs.existsSync(POSTS_FILE)) {
+        posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8'));
+    } else {
+        posts = [
+            { id: 'seed1', title: 'Official Overclocking Database (Wiki)', author: 'System', category: 'General', content: 'Check the new Hardware tab for optimized settings.', timestamp: 'Just now', likes: 42, replies: 0, isPinned: true },
+            { id: 'seed2', title: 'Spec Mining Alert: Karlsen (KLS)', author: 'MinerMike', category: 'Announcements', content: 'New fork of Kaspa. Difficulty is low.', timestamp: '1h ago', likes: 12, replies: 5 }
+        ];
+        // Don't write to disk on Vercel/Railway usually, but good for local dev
+        try { fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2)); } catch (e) { }
+    }
+} catch (e) { }
+
 
 const app = express();
 const prisma = new PrismaClient();
@@ -140,6 +164,75 @@ app.use((req, res, next) => {
     });
 
     next();
+});
+
+// --- PUBLIC FEATURES (No Auth Required) ---
+
+// 1. Hardware Database
+app.get('/api/public/hardware', (req, res) => {
+    try {
+        if (fs.existsSync(HARDWARE_FILE)) {
+            const data = JSON.parse(fs.readFileSync(HARDWARE_FILE, 'utf8'));
+            res.json(data);
+        } else {
+            res.json([]);
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2. Miner's Market Proxy
+app.get('/api/public/prices', async (req, res) => {
+    try {
+        const ids = 'monero,zephyr,ravencoin,ethereum-classic,kaspa,ergo,karlsen';
+        const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,btc&include_24hr_change=true`);
+        const data = await r.json();
+        res.json(data);
+    } catch (e) { res.status(500).json({ error: "Failed to fetch prices" }); }
+});
+
+// 3. Token Audit
+app.post('/api/public/audit', async (req, res) => {
+    const { tokenAddress } = req.body;
+    try {
+        const rpcRes = await fetch('https://api.mainnet-beta.solana.com', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0', id: 1, method: 'getAccountInfo', params: [tokenAddress, { encoding: "jsonParsed" }]
+            })
+        });
+        const data = await rpcRes.json();
+        if (!data.result || !data.result.value) return res.json({ valid: false, message: "Token not found" });
+
+        const info = data.result.value;
+        const parsed = info.data.parsed?.info;
+        const checks = {
+            isMint: info.data.program === 'spl-token',
+            mintAuthority: parsed?.mintAuthority,
+            freezeAuthority: parsed?.freezeAuthority,
+            decimals: parsed?.decimals,
+            supply: parsed?.supply
+        };
+        res.json({ valid: true, checks });
+    } catch (e) { res.status(500).json({ error: "Audit Failed" }); }
+});
+
+// 4. Forum (Public Read/Write for now)
+app.get('/api/public/forum', (req, res) => { res.json(posts); });
+app.post('/api/public/forum', (req, res) => {
+    const { title, content, category, author } = req.body;
+    const newPost = {
+        id: Date.now().toString(),
+        title, content, category,
+        author: author || 'Anonymous',
+        timestamp: new Date().toLocaleTimeString(),
+        likes: 0, replies: 0, isPinned: false
+    };
+    posts.unshift(newPost);
+    if (posts.length > 100) posts.pop();
+    // Ephemeral save
+    try { fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2)); } catch (e) { }
+    res.json(newPost);
 });
 
 // Health check endpoint

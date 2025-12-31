@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Terminal, Lock, Wifi, Key, FileCode, Play, Square, AlertTriangle, WifiOff } from 'lucide-react';
 
 const Security: React.FC = () => {
-  const [mode, setMode] = useState<'WPA2' | 'NTLM' | 'MD5'>('WPA2');
+  const [mode, setMode] = useState<'WPA2' | 'NTLM' | 'MD5' | 'AUDIT'>('WPA2');
+  const [auditResult, setAuditResult] = useState<any>(null);
+  const [tokenAddr, setTokenAddr] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [isAgentOnline, setIsAgentOnline] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -66,6 +68,38 @@ const Security: React.FC = () => {
   };
 
   const startJob = async () => {
+    if (mode === 'AUDIT') {
+      if (!tokenAddr) return;
+      setLogs([`[${new Date().toLocaleTimeString()}] Auditing Token: ${tokenAddr}...`]);
+      setIsRunning(true);
+      try {
+        const backendUrl = 'https://hashnhedge-app.up.railway.app';
+        const res = await fetch(`${backendUrl}/api/public/audit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenAddress: tokenAddr })
+        });
+        const data = await res.json();
+        if (data.valid) {
+          const { checks } = data;
+          setLogs(prev => [
+            ...prev,
+            `[SAFE] Is SPL Token Program: ${checks.isMint}`,
+            `[INFO] Decimals: ${checks.decimals}`,
+            `[INFO] Supply: ${checks.supply}`,
+            checks.mintAuthority ? `[WARN] Mint Auth: PRESENT` : `[SAFE] Mint Auth: REVOKED`,
+            checks.freezeAuthority ? `[WARN] Freeze Auth: PRESENT` : `[SAFE] Freeze Auth: REVOKED`
+          ]);
+        } else {
+          setLogs(prev => [...prev, `[ERROR] ${data.message || 'Audit Failed'}`]);
+        }
+      } catch (e) {
+        setLogs(prev => [...prev, `[ERROR] Network Error`]);
+      }
+      setIsRunning(false);
+      return;
+    }
+
     if (!selectedFile) {
       setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Error: No hash file selected.`]);
       return;
@@ -174,41 +208,61 @@ const Security: React.FC = () => {
                 >
                   <FileCode size={20} /> MD5
                 </button>
+                <button
+                  onClick={() => setMode('AUDIT')}
+                  className={`p-3 rounded-xl border text-sm font-medium transition-all flex flex-col items-center gap-2 ${mode === 'AUDIT' ? 'bg-purple-500/20 border-purple-500 text-white' : 'bg-black/20 border-white/10 text-muted hover:border-white/30'}`}
+                >
+                  <Shield size={20} /> Token
+                </button>
               </div>
             </div>
 
-            <div>
-              <label className="text-xs text-muted uppercase font-bold mb-2 block">Hash File</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".cap,.hccapx,.hash,.txt"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-red-500/30 transition-colors cursor-pointer bg-black/20"
-              >
-                <UploadIcon className="mx-auto text-muted mb-2" />
-                <p className="text-sm text-gray-400">
-                  {selectedFile ? selectedFile.name : 'Click to select .cap / .hash file'}
-                </p>
+            {mode === 'AUDIT' ? (
+              <div>
+                <label className="text-xs text-muted uppercase font-bold mb-2 block">Token Address (Solana)</label>
+                <input
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-purple-500 focus:outline-none font-mono text-sm"
+                  placeholder="e.g. Dejz..."
+                  value={tokenAddr}
+                  onChange={e => setTokenAddr(e.target.value)}
+                />
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-xs text-muted uppercase font-bold mb-2 block">Hash File</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".cap,.hccapx,.hash,.txt"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-red-500/30 transition-colors cursor-pointer bg-black/20"
+                >
+                  <UploadIcon className="mx-auto text-muted mb-2" />
+                  <p className="text-sm text-gray-400">
+                    {selectedFile ? selectedFile.name : 'Click to select .cap / .hash file'}
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="text-xs text-muted uppercase font-bold mb-2 block">Wordlist</label>
-              <select className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-red-500 focus:outline-none">
-                <option>rockyou.txt</option>
-                <option>darkc0de.txt</option>
-                <option>Custom (agent-side)</option>
-              </select>
-            </div>
+            {mode !== 'AUDIT' && (
+              <div>
+                <label className="text-xs text-muted uppercase font-bold mb-2 block">Wordlist</label>
+                <select className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-red-500 focus:outline-none">
+                  <option>rockyou.txt</option>
+                  <option>darkc0de.txt</option>
+                  <option>Custom (agent-side)</option>
+                </select>
+              </div>
+            )}
 
             <button
               onClick={isRunning ? stopJob : startJob}
-              disabled={!selectedFile && !isRunning}
+              disabled={(!selectedFile && mode !== 'AUDIT' && !isRunning) || (mode === 'AUDIT' && !tokenAddr)}
               className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${isRunning
                 ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20'
                 : 'bg-white text-black hover:bg-gray-200'

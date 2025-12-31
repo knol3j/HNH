@@ -112,37 +112,12 @@ const Dex: React.FC = () => {
 
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Chart */}
-            <div className="lg:col-span-2 bg-surface border border-white/10 rounded-2xl p-6 flex flex-col min-h-[500px]">
-               <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center gap-2">
-                     <img src="https://cryptologos.cc/logos/solana-sol-logo.svg?v=032" className="w-8 h-8" alt="SOL" />
-                     <span className="text-xl font-bold text-white">SOL / USD</span>
-                  </div>
-               </div>
-
-               <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <AreaChart data={chartData}>
-                        <defs>
-                           <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                           </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                        <XAxis dataKey="time" stroke="#525252" tick={{ fontSize: 10 }} minTickGap={30} />
-                        <YAxis domain={['auto', 'auto']} orientation="right" tick={{ fill: '#525252', fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <Tooltip
-                           contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }}
-                           itemStyle={{ color: '#8b5cf6' }}
-                           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
-                        />
-                        <Area type="monotone" dataKey="price" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
-                     </AreaChart>
-                  </ResponsiveContainer>
-               </div>
+            <div className="lg:col-span-2 bg-black border border-white/10 rounded-2xl p-0 flex flex-col min-h-[500px] overflow-hidden">
+               <div id="tradingview_widget" className="w-full h-full flex-1" style={{ minHeight: '500px' }} />
+               <ScriptInjector />
             </div>
 
+            {/* Script Helper for TV */}
             {/* Swap Card (Responsive) */}
             <div className="bg-surface border border-white/10 rounded-2xl p-0 overflow-hidden flex flex-col h-full min-h-[600px]">
                <iframe
@@ -158,6 +133,37 @@ const Dex: React.FC = () => {
          </div>
       </div>
    );
+};
+
+const ScriptInjector = () => {
+   React.useEffect(() => {
+      const script = document.createElement('script');
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.async = true;
+      script.onload = () => {
+         // @ts-ignore
+         if (window.TradingView) {
+            // @ts-ignore
+            new window.TradingView.widget({
+               "width": "100%",
+               "height": "100%",
+               "symbol": "BINANCE:SOLUSDT",
+               "interval": "D",
+               "timezone": "Etc/UTC",
+               "theme": "dark",
+               "style": "1",
+               "locale": "en",
+               "toolbar_bg": "#f1f3f6",
+               "enable_publishing": false,
+               "allow_symbol_change": true,
+               "container_id": "tradingview_widget"
+            });
+         }
+      };
+      document.head.appendChild(script);
+      return () => { document.head.removeChild(script); }
+   }, []);
+   return null;
 };
 
 export default Dex;
