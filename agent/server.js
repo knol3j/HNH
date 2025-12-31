@@ -5,6 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import http from 'http';
+import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +58,45 @@ app.use(requireAuth);
 const PORT = 4343;
 const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"]
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('[SOCKET] Client connected:', socket.id);
+
+    // Send immediate initial data
+    socket.emit('telemetry', {
+        ...telemetry,
+        minerStatus,
+        recentLogs,
+        config
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[SOCKET] Client disconnected:', socket.id);
+    });
+});
+
+const broadcastTelemetry = () => {
+    io.emit('telemetry', {
+        hashrate: telemetry.hashrate / 1000000,
+        temp: telemetry.temp,
+        power: telemetry.power,
+        fan: telemetry.fan,
+        status: minerStatus,
+        coin: currentCoin,
+        wallet: config.wallet,
+        logs: recentLogs,
+        config: config
+    });
+};
+
 
 // --- PLATFORM FEE CONFIG ---
 const PLATFORM_FEE_TIERS = {
@@ -266,8 +307,6 @@ const killMiner = () => {
 };
 
 // --- TELEMETRY POLLING ---
-import http from 'http';
-
 const fetchXmrigStats = () => {
     if (minerStatus !== 'MINING') return;
 
@@ -317,7 +356,10 @@ const fetchXmrigStats = () => {
 };
 
 // Poll XMRig every 2 seconds
-setInterval(fetchXmrigStats, 2000);
+setInterval(() => {
+    fetchXmrigStats();
+    broadcastTelemetry(); // Push update via socket
+}, 2000);
 
 const handleMinerOutput = (rawLine) => {
     const lines = rawLine.split('\n');
@@ -641,6 +683,6 @@ app.get('/meta', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
 });

@@ -195,7 +195,7 @@ const Dex: React.FC = () => {
                         placeholder="0.0"
                      />
                      <div className="bg-white/10 px-3 py-1 rounded-lg flex items-center gap-2 shrink-0">
-                        <img src="https://cryptologos.cc/logos/render-token-rndr-logo.svg?v=032" className="w-6 h-6" alt="RNDR" />
+                        <img src="https://cryptologos.cc/logos/render-token-rndr-logo.svg?v=032" className="w-6 h-6" alt="" />
                         <span className="font-bold text-white">RNDR</span>
                      </div>
                   </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Cpu, Zap, Server, Coins, Terminal, Play, Square, Settings } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { DynamicDiv } from '../components/DynamicDiv';
 import './Provider.css';
 
@@ -26,29 +27,31 @@ const Provider: React.FC = () => {
     const [meta, setMeta] = useState<any>(null); // Available coins, pools, history
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [customAgentUrl, setCustomAgentUrl] = useState(localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
+    const [isConnected, setIsConnected] = useState(false);
 
     // Fetch Meta for Config
     useEffect(() => {
-        if (isConfigOpen) {
-            const fetchMeta = async () => {
-                try {
-                    const res = await fetch(`${customAgentUrl}/meta`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setMeta(data);
-                        // Sync config with current agent state if not already modified? 
-                        // Actually better to let user see current state
-                        setConfig(prev => ({
-                            ...prev,
-                            ...data.config,
-                            mode: data.config.mode || 'cpu',
-                            wallet: data.config.wallet || prev.wallet
-                        }));
-                    }
-                } catch (e) {
-                    console.error("Failed to fetch meta", e);
+        const fetchMeta = async () => {
+            try {
+                const res = await fetch(`${customAgentUrl}/meta`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setMeta(data);
+                    // Sync config with current agent state if not already modified? 
+                    // Actually better to let user see current state
+                    setConfig(prev => ({
+                        ...prev,
+                        ...data.config,
+                        mode: data.config.mode || 'cpu',
+                        wallet: data.config.wallet || prev.wallet
+                    }));
                 }
-            };
+            } catch (e) {
+                console.error("Failed to fetch meta", e);
+            }
+        };
+
+        if (isConfigOpen) {
             fetchMeta();
         }
     }, [isConfigOpen, customAgentUrl]);
@@ -56,37 +59,45 @@ const Provider: React.FC = () => {
     // Earnings State
     const [balance, setBalance] = useState({ unpaid: 0, usd: 0, currency: 'XMR' });
 
-    // Poll Agent Telemetry
+    // Socket Telemetry
     useEffect(() => {
-        const fetchTelemetry = async () => {
-            try {
-                const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-                const res = await fetch(`${agentUrl}/telemetry`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setTelemetry(data);
-                    setMinerStatus(data.status === 'mining' ? 'ONLINE' : 'OFFLINE');
+        const socket = io(customAgentUrl, {
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5,
+        });
 
-                    if (data.logs) {
-                        setLogs(data.logs.slice(-20)); // Keep last 20 lines
-                    }
+        socket.on('connect', () => {
+            console.log('Socket connected');
+            setIsConnected(true);
+        });
 
-                    // Update config ref if needed
-                    if (data.config) {
-                        setConfig(prev => ({ ...prev, ...data.config }));
-                    }
-                } else {
-                    setMinerStatus('OFFLINE');
-                }
-            } catch (e) {
-                setMinerStatus('OFFLINE');
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            setIsConnected(false);
+            setMinerStatus('OFFLINE');
+        });
+
+        socket.on('telemetry', (data: any) => {
+            setTelemetry(data);
+            setMinerStatus(data.status === 'MINING' || data.status === 'ONLINE' ? 'ONLINE' : (data.status === 'STARTING' ? 'STARTING' : 'OFFLINE'));
+
+            if (data.logs) {
+                // Ensure unique keys or just pass string array
+                setLogs(data.logs.slice(0, 50));
             }
-        };
 
-        const interval = setInterval(fetchTelemetry, 2000);
-        fetchTelemetry();
-        return () => clearInterval(interval);
-    }, []);
+            if (data.config) {
+                // Optional: Update local config ref if server side changes logic
+                // But avoid jitter while user editing. 
+                // Only if NOT parsing editing mode? 
+                // For now, let's trust status updates.
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [customAgentUrl]);
 
     // Fetch Mining Balance (Reuse logic from Dashboard)
     useEffect(() => {
@@ -124,19 +135,18 @@ const Provider: React.FC = () => {
             }
         };
 
+        const interval = setInterval(fetchBalance, 60000); // Poll balance every minute (no socket for this external API yet)
         if (telemetry) fetchBalance();
-        const interval = setInterval(fetchBalance, 30000); // 30s poll for balance
         return () => clearInterval(interval);
     }, [telemetry?.wallet, telemetry?.coin]);
 
     // Actions
     const handleStartStop = async () => {
-        const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-        const endpoint = minerStatus === 'ONLINE' ? '/stop' : '/start';
+        const endpoint = minerStatus === 'ONLINE' ? '/stop-miner' : '/start-miner';
 
         try {
             setMinerStatus('STARTING');
-            await fetch(`${agentUrl}${endpoint}`, { method: 'POST' });
+            await fetch(`${customAgentUrl}${endpoint}`, { method: 'POST' });
         } catch (e) {
             console.error("Failed to toggle miner", e);
             setMinerStatus('OFFLINE');
@@ -296,7 +306,11 @@ const Provider: React.FC = () => {
                                                     algorithm: val === 'XMR' || val === 'ZEPH' ? 'rx/0' :
                                                         val === 'RVN' ? 'kawpow' :
                                                             val === 'ETC' ? 'etchash' :
-                                                                val === 'KAS' ? 'heavyhash' : ''
+                                                                val === 'KAS' ? 'heavyhash' : '',
+                                                    // Auto-fill wallet if saved
+                                                    wallet: (meta?.config?.wallets && meta.config.wallets[val])
+                                                        ? meta.config.wallets[val]
+                                                        : prev.wallet
                                                 }));
                                             }
                                         }}
@@ -457,8 +471,9 @@ const Provider: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 
