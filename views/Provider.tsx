@@ -168,6 +168,22 @@ const Provider: React.FC = () => {
         }
     };
 
+    const handleQuickSwitch = async (coin: string) => {
+        try {
+            setMinerStatus('STARTING'); // Visual feedback
+            const res = await fetch(`${customAgentUrl}/switch-coin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coin })
+            });
+            if (res.ok) {
+                setConfig(prev => ({ ...prev, coin })); // Optimistic update
+            }
+        } catch (e) {
+            console.error("Failed to switch coin", e);
+        }
+    };
+
     return (
         <div className="provider-container space-y-6">
             <header className="flex justify-between items-end">
@@ -237,19 +253,33 @@ const Provider: React.FC = () => {
                 </div>
 
                 {/* Controls */}
-                <div className="bg-surface border border-white/10 rounded-2xl p-6 flex items-center justify-center">
+                <div className="bg-surface border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
                     <button
                         onClick={handleStartStop}
-                        className={`w-full h-full rounded-xl flex flex-col items-center justify-center gap-2 transition-all ${minerStatus === 'ONLINE'
+                        className={`w-full flex-1 py-4 rounded-xl flex items-center justify-center gap-2 transition-all ${minerStatus === 'ONLINE'
                             ? 'bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50'
                             : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 border border-emerald-500/50'
                             }`}
                     >
-                        {minerStatus === 'ONLINE' ? <Square size={32} /> : <Play size={32} />}
+                        {minerStatus === 'ONLINE' ? <Square size={24} /> : <Play size={24} />}
                         <span className="font-bold uppercase tracking-wider">
-                            {minerStatus === 'ONLINE' ? 'Stop Miner' : 'Start Mining'}
+                            {minerStatus === 'ONLINE' ? 'Stop' : 'Start'}
                         </span>
                     </button>
+
+                    <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1 border border-white/5">
+                        <span className="text-xs text-muted px-2 font-bold uppercase">Quick Switch:</span>
+                        <select
+                            aria-label="Quick Switch Coin"
+                            value={config.coin}
+                            onChange={(e) => handleQuickSwitch(e.target.value)}
+                            className="flex-1 bg-transparent text-white text-sm font-mono focus:outline-none cursor-pointer"
+                        >
+                            {meta?.coins?.map((c: string) => (
+                                <option key={c} value={c} className="bg-black text-white">{c}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
