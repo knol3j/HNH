@@ -24,7 +24,21 @@ const Provider: React.FC = () => {
         poolUrl: '',
         algorithm: 'rx/0'
     });
-    const [meta, setMeta] = useState<any>(null); // Available coins, pools, history
+
+    // Default Metadata (Fallback if Agent is offline)
+    const DEFAULT_META = {
+        coins: ['XMR', 'ZEPH', 'RVN', 'ETC', 'KAS'],
+        pools: {
+            'XMR': 'stratum+tcp://xmr.nanopool.org:14444',
+            'ZEPH': 'stratum+tcp://de.zephyr.herominers.com:1123',
+            'RVN': 'stratum+tcp://rvn.2miners.com:6060',
+            'ETC': 'stratum+tcp://etc.herominers.com:10161',
+            'KAS': 'stratum+tcp://pool.woolypooly.com:3112'
+        },
+        walletHistory: {}
+    };
+
+    const [meta, setMeta] = useState<any>(DEFAULT_META); // Available coins, pools, history
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [customAgentUrl, setCustomAgentUrl] = useState(localStorage.getItem('hnh_agent_url') || 'http://localhost:4343');
     const [isConnected, setIsConnected] = useState(false);
@@ -47,7 +61,8 @@ const Provider: React.FC = () => {
                     }));
                 }
             } catch (e) {
-                console.error("Failed to fetch meta", e);
+                console.error("Failed to fetch meta, using default", e);
+                // Keep default meta
             }
         };
 
