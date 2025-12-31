@@ -63,7 +63,7 @@ const HARDWARE_FILE = path.join(__dirname, 'hardware_data.json');
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: allowedOrigins,
+        origin: "*", // Allow all for local agent
         methods: ["GET", "POST"]
     }
 });
@@ -280,11 +280,26 @@ const startMiner = () => {
     // Algorithm override if needed (XMRig auto-detects mostly)
     // if (config.algorithm) args.push('-a', config.algorithm);
 
+    // Verify Binary
+    if (!fs.existsSync(MINER_BIN)) {
+        addLog(`❌ CRITICAL: Binary not found at: ${MINER_BIN}`);
+        minerStatus = 'ERROR';
+        return;
+    }
+
     minerStatus = 'STARTING';
 
     try {
+        // Delay slightly to ensure port 4444 is freed if previously used
         setTimeout(() => {
+            addLog(`⚡ Executing: ${MINER_BIN}`);
             minerProcess = spawn(MINER_BIN, args);
+
+            minerProcess.on('error', (err) => {
+                addLog(`❌ SPAWN ERROR: ${err.message}`);
+                console.error('[SPAWN ERR]', err);
+                minerStatus = 'ERROR';
+            });
 
             minerProcess.stdout.on('data', (data) => {
                 const line = data.toString().trim();
@@ -293,21 +308,24 @@ const startMiner = () => {
 
             minerProcess.stderr.on('data', (data) => {
                 console.error(`[XMRIG ERR] ${data}`);
-                addLog(`ERR: ${data.toString().trim()}`);
+                // Don't spam GUI logs with every stderr, only critical
+                if (data.includes('error') || data.includes('denied')) {
+                    addLog(`ERR: ${data.toString().trim()}`);
+                }
             });
 
             minerProcess.on('close', (code) => {
-                addLog(`⚠️ Miner exitted with code ${code}`);
+                addLog(`⚠️ Miner exited with code ${code}`);
                 minerStatus = 'OFFLINE';
                 telemetry.hashrate = 0;
                 minerProcess = null;
             });
 
             minerStatus = 'MINING';
-        }, 1000); // Wait 1s for port release
+        }, 1000);
 
     } catch (e) {
-        addLog(`❌ Failed to spawn miner: ${e.message}`);
+        addLog(`❌ Synchronous Spawn Error: ${e.message}`);
         minerStatus = 'ERROR';
     }
 };

@@ -156,12 +156,19 @@ const Provider: React.FC = () => {
     }, [telemetry?.wallet, telemetry?.coin]);
 
     // Actions
+    const AGENT_SECRET = 'HNH_LOCAL_AGENT_SECRET';
+
     const handleStartStop = async () => {
         const endpoint = minerStatus === 'ONLINE' ? '/stop-miner' : '/start-miner';
 
         try {
             setMinerStatus('STARTING');
-            await fetch(`${customAgentUrl}${endpoint}`, { method: 'POST' });
+            await fetch(`${customAgentUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${AGENT_SECRET}`
+                }
+            });
         } catch (e) {
             console.error("Failed to toggle miner", e);
             setMinerStatus('OFFLINE');
@@ -173,7 +180,10 @@ const Provider: React.FC = () => {
             setMinerStatus('STARTING'); // Visual feedback
             const res = await fetch(`${customAgentUrl}/switch-coin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AGENT_SECRET}`
+                },
                 body: JSON.stringify({ coin })
             });
             if (res.ok) {
@@ -490,7 +500,10 @@ const Provider: React.FC = () => {
                                         // Send Config to Agent
                                         await fetch(`${customAgentUrl}/config`, {
                                             method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${AGENT_SECRET}`
+                                            },
                                             body: JSON.stringify(config)
                                         });
 

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "seed1",
+    "title": "Official Overclocking Database (Wiki)",
+    "author": "System",
+    "category": "General",
+    "content": "Check the new Hardware tab for optimized settings. RTX 4090 efficiency targets updated.",
+    "timestamp": "Just now",
+    "likes": 42,
+    "replies": 0,
+    "isPinned": true
+  },
+  {
+    "id": "seed2",
+    "title": "Spec Mining Alert: Karlsen (KLS)",
+    "author": "MinerMike",
+    "category": "Announcements",
+    "content": "New fork of Kaspa. Difficulty is low. Worth pointing hash for 24h?",
+    "timestamp": "1h ago",
+    "likes": 12,
+    "replies": 5
+  },
+  {
+    "id": "seed3",
+    "title": "Setting up local node for Zephyr",
+    "author": "PrivacyMod",
+    "category": "Support",
+    "content": "Guide: 1. Download zephyrd. 2. Sync chain (approx 40GB). 3. Point miner to 127.0.0.1:17750.",
+    "timestamp": "3h ago",
+    "likes": 8,
+    "replies": 2
+  }
+]
