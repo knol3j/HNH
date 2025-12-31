@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, ArrowDown, Settings } from 'lucide-react';
+import { RefreshCw, ArrowDown, Settings, Zap } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getWalletState, swapTokens } from '../services/walletService';
 

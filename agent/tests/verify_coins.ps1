@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 $AGENT_DIR = Join-Path $PSScriptRoot ".."
 $DATA_FILE = Join-Path $AGENT_DIR "data.json"
-$SERVER_JS = Join-Path $AGENT_DIR "server.js"
+
 $TEST_DURATION_SECONDS = 60
 
 Write-Host "--- MINER VERIFICATION SUIT ---" -ForegroundColor Cyan
@@ -69,7 +69,7 @@ try {
 
         # Switch Coin via API
         try {
-            $response = Invoke-RestMethod -Uri "http://localhost:4343/switch-coin" -Method Post -Body (@{ coin = $coin } | ConvertTo-Json) -ContentType "application/json" -Headers @{ "Authorization" = "Bearer HNH_LOCAL_AGENT_SECRET" }
+            [void](Invoke-RestMethod -Uri "http://localhost:4343/switch-coin" -Method Post -Body (@{ coin = $coin } | ConvertTo-Json) -ContentType "application/json" -Headers @{ "Authorization" = "Bearer HNH_LOCAL_AGENT_SECRET" })
             Write-Host "  Switched to ${coin}: Success" -ForegroundColor Green
         }
         catch {
@@ -93,8 +93,7 @@ try {
         
         $hasAccepted = $logContent -match "accepted"
         $hasNewJob = $logContent -match "new job"
-        $hasHugePages = $logContent -match "huge pages"
-        $hasError = $logContent -match "error" -or $logContent -match "fail"
+
 
         if ($hasAccepted) {
             Write-Host "  [PASS] Shares Accepted!" -ForegroundColor Green
