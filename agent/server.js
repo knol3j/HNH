@@ -108,22 +108,25 @@ const PLATFORM_FEE_TIERS = {
 const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
+// --- CONSTANTS ---
 const COIN_ALGOS = {
     XMR: 'rx/0',
     ZEPH: 'rx/0',
     RVN: 'kawpow',
     ETC: 'etchash',
     ERG: 'autolykos2',
-    KAS: 'heavyhash'
+    KAS: 'heavyhash',
+    SOL: 'rx/0' // Unmineable (CPU Mining for SOL)
 };
 
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.nanopool.org:14444',
-    ZEPH: 'stratum+tcp://de.zephyr.herominers.com:1123', // CPU
-    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
-    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
-    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
-    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
+    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    ZEPH: 'stratum+tcp://de.zephyr.herominers.com:1123',
+    RVN: 'stratum+tcp://rvn.2miners.com:6060',
+    ETC: 'stratum+tcp://etc.2miners.com:1010',
+    ERG: 'stratum+tcp://de.ergo.herominers.com:11800',
+    KAS: 'stratum+tcp://pool.woolypooly.com:3112',
+    SOL: 'stratum+tcp://rx.unmineable.com:3333' // Unmineable
 };
 
 // --- STATE ---
@@ -132,18 +135,19 @@ const COIN_POOLS = {
 let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 
 let config = {
-    wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
+    wallet: '46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU', // Default XMR
     password: 'x', // Default password (required for spawn)
     wallets: {
-        XMR: '48edfHu7V9z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9nV2DNr577RAH9tkENn4FFunqiQBP4q41wa31', // XMRig Donate
-        ZEPH: 'ZEPHs8Fk9FkP59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59', // Placeholder logic (long enough)
+        XMR: '46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU',
+        ZEPH: 'ZEPHs8Fk9FkP59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59',
         ETC: '0x19511e52720739f6F47E74221cBCd746BE387535',
         ERG: '9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV',
         KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek',
-        RVN: 'RT2r9oGxQ2i8J8b3... (Valid RVN Address)' // Update this to real one
+        RVN: 'RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA',
+        SOL: '43qairUpjZWBPnkBbksSmokfsg9g8jaW5ZMUcDhnDEhM'
     },
-    poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
-    algorithm: 'kawpow',
+    poolUrl: 'stratum+tcp://xmr.2miners.com:2222',
+    algorithm: 'rx/0',
     mode: 'cpu' // cpu or gpu
 };
 
@@ -232,10 +236,18 @@ const startMiner = () => {
     addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
     // XMRig Args
+    // Construct User Argument (Handle Unmineable or Standard)
+    let userArg = config.wallet;
+    if (currentCoin === 'SOL') {
+        // Unmineable Format: COIN:ADDRESS.WORKER
+        userArg = `SOL:${config.wallet}.AntigravityAgent`;
+        addLog(`   Mode: Unmineable (Paying in SOL)`);
+    }
+
     // XMRig Args
     const args = [
         '-o', cleanUrl,
-        '-u', config.wallet,
+        '-u', userArg,
         '-p', config.password || 'x',
         '--no-color',
         '--api-worker-id', 'AntigravityAgent',
