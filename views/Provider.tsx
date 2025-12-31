@@ -29,7 +29,7 @@ const Provider: React.FC = () => {
     const DEFAULT_META = {
         coins: ['XMR', 'ZEPH', 'RVN', 'ETC', 'KAS'],
         pools: {
-            'XMR': 'stratum+tcp://xmr.nanopool.org:14444',
+            'XMR': 'stratum+tcp://pool.supportxmr.com:5555',
             'ZEPH': 'stratum+tcp://de.zephyr.herominers.com:1123',
             'RVN': 'stratum+tcp://rvn.2miners.com:6060',
             'ETC': 'stratum+tcp://etc.herominers.com:10161',
