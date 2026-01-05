@@ -34,7 +34,7 @@ const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
     // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
     // Also skip /meta for GUI initialization
-    if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta')) return next();
+    if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta' || req.path === '/jobs')) return next();
 
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
