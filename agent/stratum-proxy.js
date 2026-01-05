@@ -32,17 +32,13 @@ class StratumProxy extends EventEmitter {
     }
 
     start() {
-        this.server = net.createServer((minerSocket) => {
+        const server = net.createServer((minerSocket) => {
             this.handleMinerConnection(minerSocket);
         });
 
-        this.server.listen(PROXY_PORT, () => {
+        server.listen(PROXY_PORT, () => {
             console.log(`[PROXY] Stratum Proxy listening on port ${PROXY_PORT}`);
             console.log(`[PROXY] Forwarding to ${this.upstreamHost}:${this.upstreamPort}`);
-        });
-
-        this.server.on('error', (e) => {
-            console.error('[PROXY] Server Error:', e.code);
         });
     }
 
@@ -118,27 +114,13 @@ class StratumProxy extends EventEmitter {
         });
     }
 
-    stop() {
-        if (this.server) {
-            this.server.close();
-            this.server = null;
-        }
-        // Close all clients
-        this.clients.forEach(client => {
-            if (client.upstreamSocket) client.upstreamSocket.destroy();
-            if (client.minerSocket) client.minerSocket.destroy();
-        });
-        this.clients.clear();
-        console.log('[PROXY] Stopped.');
-    }
-
     getStats() {
         return this.stats;
     }
 }
 
-// Remove auto-start for library usage
-// const proxy = new StratumProxy(DEFAULT_UPSTREAM_HOST, DEFAULT_UPSTREAM_PORT, null);
-// proxy.start();
+// Start proxy if run directly
+const proxy = new StratumProxy(DEFAULT_UPSTREAM_HOST, DEFAULT_UPSTREAM_PORT, null);
+proxy.start();
 
 export default StratumProxy;

@@ -11,21 +11,11 @@
 <body>
     <div class="container">
         <header>
-            <div class="header-left">
-                <h1><span class="pulse">●</span> HNH Miner Agent</h1>
-                <div id="status-badge" class="badge">OFFLINE</div>
-            </div>
-            <div class="header-right">
-                <button id="login-btn" class="btn small outline">Login to Platform</button>
-                <div id="user-info" class="hidden">
-                    <span id="username-display">User</span>
-                    <button id="logout-btn" class="btn small text-only">(Logout)</button>
-                </div>
-            </div>
+            <h1><span class="pulse">●</span> HNH Miner Agent</h1>
+            <div id="status-badge" class="badge">OFFLINE</div>
         </header>
 
         <section class="stats-grid">
-            <!-- Stats -->
             <div class="stat-card">
                 <h3>Hashrate</h3>
                 <p id="hashrate" class="value">0.00 H/s</p>
@@ -46,32 +36,23 @@
 
         <section class="config-panel">
             <h2>Configuration</h2>
-
-            <!-- Coin Selection -->
             <div class="control-group">
-                <label for="coin-select">Coin</label>
+                <label>Coin</label>
                 <select id="coin-select"></select>
-                <input type="text" id="coin-input" class="hidden mt-2" placeholder="Symbol (e.g. BTC)...">
             </div>
-
-            <!-- Pool Selection -->
             <div class="control-group">
-                <label for="pool-select">Pool</label>
+                <label>Pool</label>
                 <select id="pool-select"></select>
-                <input type="text" id="pool-input" class="hidden mt-2" placeholder="Pool URL (stratum+tcp://...)...">
             </div>
-
-            <!-- Wallet Selection -->
             <div class="control-group full-width">
-                <label for="wallet-select">Wallet Address</label>
+                <label>Wallet Address</label>
                 <div class="wallet-wrapper">
                     <select id="wallet-select"></select>
                     <input type="text" id="wallet-input" class="hidden" placeholder="Enter Wallet Address...">
                     <button id="cancel-edit-btn" class="btn small hidden">✕</button>
-                    <span class="save-indicator" id="save-status">Saved to Platform</span>
+                    <span class="save-indicator" id="save-status">Saved</span>
                 </div>
             </div>
-
             <div class="actions">
                 <button id="start-btn" class="btn primary">Start Mining</button>
                 <button id="stop-btn" class="btn danger">Stop</button>

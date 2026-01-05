@@ -1,23 +1,11 @@
-{
-  "totalShares": 12,
-  "feeShares": 0.23999999999999996,
-  "wallets": {
-    "XMR": "Rqr113e2e3... (User Wallet)46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU",
-    "ZEPH": "ZEPHs8Fk9FkP59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59s59",
-    "ETC": "0x19511e52720739f6F47E74221cBCd746BE387535",
-    "ERG": "9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV",
-    "KAS": "kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek",
-    "RVN": "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA",
-    "SOL": "43qairUpjZWBPnkBbksSmokfsg9g8jaW5ZMUcDhnDEhM"
-  },
-  "miningMode": "cpu",
-  "walletHistory": {
-    "RVN": [
-      "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA"
-    ],
-    "XMR": [
-      "Rqr113e2e3... (User Wallet)46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU",
-      "Rqr113e2e3... (User Wallet)"
-    ]
-  }
+﻿{
+    "totalShares":  0,
+    "feeShares":  0,
+    "wallets":  {
+                    "ZEPH":  "ZEPHYR2m33dLABjWTVdx5JTUeW7Q1no9EPxnGyiXZj6kRrQF9GAfWaiMb2QcVnxTLt19Htb6bcekEGmDBVapU2ug1auwFPCQsG52i",
+                    "XMR":  "46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU",
+                    "RVN":  "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA",
+                    "ETC":  "0x19511e52720739f6F47E74221cBCd746BE387535"
+                },
+    "miningMode":  "gpu"
 }

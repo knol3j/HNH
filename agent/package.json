@@ -1,6 +1,6 @@
 {
   "name": "agent",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "HNH Mining Agent Server",
   "main": "main.cjs",
   "scripts": {
@@ -16,8 +16,7 @@
   "type": "module",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

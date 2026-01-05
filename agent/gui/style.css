@@ -33,13 +33,6 @@ header {
     padding-bottom: 15px;
 }
 
-.header-left,
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
 h1 {
     margin: 0;
     font-size: 1.5rem;
@@ -232,22 +225,4 @@ select {
     flex: 0;
     background: #333;
     color: #fff;
-}
-
-.btn.outline {
-    background: transparent;
-    border: 1px solid var(--primary-color);
-    color: var(--primary-color);
-}
-
-.btn.text-only {
-    background: transparent;
-    color: #888;
-    text-transform: none;
-    font-size: 0.7rem;
-    padding: 0 5px;
-}
-
-.mt-2 {
-    margin-top: 10px;
 }
