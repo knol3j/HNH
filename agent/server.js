@@ -271,11 +271,270 @@ const saveData = () => {
             feeShares,
             wallets: config.wallets,
             miningMode: config.mode,
-            walletHistory
+            walletHistory,
+            agentId: syncState.agentId,
+            pendingSessions: syncState.pendingSessions,
+            userToken: syncState.userToken
         };
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     } catch (e) { console.error("Failed to save data:", e); }
 };
+
+// --- BACKEND SYNC MODULE ---
+// Syncs mining stats to cloud backend for gamification
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+
+// Generate unique agent ID on first run
+const generateAgentId = () => {
+    return 'agent_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+};
+
+// Sync state
+let syncState = {
+    agentId: null,
+    userToken: null,  // JWT token from authenticated user
+    currentSession: null,
+    pendingSessions: [],
+    hashrateHistory: [],
+    lastSyncAt: null
+};
+
+// Load sync state from data file
+try {
+    if (fs.existsSync(DATA_FILE)) {
+        const rawData = fs.readFileSync(DATA_FILE, 'utf8').replace(/^\uFEFF/, '');
+        const data = JSON.parse(rawData);
+        if (data.agentId) syncState.agentId = data.agentId;
+        if (data.pendingSessions) syncState.pendingSessions = data.pendingSessions;
+        if (data.userToken) syncState.userToken = data.userToken;
+    }
+} catch (e) { /* ignore */ }
+
+// Ensure agent has an ID
+if (!syncState.agentId) {
+    syncState.agentId = generateAgentId();
+    saveData();
+}
+
+// Start a new mining session
+const startMiningSession = () => {
+    // End any previous session first
+    if (syncState.currentSession) {
+        endMiningSession();
+    }
+
+    syncState.currentSession = {
+        startTime: new Date().toISOString(),
+        coin: currentCoin,
+        poolUrl: config.poolUrl,
+        totalShares: 0,
+        acceptedShares: 0,
+        rejectedShares: 0,
+        hashrateHistory: [],
+        peakHashrate: 0
+    };
+    addLog('[SYNC] Mining session started');
+};
+
+// Record a share in current session
+const recordSessionShare = (accepted) => {
+    if (!syncState.currentSession) return;
+    syncState.currentSession.totalShares++;
+    if (accepted) {
+        syncState.currentSession.acceptedShares++;
+    } else {
+        syncState.currentSession.rejectedShares++;
+    }
+};
+
+// Record hashrate sample for averaging
+const recordSessionHashrate = (hashrate) => {
+    if (!syncState.currentSession) return;
+    syncState.currentSession.hashrateHistory.push(hashrate);
+    if (hashrate > syncState.currentSession.peakHashrate) {
+        syncState.currentSession.peakHashrate = hashrate;
+    }
+    // Keep only last 60 samples (2 min at 2s interval)
+    if (syncState.currentSession.hashrateHistory.length > 60) {
+        syncState.currentSession.hashrateHistory.shift();
+    }
+};
+
+// End current mining session and queue for sync
+const endMiningSession = () => {
+    if (!syncState.currentSession) return;
+
+    const session = syncState.currentSession;
+    session.endTime = new Date().toISOString();
+
+    // Calculate average hashrate
+    if (session.hashrateHistory.length > 0) {
+        session.avgHashrate = session.hashrateHistory.reduce((a, b) => a + b, 0) / session.hashrateHistory.length;
+    } else {
+        session.avgHashrate = 0;
+    }
+
+    // Clean up before storing
+    delete session.hashrateHistory;
+
+    // Only save sessions with shares
+    if (session.totalShares > 0) {
+        syncState.pendingSessions.push(session);
+        addLog(`[SYNC] Session ended: ${session.acceptedShares} shares, avg ${(session.avgHashrate / 1000000).toFixed(2)} MH/s`);
+    }
+
+    syncState.currentSession = null;
+    saveData();
+};
+
+// Sync pending sessions to backend
+const syncToBackend = async () => {
+    if (!syncState.userToken) {
+        // Not authenticated, skip sync but keep sessions queued
+        return;
+    }
+
+    if (syncState.pendingSessions.length === 0 && !syncState.currentSession) {
+        return; // Nothing to sync
+    }
+
+    try {
+        const payload = {
+            agentId: syncState.agentId,
+            sessions: syncState.pendingSessions,
+            currentSession: syncState.currentSession ? {
+                startTime: syncState.currentSession.startTime,
+                coin: syncState.currentSession.coin,
+                poolUrl: syncState.currentSession.poolUrl,
+                totalShares: syncState.currentSession.totalShares,
+                acceptedShares: syncState.currentSession.acceptedShares,
+                avgHashrate: syncState.currentSession.hashrateHistory.length > 0
+                    ? syncState.currentSession.hashrateHistory.reduce((a, b) => a + b, 0) / syncState.currentSession.hashrateHistory.length
+                    : 0
+            } : null,
+            telemetry: {
+                hashrate: telemetry.hashrate,
+                temp: telemetry.temp,
+                power: telemetry.power
+            }
+        };
+
+        const response = await fetch(`${BACKEND_URL}/agent/sync`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${syncState.userToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            // Clear synced sessions
+            syncState.pendingSessions = [];
+            syncState.lastSyncAt = new Date().toISOString();
+            saveData();
+
+            if (result.newAchievements && result.newAchievements.length > 0) {
+                result.newAchievements.forEach(a => {
+                    addLog(`🏆 Achievement Unlocked: ${a.name} (+${a.xp} XP)`);
+                });
+            }
+
+            addLog(`[SYNC] Synced ${result.sessionsProcessed} sessions, ${result.sharesAdded} shares`);
+        } else if (response.status === 401 || response.status === 403) {
+            // Token expired or invalid
+            addLog('[SYNC] Authentication failed, clearing token');
+            syncState.userToken = null;
+            saveData();
+        } else {
+            addLog(`[SYNC] Failed: ${response.status}`);
+        }
+    } catch (e) {
+        addLog(`[SYNC] Error: ${e.message} (will retry)`);
+    }
+};
+
+// Sync every 60 seconds
+setInterval(syncToBackend, 60000);
+
+// API: Link agent to user account
+app.post('/link', async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ error: 'Token is required' });
+    }
+
+    try {
+        // Verify token with backend
+        const verifyRes = await fetch(`${BACKEND_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (verifyRes.ok) {
+            const user = await verifyRes.json();
+            syncState.userToken = token;
+            saveData();
+
+            addLog(`[SYNC] Agent linked to user: ${user.username}`);
+
+            // Sync saved wallets from backend
+            const walletsRes = await fetch(`${BACKEND_URL}/user/wallets`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (walletsRes.ok) {
+                const wallets = await walletsRes.json();
+                // Update local config with user's saved wallets
+                wallets.forEach(w => {
+                    if (w.isDefault || !config.wallets[w.coin]) {
+                        config.wallets[w.coin] = w.address;
+                    }
+                });
+                saveData();
+                addLog(`[SYNC] Loaded ${wallets.length} wallets from cloud`);
+            }
+
+            // Trigger immediate sync
+            syncToBackend();
+
+            res.json({
+                success: true,
+                username: user.username,
+                tier: user.tier,
+                agentId: syncState.agentId
+            });
+        } else {
+            res.status(401).json({ error: 'Invalid token' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API: Unlink agent from user
+app.post('/unlink', (req, res) => {
+    syncState.userToken = null;
+    saveData();
+    addLog('[SYNC] Agent unlinked from user');
+    res.json({ success: true });
+});
+
+// API: Get sync status
+app.get('/sync-status', (req, res) => {
+    res.json({
+        agentId: syncState.agentId,
+        linked: !!syncState.userToken,
+        pendingSessions: syncState.pendingSessions.length,
+        lastSyncAt: syncState.lastSyncAt,
+        currentSession: syncState.currentSession ? {
+            startTime: syncState.currentSession.startTime,
+            coin: syncState.currentSession.coin,
+            shares: syncState.currentSession.acceptedShares
+        } : null
+    });
+});
 
 // --- LOGGING ---
 const addLog = (msg) => {
@@ -295,6 +554,9 @@ const startMiner = () => {
     if (minerProcess) {
         killMiner();
     }
+
+    // Start new mining session for stats tracking
+    startMiningSession();
 
     // Config Parsing
     let targetHost = 'pool.supportxmr.com';
@@ -410,6 +672,9 @@ const startMiner = () => {
 };
 
 const killMiner = () => {
+    // End current session before killing
+    endMiningSession();
+
     if (minerProcess) {
         minerProcess.kill();
         minerProcess = null;
@@ -439,6 +704,11 @@ const fetchXmrigStats = () => {
 
                 // Hashrate (Highest of all threads)
                 telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
+
+                // Record for session stats
+                if (telemetry.hashrate > 0) {
+                    recordSessionHashrate(telemetry.hashrate);
+                }
 
                 // Hardware Stats (GPU/CPU)
                 // XMRig puts sensors in different places depending on backend
@@ -484,7 +754,13 @@ const handleMinerOutput = (rawLine) => {
             totalShares++;
             const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
             feeShares += feeRate;
+            recordSessionShare(true); // Track for backend sync
             saveData();
+        }
+
+        // PARSE: Rejected Share
+        if (line.includes('rejected')) {
+            recordSessionShare(false);
         }
     });
 };

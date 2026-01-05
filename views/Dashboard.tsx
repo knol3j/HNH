@@ -11,9 +11,14 @@ import {
   Zap,
   Terminal,
   ArrowRight,
-  Coins
+  Coins,
+  Flame,
+  Trophy,
+  Star
 } from 'lucide-react';
 import { calculateProfitability } from '../services/profitabilityService';
+import { getUserStats, getLevelProgress, formatMiningTime, UserStats } from '../services/statsService';
+import { getUserAchievements, Achievement } from '../services/achievementService';
 import {
   Area,
   AreaChart,
@@ -57,6 +62,38 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
   const [sectorData, setSectorData] = useState<any[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(true);
   const [realJobs, setRealJobs] = useState<any[]>([]);
+
+  // Gamification state
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
+
+  // Fetch user stats and achievements
+  useEffect(() => {
+    const fetchGamificationData = async () => {
+      try {
+        const statsData = await getUserStats();
+        if (statsData) {
+          setUserStats(statsData.stats);
+        }
+
+        const achievementsData = await getUserAchievements();
+        if (achievementsData) {
+          // Get the 3 most recent unlocked achievements
+          const recent = achievementsData.unlocked
+            .sort((a, b) => new Date(b.unlockedAt || 0).getTime() - new Date(a.unlockedAt || 0).getTime())
+            .slice(0, 3);
+          setRecentAchievements(recent);
+        }
+      } catch (e) {
+        console.error('Failed to fetch gamification data:', e);
+      }
+    };
+
+    fetchGamificationData();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchGamificationData, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -320,6 +357,129 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
           </p>
         </div>
       </div>
+
+      {/* Gamification Section */}
+      {userStats && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Player Stats Card */}
+          <div className="bg-gradient-to-br from-purple-900/30 to-surface border border-purple-500/20 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                  <Star className="text-purple-400" size={24} />
+                </div>
+                <div>
+                  <p className="text-purple-300 text-xs uppercase tracking-wider">Level {userStats.level}</p>
+                  <h3 className="text-xl font-bold text-white">{userStats.rank}</h3>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-purple-400">{userStats.xp}</p>
+                <p className="text-xs text-muted">XP</p>
+              </div>
+            </div>
+
+            {/* XP Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-muted">
+                <span>Progress to Level {userStats.level + 1}</span>
+                <span>{getLevelProgress(userStats.xp, userStats.level).toFixed(0)}%</span>
+              </div>
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                  style={{ width: `${getLevelProgress(userStats.xp, userStats.level)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-muted text-xs">Total Shares</p>
+                <p className="text-white font-bold">{userStats.totalShares.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-muted text-xs">Mining Time</p>
+                <p className="text-white font-bold">{formatMiningTime(userStats.totalMiningTime)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Streak Card */}
+          <div className="bg-gradient-to-br from-orange-900/30 to-surface border border-orange-500/20 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                <Flame className="text-orange-400" size={24} />
+              </div>
+              <div>
+                <p className="text-orange-300 text-xs uppercase tracking-wider">Mining Streak</p>
+                <h3 className="text-3xl font-bold text-white">{userStats.currentStreak} <span className="text-lg text-muted">days</span></h3>
+              </div>
+            </div>
+
+            <div className="bg-black/20 rounded-xl p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-muted text-xs">Best Streak</p>
+                  <p className="text-white font-bold text-xl">{userStats.longestStreak} days</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-muted text-xs">Last Mined</p>
+                  <p className="text-white text-sm">
+                    {userStats.lastMiningDate
+                      ? new Date(userStats.lastMiningDate).toLocaleDateString()
+                      : 'Never'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {userStats.currentStreak >= 7 && (
+              <div className="mt-4 bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-center">
+                <span className="text-orange-400 text-sm font-bold">Weekly Warrior Active!</span>
+              </div>
+            )}
+          </div>
+
+          {/* Recent Achievements */}
+          <div className="bg-gradient-to-br from-yellow-900/30 to-surface border border-yellow-500/20 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+                <Trophy className="text-yellow-400" size={24} />
+              </div>
+              <div>
+                <p className="text-yellow-300 text-xs uppercase tracking-wider">Recent Achievements</p>
+                <h3 className="text-lg font-bold text-white">{recentAchievements.length} Unlocked</h3>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {recentAchievements.length === 0 ? (
+                <div className="text-center py-4 text-muted text-sm">
+                  No achievements yet. Start mining to earn!
+                </div>
+              ) : (
+                recentAchievements.map((achievement) => (
+                  <div key={achievement.id} className="flex items-center gap-3 bg-black/20 rounded-lg p-3">
+                    <span className="text-2xl">{achievement.icon || '🏆'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold text-sm truncate">{achievement.name}</p>
+                      <p className="text-muted text-xs truncate">{achievement.description}</p>
+                    </div>
+                    <span className="text-yellow-400 text-xs font-bold">+{achievement.xpReward} XP</span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {recentAchievements.length > 0 && (
+              <button className="w-full mt-4 py-2 border border-yellow-500/30 rounded-lg text-sm text-yellow-400 hover:bg-yellow-500/10 transition-colors">
+                View All Achievements
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Chart Section */}
       <div className="bg-surface border border-white/5 rounded-2xl p-6">

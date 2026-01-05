@@ -74,6 +74,75 @@ const telemetrySchema = z.object({
     power: z.number().optional()
 });
 
+const walletSchema = z.object({
+    coin: z.string().min(1).max(10),
+    address: z.string().min(20).max(128),
+    label: z.string().max(50).optional(),
+    poolUrl: z.string().url().optional().or(z.string().regex(/^stratum\+?/)),
+    isDefault: z.boolean().optional()
+});
+
+const agentSyncSchema = z.object({
+    agentId: z.string().min(1).max(64),
+    sessions: z.array(z.object({
+        startTime: z.string(),
+        endTime: z.string().optional(),
+        coin: z.string(),
+        poolUrl: z.string(),
+        totalShares: z.number().min(0),
+        acceptedShares: z.number().min(0),
+        rejectedShares: z.number().min(0).optional(),
+        avgHashrate: z.number().min(0),
+        peakHashrate: z.number().min(0).optional()
+    })).optional(),
+    currentSession: z.object({
+        startTime: z.string(),
+        coin: z.string(),
+        poolUrl: z.string(),
+        totalShares: z.number().min(0),
+        acceptedShares: z.number().min(0),
+        avgHashrate: z.number().min(0)
+    }).optional(),
+    telemetry: z.object({
+        hashrate: z.number(),
+        temp: z.number().optional(),
+        power: z.number().optional()
+    }).optional()
+});
+
+// Achievement definitions for seeding
+const ACHIEVEMENT_DEFINITIONS = [
+    { code: 'first_share', name: 'First Blood', description: 'Submit your first valid share', icon: '🩸', category: 'milestone', threshold: 1, xpReward: 10 },
+    { code: 'shares_100', name: 'Century', description: 'Submit 100 shares', icon: '💯', category: 'milestone', threshold: 100, xpReward: 25 },
+    { code: 'shares_1k', name: 'Kilo Miner', description: 'Submit 1,000 shares', icon: '⚡', category: 'milestone', threshold: 1000, xpReward: 50 },
+    { code: 'shares_10k', name: 'Mega Miner', description: 'Submit 10,000 shares', icon: '🔥', category: 'milestone', threshold: 10000, xpReward: 100 },
+    { code: 'shares_100k', name: 'Legend', description: 'Submit 100,000 shares', icon: '👑', category: 'milestone', threshold: 100000, xpReward: 500 },
+    { code: 'hashrate_1m', name: 'Mega Hash', description: 'Reach 1 MH/s hashrate', icon: '📈', category: 'mining', threshold: 1000000, xpReward: 30 },
+    { code: 'hashrate_100m', name: 'Hundred Hammer', description: 'Reach 100 MH/s hashrate', icon: '🔨', category: 'mining', threshold: 100000000, xpReward: 75 },
+    { code: 'streak_3', name: 'Hat Trick', description: 'Mine 3 days in a row', icon: '🎩', category: 'streak', threshold: 3, xpReward: 20 },
+    { code: 'streak_7', name: 'Weekly Warrior', description: 'Mine 7 days in a row', icon: '⚔️', category: 'streak', threshold: 7, xpReward: 50 },
+    { code: 'streak_30', name: 'Monthly Miner', description: 'Mine 30 days in a row', icon: '📅', category: 'streak', threshold: 30, xpReward: 150 },
+    { code: 'streak_100', name: 'Centurion', description: 'Mine 100 days in a row', icon: '🏆', category: 'streak', threshold: 100, xpReward: 500 },
+    { code: 'referral_1', name: 'Networker', description: 'Refer your first user', icon: '🤝', category: 'social', threshold: 1, xpReward: 40 },
+    { code: 'referral_10', name: 'Influencer', description: 'Refer 10 users', icon: '📣', category: 'social', threshold: 10, xpReward: 200 },
+    { code: 'multi_coin_3', name: 'Diversified', description: 'Mine 3 different coins', icon: '🪙', category: 'mining', threshold: 3, xpReward: 35 },
+    { code: 'uptime_24h', name: 'All Nighter', description: 'Mine for 24 hours straight', icon: '🌙', category: 'mining', threshold: 1440, xpReward: 60 }
+];
+
+// Level thresholds
+const LEVEL_THRESHOLDS = [
+    { level: 1, xp: 0, rank: 'Newbie' },
+    { level: 2, xp: 50, rank: 'Apprentice' },
+    { level: 3, xp: 150, rank: 'Miner' },
+    { level: 4, xp: 350, rank: 'Veteran' },
+    { level: 5, xp: 650, rank: 'Expert' },
+    { level: 6, xp: 1000, rank: 'Master' },
+    { level: 7, xp: 1500, rank: 'Legend' },
+    { level: 8, xp: 2500, rank: 'Mythic' },
+    { level: 9, xp: 4000, rank: 'Immortal' },
+    { level: 10, xp: 6000, rank: 'Transcendent' }
+];
+
 // CORS Configuration
 const allowedOrigins = [
     'http://localhost:5173',
@@ -474,11 +543,12 @@ app.patch('/user/tier', authenticateToken, validate(tierSchema), async (req, res
 
 // --- WALLETS ---
 
-// Get User Wallets
+// Get User Wallets (all or by coin)
 app.get('/user/wallets', authenticateToken, async (req, res) => {
     try {
         const wallets = await prisma.userWallet.findMany({
-            where: { userId: req.user.id }
+            where: { userId: req.user.id },
+            orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }]
         });
         res.json(wallets);
     } catch (e) {
@@ -486,37 +556,105 @@ app.get('/user/wallets', authenticateToken, async (req, res) => {
     }
 });
 
-// Save/Update User Wallet
-app.post('/user/wallets', authenticateToken, async (req, res) => {
-    const { coin, address, label } = req.body;
-
-    if (!coin || !address) {
-        return res.status(400).json({ error: "Coin and Address are required" });
+// Get wallets for specific coin
+app.get('/user/wallets/:coin', authenticateToken, async (req, res) => {
+    try {
+        const wallets = await prisma.userWallet.findMany({
+            where: { userId: req.user.id, coin: req.params.coin.toUpperCase() },
+            orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }]
+        });
+        res.json(wallets);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
+});
+
+// Save/Update User Wallet with pool association
+app.post('/user/wallets', authenticateToken, validate(walletSchema), async (req, res) => {
+    const { coin, address, label, poolUrl, isDefault } = req.body;
 
     try {
+        // If setting as default, unset other defaults for this coin
+        if (isDefault) {
+            await prisma.userWallet.updateMany({
+                where: { userId: req.user.id, coin: coin.toUpperCase() },
+                data: { isDefault: false }
+            });
+        }
+
         const wallet = await prisma.userWallet.upsert({
             where: {
                 userId_coin_address: {
                     userId: req.user.id,
-                    coin,
+                    coin: coin.toUpperCase(),
                     address
                 }
             },
-            update: { label, createdAt: new Date() }, // Update timestamp to bring to top
+            update: {
+                label,
+                poolUrl: poolUrl || undefined,
+                isDefault: isDefault || false
+            },
             create: {
                 userId: req.user.id,
-                coin,
+                coin: coin.toUpperCase(),
                 address,
-                label
+                label,
+                poolUrl,
+                isDefault: isDefault || false
             }
         });
-        res.json(workerResponse(wallet)); // Typo mock
+        res.json(wallet);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
 
-    function workerResponse(w) { return w; }
+// Set wallet as default for its coin
+app.put('/user/wallets/:id/default', authenticateToken, async (req, res) => {
+    try {
+        const wallet = await prisma.userWallet.findFirst({
+            where: { id: req.params.id, userId: req.user.id }
+        });
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        // Unset other defaults for this coin
+        await prisma.userWallet.updateMany({
+            where: { userId: req.user.id, coin: wallet.coin },
+            data: { isDefault: false }
+        });
+
+        // Set this one as default
+        const updated = await prisma.userWallet.update({
+            where: { id: req.params.id },
+            data: { isDefault: true }
+        });
+
+        res.json(updated);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Delete wallet
+app.delete('/user/wallets/:id', authenticateToken, async (req, res) => {
+    try {
+        const wallet = await prisma.userWallet.findFirst({
+            where: { id: req.params.id, userId: req.user.id }
+        });
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        await prisma.userWallet.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Telemetry from Agent - requires authentication
@@ -549,6 +687,374 @@ app.post('/miner/telemetry', authenticateToken, validate(telemetrySchema), async
     }
 });
 
+// --- AGENT SYNC (Stats & Sessions) ---
+
+// Helper: Calculate level from XP
+function calculateLevel(xp) {
+    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+        if (xp >= LEVEL_THRESHOLDS[i].xp) {
+            return LEVEL_THRESHOLDS[i];
+        }
+    }
+    return LEVEL_THRESHOLDS[0];
+}
+
+// Helper: Check and unlock achievements
+async function checkAchievements(userId) {
+    const userStats = await prisma.userStats.findUnique({ where: { userId } });
+    if (!userStats) return [];
+
+    const allAchievements = await prisma.achievement.findMany();
+    const userAchievements = await prisma.userAchievement.findMany({
+        where: { userId },
+        select: { achievementId: true }
+    });
+    const unlockedIds = new Set(userAchievements.map(a => a.achievementId));
+    const newlyUnlocked = [];
+
+    for (const achievement of allAchievements) {
+        if (unlockedIds.has(achievement.id)) continue;
+
+        let unlocked = false;
+        switch (achievement.code) {
+            case 'first_share':
+                unlocked = userStats.totalShares >= 1;
+                break;
+            case 'shares_100':
+                unlocked = userStats.totalShares >= 100;
+                break;
+            case 'shares_1k':
+                unlocked = userStats.totalShares >= 1000;
+                break;
+            case 'shares_10k':
+                unlocked = userStats.totalShares >= 10000;
+                break;
+            case 'shares_100k':
+                unlocked = userStats.totalShares >= 100000;
+                break;
+            case 'streak_3':
+                unlocked = userStats.currentStreak >= 3 || userStats.longestStreak >= 3;
+                break;
+            case 'streak_7':
+                unlocked = userStats.currentStreak >= 7 || userStats.longestStreak >= 7;
+                break;
+            case 'streak_30':
+                unlocked = userStats.currentStreak >= 30 || userStats.longestStreak >= 30;
+                break;
+            case 'streak_100':
+                unlocked = userStats.currentStreak >= 100 || userStats.longestStreak >= 100;
+                break;
+        }
+
+        if (unlocked) {
+            await prisma.userAchievement.create({
+                data: { userId, achievementId: achievement.id }
+            });
+
+            // Award XP
+            const newXp = userStats.xp + achievement.xpReward;
+            const levelInfo = calculateLevel(newXp);
+            await prisma.userStats.update({
+                where: { userId },
+                data: { xp: newXp, level: levelInfo.level, rank: levelInfo.rank }
+            });
+
+            newlyUnlocked.push(achievement);
+        }
+    }
+
+    return newlyUnlocked;
+}
+
+// Helper: Update streak
+async function updateStreak(userId) {
+    const userStats = await prisma.userStats.findUnique({ where: { userId } });
+    if (!userStats) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastMining = userStats.lastMiningDate;
+    if (lastMining) {
+        const lastDate = new Date(lastMining);
+        lastDate.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+            // Already counted today
+            return;
+        } else if (diffDays === 1) {
+            // Streak continues
+            const newStreak = userStats.currentStreak + 1;
+            await prisma.userStats.update({
+                where: { userId },
+                data: {
+                    currentStreak: newStreak,
+                    longestStreak: Math.max(userStats.longestStreak, newStreak),
+                    lastMiningDate: new Date()
+                }
+            });
+        } else {
+            // Streak broken
+            await prisma.userStats.update({
+                where: { userId },
+                data: { currentStreak: 1, lastMiningDate: new Date() }
+            });
+        }
+    } else {
+        // First mining day
+        await prisma.userStats.update({
+            where: { userId },
+            data: { currentStreak: 1, lastMiningDate: new Date() }
+        });
+    }
+}
+
+// Agent sync endpoint - receives stats from local agent
+app.post('/agent/sync', authenticateToken, validate(agentSyncSchema), async (req, res) => {
+    const { agentId, sessions, currentSession, telemetry } = req.body;
+    const userId = req.user.id;
+
+    try {
+        // Ensure UserStats exists
+        let userStats = await prisma.userStats.findUnique({ where: { userId } });
+        if (!userStats) {
+            userStats = await prisma.userStats.create({ data: { userId } });
+        }
+
+        let totalNewShares = 0;
+        let totalMiningMinutes = 0;
+
+        // Process completed sessions
+        if (sessions && sessions.length > 0) {
+            for (const session of sessions) {
+                // Check for duplicate (by agentId + startTime)
+                const existing = await prisma.miningSession.findFirst({
+                    where: {
+                        userId,
+                        agentId,
+                        startTime: new Date(session.startTime)
+                    }
+                });
+
+                if (!existing) {
+                    await prisma.miningSession.create({
+                        data: {
+                            userId,
+                            agentId,
+                            coin: session.coin,
+                            poolUrl: session.poolUrl,
+                            startTime: new Date(session.startTime),
+                            endTime: session.endTime ? new Date(session.endTime) : null,
+                            totalShares: session.totalShares,
+                            acceptedShares: session.acceptedShares,
+                            rejectedShares: session.rejectedShares || 0,
+                            avgHashrate: session.avgHashrate,
+                            peakHashrate: session.peakHashrate || session.avgHashrate,
+                            syncedAt: new Date()
+                        }
+                    });
+
+                    totalNewShares += session.acceptedShares;
+
+                    // Calculate mining duration
+                    if (session.endTime) {
+                        const duration = (new Date(session.endTime) - new Date(session.startTime)) / 60000;
+                        totalMiningMinutes += Math.round(duration);
+                    }
+                }
+            }
+        }
+
+        // Update user stats
+        if (totalNewShares > 0 || totalMiningMinutes > 0) {
+            await prisma.userStats.update({
+                where: { userId },
+                data: {
+                    totalShares: { increment: totalNewShares },
+                    totalMiningTime: { increment: totalMiningMinutes }
+                }
+            });
+
+            // Update streak
+            await updateStreak(userId);
+        }
+
+        // Check for new achievements
+        const newAchievements = await checkAchievements(userId);
+
+        res.json({
+            success: true,
+            sessionsProcessed: sessions?.length || 0,
+            sharesAdded: totalNewShares,
+            newAchievements: newAchievements.map(a => ({ code: a.code, name: a.name, xp: a.xpReward })),
+            nextSyncIn: 60
+        });
+    } catch (e) {
+        console.error('[AGENT_SYNC] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- USER STATS ---
+
+// Get user's lifetime stats
+app.get('/user/stats', authenticateToken, async (req, res) => {
+    try {
+        let userStats = await prisma.userStats.findUnique({
+            where: { userId: req.user.id }
+        });
+
+        // Create if doesn't exist
+        if (!userStats) {
+            userStats = await prisma.userStats.create({
+                data: { userId: req.user.id }
+            });
+        }
+
+        // Get recent daily snapshots
+        const recentHistory = await prisma.statsSnapshot.findMany({
+            where: { userId: req.user.id, period: 'daily' },
+            orderBy: { timestamp: 'desc' },
+            take: 30
+        });
+
+        // Get active sessions count
+        const activeSessions = await prisma.miningSession.count({
+            where: { userId: req.user.id, endTime: null }
+        });
+
+        res.json({
+            stats: userStats,
+            history: recentHistory,
+            activeSessions
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get stats history for charts
+app.get('/user/stats/history', authenticateToken, async (req, res) => {
+    try {
+        const period = req.query.period || 'daily';
+        const days = parseInt(req.query.days) || 30;
+
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+
+        const snapshots = await prisma.statsSnapshot.findMany({
+            where: {
+                userId: req.user.id,
+                period,
+                timestamp: { gte: since }
+            },
+            orderBy: { timestamp: 'asc' }
+        });
+
+        res.json(snapshots);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get mining sessions
+app.get('/user/sessions', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const sessions = await prisma.miningSession.findMany({
+            where: { userId: req.user.id },
+            orderBy: { startTime: 'desc' },
+            take: limit
+        });
+        res.json(sessions);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- ACHIEVEMENTS ---
+
+// Get user's achievements
+app.get('/user/achievements', authenticateToken, async (req, res) => {
+    try {
+        const allAchievements = await prisma.achievement.findMany();
+        const userAchievements = await prisma.userAchievement.findMany({
+            where: { userId: req.user.id },
+            include: { achievement: true }
+        });
+
+        const unlockedCodes = new Set(userAchievements.map(ua => ua.achievement.code));
+
+        res.json({
+            unlocked: userAchievements.map(ua => ({
+                ...ua.achievement,
+                unlockedAt: ua.unlockedAt
+            })),
+            available: allAchievements.filter(a => !unlockedCodes.has(a.code)),
+            total: allAchievements.length,
+            unlockedCount: userAchievements.length
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- LEADERBOARD ---
+
+app.get('/leaderboard', authenticateToken, async (req, res) => {
+    try {
+        const metric = req.query.metric || 'totalShares';
+        const limit = parseInt(req.query.limit) || 100;
+
+        // Validate metric
+        const allowedMetrics = ['totalShares', 'totalMinedUsd', 'longestStreak', 'level', 'xp'];
+        if (!allowedMetrics.includes(metric)) {
+            return res.status(400).json({ error: 'Invalid metric' });
+        }
+
+        const leaderboard = await prisma.userStats.findMany({
+            where: { [metric]: { gt: 0 } },
+            orderBy: { [metric]: 'desc' },
+            take: limit,
+            include: {
+                user: {
+                    select: { username: true, tier: true }
+                }
+            }
+        });
+
+        // Find current user's rank
+        const userStats = await prisma.userStats.findUnique({
+            where: { userId: req.user.id }
+        });
+
+        let userRank = null;
+        if (userStats) {
+            const higherCount = await prisma.userStats.count({
+                where: { [metric]: { gt: userStats[metric] } }
+            });
+            userRank = higherCount + 1;
+        }
+
+        res.json({
+            leaderboard: leaderboard.map((entry, index) => ({
+                rank: index + 1,
+                username: entry.user.username,
+                tier: entry.user.tier,
+                value: entry[metric],
+                level: entry.level,
+                rankTitle: entry.rank
+            })),
+            userRank,
+            metric
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error('[ERROR]', {
@@ -563,10 +1069,34 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Seed achievements on startup
+async function seedAchievements() {
+    try {
+        for (const achievement of ACHIEVEMENT_DEFINITIONS) {
+            await prisma.achievement.upsert({
+                where: { code: achievement.code },
+                update: {
+                    name: achievement.name,
+                    description: achievement.description,
+                    icon: achievement.icon,
+                    category: achievement.category,
+                    threshold: achievement.threshold,
+                    xpReward: achievement.xpReward
+                },
+                create: achievement
+            });
+        }
+        console.log(`✅ Seeded ${ACHIEVEMENT_DEFINITIONS.length} achievements`);
+    } catch (e) {
+        console.error('⚠️ Failed to seed achievements:', e.message);
+    }
+}
+
 // Test database connection on startup
 prisma.$connect()
-    .then(() => {
+    .then(async () => {
         console.log('✅ Database connected successfully');
+        await seedAchievements();
         app.listen(PORT, () => {
             console.log(`✅ Backend API running on port ${PORT}`);
             console.log(`   Environment: ${NODE_ENV}`);
