@@ -469,5 +469,9 @@ app.get('/meta', (req, res) => {
 });
 
 app.listen(PORT, () => {
+    console.log(`\n\n=============== DEBUG ===============`);
+    console.log(`Active File: ${__filename}`);
+    console.log(`COIN_POOLS.XMR: ${COIN_POOLS.XMR}`);
+    console.log(`=====================================\n\n`);
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
 });
