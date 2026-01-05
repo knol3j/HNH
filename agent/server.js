@@ -72,7 +72,12 @@ const COIN_POOLS = {
 };
 
 // --- STATE ---
-// --- STATE ---
+// DEBUG BANNER (Global)
+console.log(`\n\n=============== DEBUG ===============`);
+console.log(`Active File: ${__filename}`);
+console.log(`COIN_POOLS.XMR: ${COIN_POOLS.XMR}`);
+console.log(`=====================================\n\n`);
+
 let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 
 let config = {
@@ -162,9 +167,7 @@ const addLog = (msg) => {
 
 // --- MINER MANAGER ---
 const startMiner = () => {
-    if (minerProcess) {
-        killMiner();
-    }
+    killMiner(); // Always ensure clean state
 
     // Clean URL
     const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
@@ -327,6 +330,7 @@ const handleMinerOutput = (rawLine) => {
 
 // Start on Load
 if (fs.existsSync(MINER_BIN)) {
+    killMiner(); // CLEANUP ORPHANS
     startMiner();
 } else {
     addLog("❌ Miner binary not found. Run 'setup_miner.sh' first.");
