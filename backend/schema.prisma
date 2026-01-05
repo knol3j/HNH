@@ -19,10 +19,31 @@ model User {
   referredBy    String?
   referralBonus Float    @default(0.0)
   createdAt     DateTime @default(now())
-  
-  workers       Worker[]
-  shares        Share[]
-  transactions  Transaction[]
+
+  workers         Worker[]
+  shares          Share[]
+  transactions    Transaction[]
+  savedWallets    UserWallet[]
+  miningSessions  MiningSession[]
+  statsSnapshots  StatsSnapshot[]
+  achievements    UserAchievement[]
+  userStats       UserStats?
+}
+
+model UserWallet {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  coin      String
+  address   String
+  label     String?
+  poolUrl   String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, coin, address])
+  @@index([userId, coin])
 }
 
 model Worker {
@@ -32,8 +53,9 @@ model Worker {
   user        User     @relation(fields: [userId], references: [id])
   hashrate    Float    @default(0.0)
   lastSeen    DateTime @default(now())
-  
-  shares      Share[]
+
+  shares          Share[]
+  miningSessions  MiningSession[]
 }
 
 model Share {
@@ -42,7 +64,7 @@ model Share {
   worker    Worker   @relation(fields: [workerId], references: [id])
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  
+
   difficulty Float
   accepted   Boolean @default(true)
   timestamp  DateTime @default(now())
@@ -52,8 +74,104 @@ model Transaction {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  
+
   amount    Float
   type      String   // MINING_PAYOUT, REFERRAL_BONUS, WITHDRAWAL
   timestamp DateTime @default(now())
+}
+
+// Mining session tracking for stats
+model MiningSession {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  workerId       String?
+  worker         Worker?   @relation(fields: [workerId], references: [id])
+
+  coin           String
+  poolUrl        String
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+
+  totalShares    Int       @default(0)
+  acceptedShares Int       @default(0)
+  rejectedShares Int       @default(0)
+  avgHashrate    Float     @default(0)
+  peakHashrate   Float     @default(0)
+
+  agentId        String?
+  syncedAt       DateTime?
+
+  @@index([userId, startTime])
+  @@index([workerId])
+}
+
+// Aggregated time-series stats for charts
+model StatsSnapshot {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  period      String   // 'hourly', 'daily', 'weekly'
+  timestamp   DateTime
+
+  totalShares   Int    @default(0)
+  avgHashrate   Float  @default(0)
+  totalMined    Float  @default(0)
+  miningMinutes Int    @default(0)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, period, timestamp])
+  @@index([userId, period])
+}
+
+// Lifetime user stats for gamification
+model UserStats {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+
+  totalShares     Int       @default(0)
+  totalMinedUsd   Float     @default(0)
+  totalMiningTime Int       @default(0) // minutes
+
+  currentStreak   Int       @default(0)
+  longestStreak   Int       @default(0)
+  lastMiningDate  DateTime?
+
+  level           Int       @default(1)
+  xp              Int       @default(0)
+  rank            String    @default("Newbie")
+
+  updatedAt       DateTime  @updatedAt
+}
+
+// Achievement definitions
+model Achievement {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String
+  icon        String?
+  category    String   // 'mining', 'social', 'milestone', 'streak'
+  threshold   Float?
+  xpReward    Int      @default(10)
+
+  unlocks     UserAchievement[]
+}
+
+// User's unlocked achievements
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  unlockedAt    DateTime    @default(now())
+  progress      Float       @default(0)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
 }
