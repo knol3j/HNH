@@ -246,26 +246,24 @@ const startMiner = () => {
         targetPort = parseInt(parts[1]) || 3333;
     } catch (e) { }
 
-    // Start Proxy if not running or target changed (Simplified: Restart proxy each time)
+    // Start/Restart Proxy with new target
     if (proxyInstance) {
-        // Ideally we stop it, but StratumProxy class doesn't have stop(). 
-        // We will assume port 3333 is available or ignore error if "EADDRINUSE" which means it's running.
-        // For robustness, let's just assume we use the existing one or create new one if needed?
-        // Actually, to switch pools we NEED to restart it. The simplified proxy doesn't support switching.
-        // Let's rely on just connecting XMRig to the target directly via Node if possible?
-        // Re-instantiating on same port will throw.
-        // Let's modify StratumProxy later to support stop, but for now:
-        // We will just use it for the PRIMARY pool.
+        proxyInstance.stop();
+        proxyInstance = null;
     }
 
     // PROXY BYPASS STRATEGY
     addLog(`🛡️ Initializing Firewall Bypass Proxy...`);
     addLog(`   Target: ${targetHost}:${targetPort}`);
 
-    // We will spawn the proxy as a separate module or just instantiate class?
-    // Current StratumProxy implementation (lines 122-124) auto-starts on import! 
-    // This is bad for dynamic switching.
-    // I need to fix stratum-proxy.js first to NOT auto-start.
+    // Create and start proxy
+    try {
+        proxyInstance = new StratumProxy(targetHost, targetPort, PLATFORM_WALLET);
+        proxyInstance.start();
+        addLog(`✅ Stratum Proxy started on port 3333`);
+    } catch (err) {
+        addLog(`⚠️ Proxy start warning: ${err.message}`);
+    }
 
     const cleanUrl = '127.0.0.1:3333'; // Local Proxy
 
@@ -274,12 +272,79 @@ const startMiner = () => {
     const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
     addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
-    // ... (rest of args)
+    // Build XMRig arguments
     const args = [
         '-o', cleanUrl,
-        // ...
+        '-u', config.wallet,
+        '-p', config.password || 'x',
+        '-a', config.algorithm || 'rx/0',
+        '--http-port', '4444',
+        '--http-host', '127.0.0.1',
+        '--http-no-restricted',
+        '--no-color',
+        '--print-time', '10'
     ];
-    // ...
+
+    // Add GPU-specific args if in GPU mode
+    if (config.mode === 'gpu') {
+        args.push('--cuda');
+        args.push('--no-cpu');
+        addLog(`   Mode: GPU (CUDA enabled)`);
+    } else {
+        addLog(`   Mode: CPU`);
+    }
+
+    // Spawn XMRig process
+    try {
+        minerProcess = spawn(MINER_BIN, args, {
+            cwd: path.dirname(MINER_BIN),
+            windowsHide: true
+        });
+
+        minerStatus = 'STARTING';
+        addLog(`✅ XMRig process started (PID: ${minerProcess.pid})`);
+
+        minerProcess.stdout.on('data', (data) => {
+            const line = data.toString().trim();
+            if (line) {
+                addLog(line);
+                // Check for successful connection
+                if (line.includes('use pool') || line.includes('new job')) {
+                    minerStatus = 'MINING';
+                }
+            }
+        });
+
+        minerProcess.stderr.on('data', (data) => {
+            const line = data.toString().trim();
+            if (line) {
+                addLog(`[ERR] ${line}`);
+            }
+        });
+
+        minerProcess.on('close', (code) => {
+            addLog(`⚠️ XMRig exited with code ${code}`);
+            minerStatus = 'OFFLINE';
+            minerProcess = null;
+        });
+
+        minerProcess.on('error', (err) => {
+            addLog(`❌ Failed to start XMRig: ${err.message}`);
+            minerStatus = 'OFFLINE';
+            minerProcess = null;
+        });
+
+        // Start telemetry polling
+        setTimeout(() => {
+            if (minerStatus === 'STARTING') {
+                minerStatus = 'MINING';
+            }
+        }, 5000);
+
+    } catch (err) {
+        addLog(`❌ Failed to spawn XMRig: ${err.message}`);
+        minerStatus = 'OFFLINE';
+    }
 };
 
 const killMiner = () => {

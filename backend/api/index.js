@@ -82,7 +82,9 @@ const allowedOrigins = [
     'https://app.hashnhedge.com',
     'https://hashnhedge.com',
     'https://app-production-374e.up.railway.app',
-    'https://app-production-564e.up.railway.app'
+    'https://app-production-564e.up.railway.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
 ];
 
 // Security Headers

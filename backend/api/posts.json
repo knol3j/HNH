@@ -1,0 +1,23 @@
+[
+  {
+    "id": "seed1",
+    "title": "Official Overclocking Database (Wiki)",
+    "author": "System",
+    "category": "General",
+    "content": "Check the new Hardware tab for optimized settings.",
+    "timestamp": "Just now",
+    "likes": 42,
+    "replies": 0,
+    "isPinned": true
+  },
+  {
+    "id": "seed2",
+    "title": "Spec Mining Alert: Karlsen (KLS)",
+    "author": "MinerMike",
+    "category": "Announcements",
+    "content": "New fork of Kaspa. Difficulty is low.",
+    "timestamp": "1h ago",
+    "likes": 12,
+    "replies": 5
+  }
+]
