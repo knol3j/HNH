@@ -7,22 +7,83 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { Server } from 'socket.io';
-import { exec } from 'child_process';
+// SECURITY: exec removed - command execution is dangerous
 import StratumProxy from './stratum-proxy.js';
+
+// --- INPUT VALIDATION HELPERS ---
+const VALID_COINS = ['XMR', 'ZEPH', 'RVN', 'ETC', 'ERG', 'KAS', 'SOL'];
+const VALID_MODES = ['cpu', 'gpu'];
+const VALID_TIERS = ['free', 'pro', 'enterprise'];
+
+// Wallet address validation patterns
+const WALLET_PATTERNS = {
+    XMR: /^[48][0-9AB][1-9A-HJ-NP-Za-km-z]{93}$/,
+    ZEPH: /^ZEPH[a-zA-Z0-9]{59}$/,
+    RVN: /^R[a-zA-Z0-9]{33}$/,
+    ETC: /^0x[a-fA-F0-9]{40}$/,
+    ERG: /^9[a-zA-Z0-9]{50,}$/,
+    KAS: /^kaspa:[a-z0-9]{61,}$/,
+    SOL: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
+};
+
+const validateWallet = (address, coin) => {
+    if (!address || typeof address !== 'string') return false;
+    if (address.length < 20 || address.length > 128) return false;
+    const pattern = WALLET_PATTERNS[coin];
+    if (pattern && !pattern.test(address)) {
+        console.warn(`[VALIDATION] Invalid ${coin} wallet format: ${address.substring(0, 10)}...`);
+        return false;
+    }
+    return true;
+};
+
+const validatePoolUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    // Must be stratum protocol
+    if (!url.startsWith('stratum+tcp://') && !url.startsWith('stratum+ssl://') && !url.startsWith('ssl://')) {
+        return false;
+    }
+    // Basic URL structure check
+    const cleanUrl = url.replace(/^(stratum\+tcp|stratum\+ssl|ssl):\/\//, '');
+    const parts = cleanUrl.split(':');
+    if (parts.length !== 2) return false;
+    const port = parseInt(parts[1]);
+    if (isNaN(port) || port < 1 || port > 65535) return false;
+    // Check hostname doesn't contain dangerous characters
+    const hostname = parts[0];
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$/.test(hostname)) return false;
+    return true;
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// SECURITY: Strict CORS
-// SECURITY: Strict CORS (Modified to allow deployed frontends)
+// SECURITY: Strict CORS - Only allow known origins
+const ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:4343',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:4343',
+    'https://app.hashnhedge.com',
+    'https://hashnhedge.com'
+];
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow all origins for the local agent to ensure connectivity from deployed apps
-        // In a strict production environment, you would list specific domains:
-        // const allowedOrigins = ['http://localhost:3000', 'https://hashnhedge.com', ...];
-        return callback(null, true);
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+
+        if (ALLOWED_ORIGINS.includes(origin)) {
+            return callback(null, true);
+        }
+
+        console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+        return callback(new Error('Not allowed by CORS'), false);
     },
     credentials: true
 }));
@@ -65,8 +126,9 @@ const HARDWARE_FILE = path.join(__dirname, 'hardware_data.json');
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: "*", // Allow all for local agent
-        methods: ["GET", "POST"]
+        origin: ALLOWED_ORIGINS,
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -471,8 +533,37 @@ app.post('/config', (req, res) => {
     const { wallet, poolUrl, password, tier, mode, coin, algorithm } = req.body;
     let changed = false;
 
+    // --- INPUT VALIDATION ---
+    // Validate mode
+    if (mode && !VALID_MODES.includes(mode)) {
+        return res.status(400).json({ error: 'Invalid mode. Must be cpu or gpu.' });
+    }
+
+    // Validate coin
+    if (coin && !VALID_COINS.includes(coin)) {
+        return res.status(400).json({ error: `Invalid coin. Must be one of: ${VALID_COINS.join(', ')}` });
+    }
+
+    // Validate tier
+    if (tier && !VALID_TIERS.includes(tier)) {
+        return res.status(400).json({ error: `Invalid tier. Must be one of: ${VALID_TIERS.join(', ')}` });
+    }
+
+    // Validate pool URL format (if provided)
+    if (poolUrl && !validatePoolUrl(poolUrl)) {
+        return res.status(400).json({ error: 'Invalid pool URL format. Must be stratum+tcp:// or stratum+ssl:// with valid host:port' });
+    }
+
+    // Validate wallet address format (if provided)
+    const targetCoin = coin || currentCoin;
+    if (wallet && !validateWallet(wallet, targetCoin)) {
+        return res.status(400).json({ error: `Invalid wallet address format for ${targetCoin}` });
+    }
+
+    // --- END VALIDATION ---
+
     // 1. Mode Update (CPU/GPU)
-    if (mode && ['cpu', 'gpu'].includes(mode) && mode !== config.mode) {
+    if (mode && VALID_MODES.includes(mode) && mode !== config.mode) {
         config.mode = mode;
         // Smart Defaults when switching mode
         if (mode === 'gpu' && currentCoin === 'XMR') {
@@ -782,21 +873,20 @@ app.post('/forum', (req, res) => {
     res.json(newPost);
 });
 
-// --- SECURITY (Real Port Scan) ---
+// --- SECURITY ENDPOINTS ---
+// NOTE: exec() removed for security - command execution is dangerous
 app.get('/hashcat/status', (req, res) => {
-    // Legacy mock support or new real scan status
+    // Legacy mock support
     res.json({ logs: [], hashrate: 0, status: 'idle' });
 });
 
 app.post('/security/scan', (req, res) => {
-    // REAL COMMAND: Netstat to check open ports
-    const cmd = process.platform === 'win32' ? 'netstat -ano | findstr LISTEN' : 'netstat -tuln';
-    exec(cmd, (err, stdout, stderr) => {
-        res.json({
-            success: true,
-            output: stdout || stderr,
-            ports: stdout.split('\n').length
-        });
+    // SECURITY: Removed exec() - returns static response
+    // Port scanning should be done by dedicated security tools, not exposed via API
+    res.json({
+        success: true,
+        message: 'Security scan endpoint disabled for security reasons',
+        ports: 0
     });
 });
 

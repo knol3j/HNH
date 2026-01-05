@@ -195,6 +195,18 @@ app.get('/api/public/prices', async (req, res) => {
 // 3. Token Audit
 app.post('/api/public/audit', async (req, res) => {
     const { tokenAddress } = req.body;
+
+    // SECURITY: Validate Solana address format (base58, 32-44 chars)
+    if (!tokenAddress || typeof tokenAddress !== 'string') {
+        return res.status(400).json({ error: 'Token address is required' });
+    }
+    if (tokenAddress.length < 32 || tokenAddress.length > 44) {
+        return res.status(400).json({ error: 'Invalid token address length' });
+    }
+    if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(tokenAddress)) {
+        return res.status(400).json({ error: 'Invalid token address format (must be base58)' });
+    }
+
     try {
         const rpcRes = await fetch('https://api.mainnet-beta.solana.com', {
             method: 'POST',
@@ -221,12 +233,49 @@ app.post('/api/public/audit', async (req, res) => {
 
 // 4. Forum (Public Read/Write for now)
 app.get('/api/public/forum', (req, res) => { res.json(posts); });
+
+// Forum post validation schema
+const forumPostSchema = z.object({
+    title: z.string()
+        .min(3, 'Title must be at least 3 characters')
+        .max(200, 'Title must be at most 200 characters')
+        .regex(/^[a-zA-Z0-9\s\-_.,!?()]+$/, 'Title contains invalid characters'),
+    content: z.string()
+        .min(10, 'Content must be at least 10 characters')
+        .max(5000, 'Content must be at most 5000 characters'),
+    category: z.string()
+        .min(1, 'Category is required')
+        .max(50, 'Category must be at most 50 characters'),
+    author: z.string()
+        .max(50, 'Author name must be at most 50 characters')
+        .optional()
+});
+
 app.post('/api/public/forum', (req, res) => {
+    // Validate input
+    try {
+        forumPostSchema.parse(req.body);
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: err.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+            });
+        }
+        return res.status(400).json({ error: 'Invalid input' });
+    }
+
     const { title, content, category, author } = req.body;
+
+    // Sanitize by stripping HTML-like content
+    const sanitize = (str) => str.replace(/<[^>]*>/g, '').trim();
+
     const newPost = {
         id: Date.now().toString(),
-        title, content, category,
-        author: author || 'Anonymous',
+        title: sanitize(title),
+        content: sanitize(content),
+        category: sanitize(category),
+        author: sanitize(author || 'Anonymous'),
         timestamp: new Date().toLocaleTimeString(),
         likes: 0, replies: 0, isPinned: false
     };
@@ -304,7 +353,11 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req, re
             }
         });
 
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { algorithm: 'HS256', expiresIn: '24h' }
+        );
         console.log(`[REGISTER] Successfully registered user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
@@ -322,18 +375,24 @@ app.post('/auth/login', authLimiter, validate(loginSchema), async (req, res) => 
 
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user) {
-            console.log(`[LOGIN] User not found: ${username}`);
-            return res.status(400).json({ error: 'User not found' });
+            console.log(`[LOGIN] Failed login attempt for: ${username}`);
+            // Use generic error to prevent user enumeration
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
-            console.log(`[LOGIN] Invalid password for user: ${username}`);
-            return res.status(400).json({ error: 'Invalid password' });
+            console.log(`[LOGIN] Failed login attempt for: ${username}`);
+            // Use same generic error to prevent user enumeration
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
-        console.log(`[LOGIN] Successfully logged in user: ${username} (Role: ${user.role})`);
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { algorithm: 'HS256', expiresIn: '24h' }
+        );
+        console.log(`[LOGIN] Successful login: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
         console.error('[LOGIN] Error:', e.message);
