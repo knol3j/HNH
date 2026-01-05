@@ -64,11 +64,11 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
-    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
-    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
-    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
-    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
+    XMR: 'stratum+ssl://xmr.2miners.com:1010', // SSL Port 1010 (Alternative to 443)
+    RVN: 'stratum+tcp://stratum.ravenminer.com:3838', // Port 3838 (TCP)
+    ETC: 'stratum+tcp://etc.2miners.com:1010', // Low Port 1010
+    ERG: 'stratum+tcp://de.ergo.herominers.com:11800',
+    KAS: 'stratum+tcp://kas.2miners.com:2020' // Low Port 2020
 };
 
 // --- STATE ---
@@ -184,7 +184,7 @@ const startMiner = () => {
     ];
 
     // SECURITY: Input Validation
-    if (config.poolUrl && !config.poolUrl.match(/^(stratum\+tcp|ssl):\/\/[a-zA-Z0-9.:-]+$/)) {
+    if (config.poolUrl && !config.poolUrl.match(/^(stratum\+(tcp|ssl)|ssl):\/\/[a-zA-Z0-9.:-]+$/)) {
         addLog(`❌ Security: Invalid Pool URL detected: ${config.poolUrl}`);
         return;
     }
@@ -237,8 +237,17 @@ const startMiner = () => {
 
 const killMiner = () => {
     if (minerProcess) {
-        minerProcess.kill();
+        try {
+            if (process.platform === 'win32') {
+                spawn('taskkill', ['/pid', minerProcess.pid, '/f', '/t']);
+            } else {
+                minerProcess.kill('SIGKILL');
+            }
+        } catch (e) {
+            console.error("Failed to kill miner", e);
+        }
         minerProcess = null;
+        minerStatus = 'OFFLINE';
     }
 };
 
