@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com', 'https://hashnhedge.com'];
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -135,7 +135,15 @@ try {
 } catch (e) { console.error(e); }
 
 const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+    try {
+        const data = {
+            totalShares,
+            feeShares,
+            wallets: config.wallets,
+            miningMode: config.mode
+        };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (e) { console.error("Failed to save data:", e); }
 };
 
 // --- LOGGING ---
@@ -317,6 +325,7 @@ app.get('/telemetry', (req, res) => {
     const netShares = grossShares - feeDeducted;
 
     res.json({
+        coin: currentCoin,
         gpu_temp: telemetry.temp,
         gpu_util: minerStatus === 'MINING' ? 100 : 0,
         fan_speed: telemetry.fan,
@@ -363,6 +372,7 @@ app.post('/config', (req, res) => {
     }
 
     if (changed) {
+        saveStats(); // Save immediately
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
