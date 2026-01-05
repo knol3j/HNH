@@ -10,7 +10,7 @@
     "RVN": "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA",
     "SOL": "43qairUpjZWBPnkBbksSmokfsg9g8jaW5ZMUcDhnDEhM"
   },
-  "miningMode": "gpu",
+  "miningMode": "cpu",
   "walletHistory": {
     "RVN": [
       "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA"

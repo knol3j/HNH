@@ -28,7 +28,21 @@
       "Bash(cat:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:app.hashnhedge.com)",
+      "WebFetch(domain:hashnhedge-app.up.railway.app)",
+      "WebFetch(domain:hashnhedge.com)",
+      "WebFetch(domain:api.hashnhedge.com)",
+      "Bash(ls -la \"C:\\\\Users\\\\Nweec\\\\HNH-1\\\\agent\\\\bin\"\" 2>&1 || dir \"C:UsersNweecHNH-1agentbin\"\")",
+      "Bash(dir:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(git restore:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
