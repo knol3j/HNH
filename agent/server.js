@@ -64,11 +64,11 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
 const COIN_POOLS = {
-    XMR: 'stratum+ssl://xmr.2miners.com:1010', // SSL Port 1010 (Alternative to 443)
-    RVN: 'stratum+tcp://stratum.ravenminer.com:3838', // Port 3838 (TCP)
-    ETC: 'stratum+tcp://etc.2miners.com:1010', // Low Port 1010
+    XMR: 'stratum+ssl://pool.supportxmr.com:443', // Unblocked (SupportXMR)
+    RVN: 'stratum+tcp://stratum.ravenminer.com:3838', // Unblocked (RavenMiner)
+    ETC: 'stratum+tcp://etc.2miners.com:1010', // Unblocked (2Miners)
     ERG: 'stratum+tcp://de.ergo.herominers.com:11800',
-    KAS: 'stratum+tcp://kas.2miners.com:2020' // Low Port 2020
+    KAS: 'stratum+tcp://kas.2miners.com:2020'
 };
 
 // --- STATE ---
@@ -122,6 +122,12 @@ try {
             currentCoin = 'XMR';
             config.poolUrl = COIN_POOLS.XMR;
             config.algorithm = 'rx/0';
+        }
+
+        // Check for broken/blocked URLs in loaded config and migrate
+        if (config.poolUrl && (config.poolUrl.includes('moneroocean.stream') || config.poolUrl.includes('xmr.2miners.com'))) {
+            console.log('[AGENT] 🛠️  Migrating blocked pool URL to SupportXMR...');
+            config.poolUrl = COIN_POOLS.XMR;
         }
 
         // Set initial wallet if available
@@ -236,19 +242,19 @@ const startMiner = () => {
 };
 
 const killMiner = () => {
-    if (minerProcess) {
-        try {
-            if (process.platform === 'win32') {
-                spawn('taskkill', ['/pid', minerProcess.pid, '/f', '/t']);
-            } else {
-                minerProcess.kill('SIGKILL');
-            }
-        } catch (e) {
-            console.error("Failed to kill miner", e);
+    // Aggressively kill ANY xmrig process to clear port 4444
+    try {
+        if (process.platform === 'win32') {
+            spawn('taskkill', ['/IM', 'xmrig.exe', '/F', '/T']);
+        } else {
+            // Linux/Mac implementation (pkill)
+            if (minerProcess) minerProcess.kill('SIGKILL');
         }
-        minerProcess = null;
-        minerStatus = 'OFFLINE';
+    } catch (e) {
+        console.error("Failed to kill miner", e);
     }
+    minerProcess = null;
+    minerStatus = 'OFFLINE';
 };
 
 // --- TELEMETRY POLLING ---
