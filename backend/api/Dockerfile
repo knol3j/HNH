@@ -21,5 +21,6 @@ COPY index.js ./
 # Expose API port
 EXPOSE 8080
 
-CMD ["node", "index.js"]
+# Run migrations and start server
+CMD npx prisma db push --accept-data-loss && node index.js
 
