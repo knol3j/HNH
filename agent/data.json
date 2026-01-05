@@ -1,11 +1,1 @@
-﻿{
-    "totalShares":  0,
-    "feeShares":  0,
-    "wallets":  {
-                    "ZEPH":  "ZEPHYR2m33dLABjWTVdx5JTUeW7Q1no9EPxnGyiXZj6kRrQF9GAfWaiMb2QcVnxTLt19Htb6bcekEGmDBVapU2ug1auwFPCQsG52i",
-                    "XMR":  "46Jq7oMJDRChGsrD6pWR9u1ggByoGkdYy67vajU7BmFZSkZdrHEQvyb19Fi3hjdcRq5mWV5u71uAk7ohe6koNYWR5SnagdU",
-                    "RVN":  "RQso1HHf2VLBr72Na6u7yWBCCWN8PWn1yA",
-                    "ETC":  "0x19511e52720739f6F47E74221cBCd746BE387535"
-                },
-    "miningMode":  "gpu"
-}
+{"totalShares":1,"feeShares":0.02}
