@@ -38,6 +38,10 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 8080;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Trust proxy for Railway/reverse proxy environments
+// This is required for express-rate-limit to work correctly with X-Forwarded-For headers
+app.set('trust proxy', 1);
+
 if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET environment variable is required');
     process.exit(1);
