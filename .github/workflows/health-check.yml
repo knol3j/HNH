@@ -1,0 +1,81 @@
+name: Railway Health Check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  wait-for-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway deployment
+        run: |
+          echo "Waiting 90 seconds for Railway to deploy..."
+          sleep 90
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: wait-for-deploy
+    steps:
+      - name: Check API Health
+        id: api-health
+        run: |
+          echo "Checking API health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api.hashnhedge.com/health || echo "000")
+          echo "API Response Code: $response"
+
+          if [ "$response" = "200" ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "API is healthy"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "API health check failed with status: $response"
+          fi
+
+      - name: Check API Response Body
+        run: |
+          echo "API Health Response:"
+          curl -s https://api.hashnhedge.com/health | jq . || curl -s https://api.hashnhedge.com/health
+
+      - name: Check App Health
+        id: app-health
+        run: |
+          echo "Checking App health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://app.hashnhedge.com || echo "000")
+          echo "App Response Code: $response"
+
+          if [ "$response" = "200" ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "App is healthy"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "App health check failed with status: $response"
+          fi
+
+      - name: Check Database Connectivity
+        run: |
+          echo "Verifying database connection via API..."
+          db_status=$(curl -s https://api.hashnhedge.com/health | jq -r '.database // "unknown"')
+          echo "Database status: $db_status"
+
+          if [ "$db_status" != "connected" ]; then
+            echo "Warning: Database may not be connected"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Health Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| API (api.hashnhedge.com) | ${{ steps.api-health.outputs.status == 'healthy' && '✅ Healthy' || '❌ Unhealthy' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| App (app.hashnhedge.com) | ${{ steps.app-health.outputs.status == 'healthy' && '✅ Healthy' || '❌ Unhealthy' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Checked at: $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if unhealthy
+        if: steps.api-health.outputs.status == 'unhealthy' || steps.app-health.outputs.status == 'unhealthy'
+        run: |
+          echo "One or more services are unhealthy!"
+          exit 1
