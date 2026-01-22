@@ -1005,6 +1005,18 @@ app.get('/user/achievements', authenticateToken, async (req, res) => {
     }
 });
 
+// --- PUBLIC STATS ---
+
+// Get total user count
+app.get('/stats/users', async (req, res) => {
+    try {
+        const count = await prisma.user.count();
+        res.json({ count });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- LEADERBOARD ---
 
 app.get('/leaderboard', authenticateToken, async (req, res) => {

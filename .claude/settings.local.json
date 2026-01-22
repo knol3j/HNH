@@ -44,7 +44,11 @@
       "Bash(npm audit:*)",
       "Bash(npm test:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(npx prisma db push:*)"
+      "Bash(npx prisma db push:*)",
+      "Bash(winget install:*)",
+      "Bash(gh:*)",
+      "Bash(railway:*)",
+      "Bash(cmd /c \"gh --version\")"
     ],
     "deny": [],
     "ask": []
