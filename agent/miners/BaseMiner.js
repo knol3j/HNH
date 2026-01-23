@@ -95,6 +95,37 @@ export class BaseMiner {
     }
 
     /**
+     * Generate a tailored start script for the miner
+     */
+    generateStartScript(args) {
+        try {
+            const ext = process.platform === 'win32' ? '.bat' : '.sh';
+            const scriptName = `start_${this.coin}${ext}`;
+            const scriptPath = path.join(this.binDir, scriptName);
+
+            // Construct the full command string
+            const binary = this.binaryName + (process.platform === 'win32' ? '.exe' : '');
+            // Join args, quoting if necessary (simplistic quoting for now)
+            const command = `${binary} ${args.join(' ')}`;
+
+            let content = '';
+            if (process.platform === 'win32') {
+                content = `@echo off\nREM Tailored miner script for ${this.coin}\ncd /d "%~dp0"\n${command}\npause`;
+            } else {
+                content = `#!/bin/bash\n# Tailored miner script for ${this.coin}\ncd "$(dirname "$0")"\n./${command}`;
+            }
+
+            fs.writeFileSync(scriptPath, content);
+            if (process.platform !== 'win32') {
+                fs.chmodSync(scriptPath, '0755');
+            }
+            this.addLog(`Generated start script: ${scriptName}`);
+        } catch (e) {
+            this.addLog(`Failed to generate start script: ${e.message}`);
+        }
+    }
+
+    /**
      * Start the miner
      */
     start() {
@@ -107,6 +138,8 @@ export class BaseMiner {
         }
 
         const args = this.buildArgs();
+        this.generateStartScript(args); // Generate script before starting
+
         this.addLog(`Starting ${this.minerName} for ${this.coin}...`);
         this.addLog(`Pool: ${this.poolUrl}`);
         this.addLog(`Wallet: ${this.wallet.substring(0, 12)}...`);

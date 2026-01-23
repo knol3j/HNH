@@ -15,6 +15,7 @@ export class MinerManager {
     constructor(config = {}) {
         this.binDir = config.binDir || path.join(process.cwd(), 'bin');
         this.wallets = config.wallets || {};
+        this.poolUrls = config.poolUrls || {};
         this.workerId = config.workerId || 'HNH_Worker';
 
         // Platform fee config
@@ -100,6 +101,7 @@ export class MinerManager {
         }
         if (options.poolUrl) {
             miner.poolUrl = options.poolUrl;
+            this.poolUrls[coin] = options.poolUrl;
         }
         if (options.password) {
             miner.password = options.password;

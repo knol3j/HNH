@@ -59,7 +59,7 @@ export const COIN_CONFIG = {
 /**
  * Get miner class for a given coin
  */
-export function getMinerClass(coin) {
+export async function getMinerClass(coin) {
     switch (coin.toUpperCase()) {
         case 'XMR': return (await import('./XmrMiner.js')).XmrMiner;
         case 'RVN': return (await import('./RvnMiner.js')).RvnMiner;

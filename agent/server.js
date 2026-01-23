@@ -79,6 +79,7 @@ app.use(requireAuth);
 
 let persistedData = {
     wallets: {},
+    poolUrls: {},
     miningMode: 'cpu',
     totalShares: 0,
     feeShares: 0,
@@ -112,6 +113,7 @@ const saveData = () => {
 const minerManager = new MinerManager({
     binDir: BIN_DIR,
     wallets: persistedData.wallets,
+    poolUrls: persistedData.poolUrls,
     userTier: persistedData.userTier,
     workerId: 'HNH_Worker'
 });
@@ -138,6 +140,37 @@ app.get('/telemetry', (req, res) => {
             status: 'RUNNING',
             miner: telemetry.minerName
         } : null
+    });
+});
+
+/**
+ * GET /stats - Alias for /status (Used by Frontend)
+ */
+app.get('/stats', (req, res) => {
+    const telemetry = minerManager.getTelemetry();
+    // Frontend expects NetworkStats structure roughly, or just simple stats
+    // App.tsx expects: activeNodes, totalTflops, jobsRunning, etc.
+    // BUT the agent is for a SINGLE node. 
+    // App.tsx fetchStats() calls agentUrl/stats and expects NetworkStats? 
+    // Wait, App.tsx line 43: const res = await fetch(`${agentUrl}/stats`);
+    // Then setStats(data).
+    // NetworkStats interface: activeNodes, totalTflops, jobsRunning...
+    // The Agent returns its own local stats.
+    // The previous implementation of App.tsx seems to treat the agent URL as a source for network-wide stats? 
+    // Or maybe the agent provides its *contribution*?
+    // Let's look at App.tsx again. It calls setStats(data).
+    // If the Agent only returns local stats, App.tsx might display wrong info or 1 active node.
+    // Let's implement /stats to return what App.tsx likely wants for a single node view or mapped.
+
+    // Actually, looking at App.tsx, it seems it treats the 'agent' as the source for the Dashboard stats.
+    // If connected to a local agent, it shows one node active.
+
+    res.json({
+        activeNodes: telemetry.status === 'MINING' ? 1 : 1, // Online
+        totalTflops: telemetry.hashrate / 1000000, // Rough proxy
+        jobsRunning: telemetry.status === 'MINING' ? 1 : 0,
+        networkUtilization: telemetry.status === 'MINING' ? 100 : 0,
+        avgPricePerFLOP: 0.0004
     });
 });
 
@@ -178,6 +211,7 @@ app.get('/meta', (req, res) => {
         coins: Object.keys(COIN_CONFIG),
         coinConfig: COIN_CONFIG,
         wallets: persistedData.wallets,
+        poolUrls: persistedData.poolUrls,
         currentCoin: minerManager.activeCoin,
         userTier: persistedData.userTier
     });
@@ -198,15 +232,24 @@ app.post('/start', (req, res) => {
         return res.status(400).json({ error: `Unknown coin: ${coin}` });
     }
 
-    // Update wallet if provided
+    // Update config if provided
+    let changed = false;
     if (wallet) {
         persistedData.wallets[upperCoin] = wallet;
+        changed = true;
+    }
+    if (poolUrl) {
+        persistedData.poolUrls[upperCoin] = poolUrl;
+        changed = true;
+    }
+
+    if (changed) {
         saveData();
     }
 
     const result = minerManager.startMining(upperCoin, {
         wallet: wallet || persistedData.wallets[upperCoin],
-        poolUrl: poolUrl,
+        poolUrl: poolUrl || persistedData.poolUrls[upperCoin],
         password: password
     });
 
@@ -241,14 +284,23 @@ app.post('/switch-coin', (req, res) => {
         return res.status(400).json({ error: `Unknown coin: ${coin}` });
     }
 
+    let changed = false;
     if (wallet) {
         persistedData.wallets[upperCoin] = wallet;
+        changed = true;
+    }
+    if (poolUrl) {
+        persistedData.poolUrls[upperCoin] = poolUrl;
+        changed = true;
+    }
+
+    if (changed) {
         saveData();
     }
 
     const result = minerManager.switchCoin(upperCoin, {
         wallet: wallet || persistedData.wallets[upperCoin],
-        poolUrl: poolUrl
+        poolUrl: poolUrl || persistedData.poolUrls[upperCoin]
     });
 
     if (result.success) {
