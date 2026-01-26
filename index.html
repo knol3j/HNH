@@ -6,6 +6,19 @@
     <title>HashNHedge AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // GitHub Pages SPA redirect handler
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('p');
+        if (redirect) {
+          params.delete('p');
+          const remaining = params.toString();
+          const newUrl = decodeURIComponent(redirect) + (remaining ? '?' + remaining : '');
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
+    <script>
       tailwind.config = {
         theme: {
           extend: {
