@@ -20,4 +20,4 @@ EXPOSE 3000
 
 # Start command
 # Start command
-CMD sh -c "npm run preview -- --port ${PORT:-3000} --host"
+CMD npx serve -s dist -l ${PORT:-3000}
