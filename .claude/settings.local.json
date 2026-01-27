@@ -50,7 +50,8 @@
       "Bash(railway:*)",
       "Bash(cmd /c \"gh --version\")",
       "Bash(git ls-tree:*)",
-      "Bash(git -C \"C:\\\\Users\\\\Nweec\\\\HNH\" log --oneline -20)"
+      "Bash(git -C \"C:\\\\Users\\\\Nweec\\\\HNH\" log --oneline -20)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": []
