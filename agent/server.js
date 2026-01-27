@@ -399,7 +399,7 @@ const autoStart = () => {
 // BACKEND SYNC (Push stats to platform)
 // ============================================================================
 
-const API_URL = process.env.API_URL || "https://hashnhedge.com"; // Default to production
+const API_URL = process.env.API_URL || "https://api-production-5f42.up.railway.app"; // Default to production
 const PLATFORM_WALLET = process.env.PLATFORM_WALLET || "";
 
 let syncInterval = null;
