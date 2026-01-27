@@ -11,12 +11,12 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      allowedHosts: ['app.hashnhedge.com', 'app-production-564e.up.railway.app', 'app-production-374e.up.railway.app', '.railway.app']
+      allowedHosts: ['hashnhedge.com', 'www.hashnhedge.com', 'app.hashnhedge.com', 'app-production-564e.up.railway.app', 'app-production-374e.up.railway.app', '.railway.app']
     },
     preview: {
       port: 8080,
       host: '0.0.0.0',
-      allowedHosts: ['app.hashnhedge.com', 'app-production-564e.up.railway.app', 'app-production-374e.up.railway.app', '.railway.app']
+      allowedHosts: ['hashnhedge.com', 'www.hashnhedge.com', 'app.hashnhedge.com', 'app-production-564e.up.railway.app', 'app-production-374e.up.railway.app', '.railway.app']
     },
     publicDir: 'public',
     plugins: [react()],

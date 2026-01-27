@@ -14,10 +14,12 @@ COPY . .
 # Build the project
 RUN npm run build
 
+# Verify build output
+RUN ls -la dist/index.html
+
 # Expose port
 ENV PORT=3000
 EXPOSE 3000
 
 # Start command
-# Start command
-CMD sh -c "npm run preview -- --port ${PORT:-3000} --host"
+CMD ["npm", "run", "preview:prod"]
