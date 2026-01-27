@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "preview:prod": "serve -s dist -l tcp://0.0.0.0:3000",
+    "preview:prod": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}",
     "start": "cd agent && npm install && node server.js",
     "server": "node backend/api/index.js",
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",

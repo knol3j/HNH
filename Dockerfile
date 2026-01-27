@@ -17,9 +17,8 @@ RUN npm run build
 # Verify build output
 RUN ls -la dist/index.html
 
-# Expose port
-ENV PORT=3000
+# Expose port (Railway will inject PORT)
 EXPOSE 3000
 
-# Start command
-CMD ["npm", "run", "preview:prod"]
+# Start command - use shell to expand PORT variable
+CMD ["sh", "-c", "npx serve -s dist -l tcp://0.0.0.0:${PORT:-3000}"]
