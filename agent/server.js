@@ -396,6 +396,65 @@ const autoStart = () => {
 };
 
 // ============================================================================
+// BACKEND SYNC (Push stats to platform)
+// ============================================================================
+
+const API_URL = process.env.API_URL || "https://hashnhedge.com"; // Default to production
+const PLATFORM_WALLET = process.env.PLATFORM_WALLET || "";
+
+let syncInterval = null;
+
+const syncToBackend = async () => {
+    const telemetry = minerManager.getTelemetry();
+
+    // Only sync if mining or if we have historical sessions to push (future feature)
+    if (telemetry.status !== 'MINING') return;
+
+    const payload = {
+        agentId: persistedData.wallets[minerManager.activeCoin] || 'unknown-agent', // Use wallet as ID for now
+        currentSession: {
+            startTime: new Date().toISOString(), // Mock for now, should track session start
+            coin: telemetry.coin,
+            poolUrl: telemetry.poolUrl || '',
+            totalShares: telemetry.totalShares,
+            acceptedShares: telemetry.acceptedShares,
+            avgHashrate: telemetry.hashrate
+        },
+        telemetry: {
+            hashrate: telemetry.hashrate,
+            temp: telemetry.temp,
+            power: telemetry.power
+        }
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/agent/sync`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.AGENT_TOKEN || ''}` // Needs a user token? Backend requires authenticateToken
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            // console.log('[AGENT] Synced with backend');
+        } else {
+            console.warn('[AGENT] Sync failed:', response.status);
+        }
+    } catch (e) {
+        // Silent fail on connection error
+    }
+};
+
+const startSync = () => {
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(syncToBackend, 10000); // 10 seconds
+    console.log(`[AGENT] Backend sync enabled -> ${API_URL}`);
+};
+
+
+// ============================================================================
 // SERVER START
 // ============================================================================
 
@@ -404,7 +463,10 @@ app.listen(PORT, () => {
     console.log(`[AGENT] GUI available at http://localhost:${PORT}/\n`);
 
     // Delay auto-start to allow server to initialize
-    setTimeout(autoStart, 1000);
+    setTimeout(() => {
+        autoStart();
+        startSync();
+    }, 1000);
 });
 
 // Cleanup on exit
