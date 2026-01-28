@@ -51,7 +51,9 @@
       "Bash(cmd /c \"gh --version\")",
       "Bash(git ls-tree:*)",
       "Bash(git -C \"C:\\\\Users\\\\Nweec\\\\HNH\" log --oneline -20)",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
