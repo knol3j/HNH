@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HashNHedge AI</title>
+    <script>
+      // Single Page App redirect for GitHub Pages
+      // Converts the path to a query parameter so index.html can restore it
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      const redirectUrl = window.location.origin + '/?p=' + encodeURIComponent(path);
+      window.location.replace(redirectUrl);
+    </script>
+  </head>
+  <body>
+    <noscript>
+      <meta http-equiv="refresh" content="0;url=/" />
+    </noscript>
+  </body>
+</html>
