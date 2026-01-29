@@ -12,7 +12,7 @@ export const analyzeComputeRequirements = async (taskDescription: string): Promi
     const ai = getAIClient();
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: `You are a DevOps and AI Infrastructure expert. A user wants to run this computing task: "${taskDescription}". 
       Analyze the technical requirements. Recommend specific GPU hardware (e.g. H100, A100, 4090), estimate VRAM usage, and determine duration.`,
       config: {
@@ -54,7 +54,7 @@ export const getNetworkStatusAnalysis = async (stats: any): Promise<string> => {
     if (apiKey) {
       const ai = getAIClient();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: `Given these decentralized compute network stats: ${JSON.stringify(stats)}, provide a 1-sentence quick status update for the dashboard header about market liquidity or supply demand.`,
       });
       return response.text || "Network status stable.";
@@ -92,7 +92,7 @@ export const getMiningOptimization = async (
     if (apiKey) {
       const ai = getAIClient();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: `You are a crypto mining optimization AI. 
           
 Current state:
