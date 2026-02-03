@@ -83,6 +83,7 @@ export interface ModelTemplate {
 // Navigation types - Expanded for full feature set
 export type View =
   | 'DASHBOARD'
+  | 'WALLETS'
   | 'MARKETPLACE'
   | 'DEPLOY'
   | 'PROVIDER'
@@ -101,6 +102,39 @@ export type View =
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
+
+// Supported mining coins
+export type MiningCoin = 'XMR' | 'RVN' | 'ETC' | 'ERG' | 'KAS';
+
+// Mining wallet interface
+export interface MiningWallet {
+  id: string;
+  coin: MiningCoin;
+  address: string;
+  pool: string;
+  workerName: string;
+  createdAt: number;
+  updatedAt: number;
+  isValid: boolean;
+  lastValidated?: number;
+}
+
+// Mining wallet form data
+export interface WalletFormData {
+  coin: MiningCoin;
+  address: string;
+  pool: string;
+  workerName: string;
+}
+
+// Pool configuration for each coin
+export interface PoolConfig {
+  coin: MiningCoin;
+  name: string;
+  defaultPool: string;
+  exampleAddress: string;
+  website: string;
+}
 
 // Ethereum Window Type
 export interface EthereumProvider {

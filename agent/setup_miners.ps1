@@ -25,26 +25,38 @@ $TEMP_DIR = Join-Path $env:TEMP "hnh_miner_setup"
 
 # Miner versions and download URLs
 $MINERS = @{
-    "xmrig" = @{
-        Version = "6.21.1"
-        Url = "https://github.com/xmrig/xmrig/releases/download/v6.21.1/xmrig-6.21.1-msvc-win64.zip"
-        Binary = "xmrig.exe"
-        Coins = @("XMR")
-        Type = "CPU"
+    "xmrig"    = @{
+        Version = "6.22.2"
+        Url     = "https://github.com/xmrig/xmrig/releases/download/v6.22.2/xmrig-6.22.2-msvc-win64.zip"
+        Binary  = "xmrig.exe"
+        Coins   = @("XMR")
+        Type    = "CPU"
+        Script  = @{
+            Win   = "start_xmr_cpu.bat"
+            Linux = "start_xmr_cpu.sh"
+        }
     }
-    "t-rex" = @{
+    "t-rex"    = @{
         Version = "0.26.8"
-        Url = "https://github.com/trexminer/T-Rex/releases/download/0.26.8/t-rex-0.26.8-win.zip"
-        Binary = "t-rex.exe"
-        Coins = @("RVN", "ETC")
-        Type = "GPU (NVIDIA)"
+        Url     = "https://github.com/trexminer/T-Rex/releases/download/0.26.8/t-rex-0.26.8-win.zip"
+        Binary  = "t-rex.exe"
+        Coins   = @("RVN", "ETC")
+        Type    = "GPU (NVIDIA)"
+        Script  = @{
+            Win   = @("start_rvn_gpu.bat", "start_etc_gpu.bat")
+            Linux = @("start_rvn_gpu.sh", "start_etc_gpu.sh")
+        }
     }
     "lolMiner" = @{
         Version = "1.82"
-        Url = "https://github.com/Lolliedieb/lolMiner-releases/releases/download/1.82/lolMiner_v1.82_Win64.zip"
-        Binary = "lolMiner.exe"
-        Coins = @("ERG", "KAS")
-        Type = "GPU (AMD/NVIDIA)"
+        Url     = "https://github.com/Lolliedieb/lolMiner-releases/releases/download/1.82/lolMiner_v1.82_Win64.zip"
+        Binary  = "lolMiner.exe"
+        Coins   = @("ERG", "KAS")
+        Type    = "GPU (AMD/NVIDIA)"
+        Script  = @{
+            Win   = @("start_erg_gpu.bat", "start_kas_gpu.bat")
+            Linux = @("start_erg_gpu.sh", "start_kas_gpu.sh")
+        }
     }
 }
 
@@ -81,7 +93,7 @@ function Write-Info {
     Write-Host "    $Text" -ForegroundColor Gray
 }
 
-function Download-File {
+function Save-File {
     param(
         [string]$Url,
         [string]$OutputPath
@@ -99,7 +111,7 @@ function Download-File {
     }
 }
 
-function Extract-Archive {
+function Expand-ZipFile {
     param(
         [string]$ArchivePath,
         [string]$DestinationPath
@@ -177,7 +189,7 @@ foreach ($name in $MINERS.Keys) {
     Write-Step "Downloading $name v$($miner.Version)..."
     Write-Info "URL: $($miner.Url)"
 
-    if (-not (Download-File -Url $miner.Url -OutputPath $zipFile)) {
+    if (-not (Save-File -Url $miner.Url -OutputPath $zipFile)) {
         $failed += $name
         continue
     }
@@ -187,7 +199,7 @@ foreach ($name in $MINERS.Keys) {
     $extractDir = Join-Path $TEMP_DIR $name
     Write-Step "Extracting..."
 
-    if (-not (Extract-Archive -ArchivePath $zipFile -DestinationPath $extractDir)) {
+    if (-not (Expand-ZipFile -ArchivePath $zipFile -DestinationPath $extractDir)) {
         $failed += $name
         continue
     }
@@ -239,6 +251,15 @@ Write-Host ""
 Write-Host "Installed binaries:" -ForegroundColor White
 Get-ChildItem -Path $BIN_DIR -Filter "*.exe" | ForEach-Object {
     Write-Host "  - $($_.Name)" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "Available mining scripts:" -ForegroundColor White
+Get-ChildItem -Path $BIN_DIR -Filter "start_*.bat" | ForEach-Object {
+    Write-Host "  - $($_.Name)" -ForegroundColor Cyan
+}
+Get-ChildItem -Path $BIN_DIR -Filter "start_*.sh" | ForEach-Object {
+    Write-Host "  - $($_.Name)" -ForegroundColor Cyan
 }
 
 Write-Host ""

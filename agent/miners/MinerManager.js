@@ -4,6 +4,7 @@
  */
 
 import path from 'path';
+import fs from 'fs';
 import { XmrMiner } from './XmrMiner.js';
 import { RvnMiner } from './RvnMiner.js';
 import { EtcMiner } from './EtcMiner.js';
@@ -284,14 +285,42 @@ export class MinerManager {
 
         for (const coin of Object.keys(COIN_CONFIG)) {
             const miner = this.getMiner(coin);
+            const isWin = process.platform === 'win32';
             installed[coin] = {
                 binary: COIN_CONFIG[coin].binary,
                 installed: miner.isBinaryInstalled(),
-                path: miner.getBinaryPath()
+                path: miner.getBinaryPath(),
+                script: isWin ? COIN_CONFIG[coin].scriptWin : COIN_CONFIG[coin].scriptLinux,
+                scriptPath: path.join(this.binDir, isWin ? COIN_CONFIG[coin].scriptWin : COIN_CONFIG[coin].scriptLinux)
             };
         }
 
         return installed;
+    }
+
+    /**
+     * Get script path for a specific coin
+     */
+    getScriptPath(coin) {
+        coin = coin.toUpperCase();
+        if (!COIN_CONFIG[coin]) {
+            throw new Error(`Unknown coin: ${coin}`);
+        }
+        const isWin = process.platform === 'win32';
+        const scriptName = isWin ? COIN_CONFIG[coin].scriptWin : COIN_CONFIG[coin].scriptLinux;
+        return path.join(this.binDir, scriptName);
+    }
+
+    /**
+     * Check if script exists for a coin
+     */
+    hasScript(coin) {
+        try {
+            const scriptPath = this.getScriptPath(coin);
+            return fs.existsSync(scriptPath);
+        } catch (e) {
+            return false;
+        }
     }
 }
 

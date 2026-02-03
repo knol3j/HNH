@@ -20,7 +20,10 @@ export const COIN_CONFIG = {
         type: 'cpu',
         miner: 'XMRig',
         binary: 'xmrig',
-        defaultPool: 'stratum+ssl://pool.supportxmr.com:443'
+        scriptWin: 'start_xmr_cpu.bat',
+        scriptLinux: 'start_xmr_cpu.sh',
+        defaultPool: 'stratum+ssl://pool.supportxmr.com:443',
+        description: 'CPU-only mining with XMRig'
     },
     RVN: {
         name: 'Ravencoin',
@@ -28,7 +31,10 @@ export const COIN_CONFIG = {
         type: 'gpu',
         miner: 'T-Rex',
         binary: 't-rex',
-        defaultPool: 'stratum+tcp://stratum.ravenminer.com:3838'
+        scriptWin: 'start_rvn_gpu.bat',
+        scriptLinux: 'start_rvn_gpu.sh',
+        defaultPool: 'stratum+tcp://stratum.ravenminer.com:3838',
+        description: 'GPU mining with T-Rex (NVIDIA optimized)'
     },
     ETC: {
         name: 'Ethereum Classic',
@@ -36,7 +42,10 @@ export const COIN_CONFIG = {
         type: 'gpu',
         miner: 'T-Rex',
         binary: 't-rex',
-        defaultPool: 'stratum+tcp://etc.2miners.com:1010'
+        scriptWin: 'start_etc_gpu.bat',
+        scriptLinux: 'start_etc_gpu.sh',
+        defaultPool: 'stratum+tcp://etc.2miners.com:1010',
+        description: 'GPU mining with T-Rex (NVIDIA optimized)'
     },
     ERG: {
         name: 'Ergo',
@@ -44,7 +53,10 @@ export const COIN_CONFIG = {
         type: 'gpu',
         miner: 'lolMiner',
         binary: 'lolMiner',
-        defaultPool: 'stratum+tcp://de.ergo.herominers.com:11800'
+        scriptWin: 'start_erg_gpu.bat',
+        scriptLinux: 'start_erg_gpu.sh',
+        defaultPool: 'stratum+tcp://de.ergo.herominers.com:11800',
+        description: 'GPU mining with lolMiner (AMD/NVIDIA)'
     },
     KAS: {
         name: 'Kaspa',
@@ -52,7 +64,10 @@ export const COIN_CONFIG = {
         type: 'gpu',
         miner: 'lolMiner',
         binary: 'lolMiner',
-        defaultPool: 'stratum+tcp://kas.2miners.com:2020'
+        scriptWin: 'start_kas_gpu.bat',
+        scriptLinux: 'start_kas_gpu.sh',
+        defaultPool: 'stratum+tcp://kas.2miners.com:2020',
+        description: 'GPU mining with lolMiner (AMD/NVIDIA)'
     }
 };
 
