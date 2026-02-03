@@ -1,113 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HashNHedge AI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // GitHub Pages SPA redirect handler
-    (function () {
-      const params = new URLSearchParams(window.location.search);
-      const redirect = params.get('p');
-      if (redirect) {
-        params.delete('p');
-        const remaining = params.toString();
-        const newUrl = decodeURIComponent(redirect) + (remaining ? '?' + remaining : '');
-        window.history.replaceState(null, '', newUrl);
-      }
-    })();
-  </script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            background: '#09090b',
-            surface: '#18181b',
-            primary: '#10b981', // Emerald 500
-            'primary-hover': '#059669',
-            accent: '#3b82f6', // Blue 500
-            danger: '#ef4444',
-            warning: '#f59e0b',
-            text: '#e4e4e7',
-            muted: '#a1a1aa',
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HashNHedge AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // GitHub Pages SPA redirect handler
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('p');
+        if (redirect) {
+          params.delete('p');
+          const remaining = params.toString();
+          const newUrl = decodeURIComponent(redirect) + (remaining ? '?' + remaining : '');
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: '#09090b',
+              surface: '#18181b',
+              primary: '#10b981', // Emerald 500
+              'primary-hover': '#059669',
+              accent: '#3b82f6', // Blue 500
+              danger: '#ef4444',
+              warning: '#f59e0b',
+              text: '#e4e4e7',
+              muted: '#a1a1aa',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            }
           }
         }
       }
-    }
-  </script>
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX');
-  </script>
-  <!-- Google AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4626165154390205"
-    crossorigin="anonymous"></script>
-  <style>
-    body {
-      background-color: #09090b;
-      color: #e4e4e7;
-    }
+    </script>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4626165154390205" crossorigin="anonymous"></script>
+    <style>
+      body {
+        background-color: #09090b;
+        color: #e4e4e7;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #18181b; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #52525b; 
+      }
+    </style>
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #18181b;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #3f3f46;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #52525b;
-    }
-  </style>
-  <script>
-    // POLYFILL: Fix for dependencies that expect process.env
-    window.process = { env: { NODE_ENV: 'production' } };
-
-    // DEBUG: Global Error Handler to show crashes on screen
-    window.onerror = function (msg, url, line, col, error) {
-      var div = document.createElement("div");
-      div.style.position = "fixed";
-      div.style.top = "0";
-      div.style.left = "0";
-      div.style.width = "100%";
-      div.style.backgroundColor = "red";
-      div.style.color = "white";
-      div.style.padding = "20px";
-      div.style.zIndex = "9999";
-      div.textContent = "CRITICAL ERROR: " + msg + " at " + line + ":" + col;
-      document.body.appendChild(div);
-      console.error("Global Error:", error);
-    };
-  </script>
-
-  <script type="module" crossorigin src="/assets/D21zLp4f.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/_gYossVp.js">
-  <link rel="modulepreload" crossorigin href="/assets/CAy2MRIy.js">
-  <link rel="modulepreload" crossorigin href="/assets/DfN1OU-M.js">
-  <link rel="stylesheet" crossorigin href="/assets/DmHHO85v.css">
+  <script type="module" crossorigin src="./assets/index-CZFAqpje.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DmHHO85v.css">
 </head>
-
-<body>
-  <div id="root"></div>
+  <body>
+    <div id="root"></div>
 </body>
-
 </html>
