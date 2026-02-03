@@ -265,12 +265,13 @@ export class MinerManager {
         const coins = {};
 
         for (const [coin, config] of Object.entries(COIN_CONFIG)) {
-            const miner = this.miners[coin];
+            // Ensure miner instance exists so we can check if binary is installed
+            const miner = this.getMiner(coin);
             coins[coin] = {
                 ...config,
                 wallet: this.wallets[coin] || null,
                 isActive: this.activeCoin === coin,
-                binaryInstalled: miner ? miner.isBinaryInstalled() : false
+                binaryInstalled: miner.isBinaryInstalled()
             };
         }
 

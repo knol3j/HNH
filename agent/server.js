@@ -10,11 +10,20 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { MinerManager } from './miners/MinerManager.js';
 import { COIN_CONFIG } from './miners/index.js';
+import { Server } from 'socket.io';
+import { createServer } from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*", // Keep it simple for local agent
+        methods: ["GET", "POST"]
+    }
+});
 
 // ============================================================================
 // CONFIGURATION
@@ -28,6 +37,8 @@ const BIN_DIR = path.join(__dirname, 'bin');
 const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
     'https://app.hashnhedge.com',
     'https://hashnhedge.com'
 ];
@@ -167,7 +178,7 @@ app.get('/stats', (req, res) => {
 
     res.json({
         activeNodes: telemetry.status === 'MINING' ? 1 : 1, // Online
-        totalTflops: telemetry.hashrate / 1000000, // Rough proxy
+        totalTflops: (telemetry.hashrate || 0) / 1000000, // Rough proxy
         jobsRunning: telemetry.status === 'MINING' ? 1 : 0,
         networkUtilization: telemetry.status === 'MINING' ? 100 : 0,
         avgPricePerFLOP: 0.0004
@@ -185,6 +196,22 @@ app.get('/status', (req, res) => {
         hashrate: telemetry.hashrate,
         uptime: process.uptime()
     });
+});
+
+/**
+ * START/STOP ALIASES for Frontend
+ */
+app.post('/start-miner', (req, res) => {
+    const lastCoin = persistedData.lastCoin || 'XMR';
+    const result = minerManager.startMining(lastCoin, {
+        wallet: persistedData.wallets[lastCoin]
+    });
+    res.json(result);
+});
+
+app.post('/stop-miner', (req, res) => {
+    minerManager.stopMining();
+    res.json({ success: true, status: 'STOPPED' });
 });
 
 /**
@@ -439,7 +466,7 @@ const syncToBackend = async () => {
 
         if (response.ok) {
             // console.log('[AGENT] Synced with backend');
-        } else {
+        } else if (response.status !== 401) {
             console.warn('[AGENT] Sync failed:', response.status);
         }
     } catch (e) {
@@ -458,9 +485,15 @@ const startSync = () => {
 // SERVER START
 // ============================================================================
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`\n[AGENT] HashNHedge Mining Agent running on http://localhost:${PORT}`);
     console.log(`[AGENT] GUI available at http://localhost:${PORT}/\n`);
+
+    // Emit telemetry via socket
+    setInterval(() => {
+        const telemetry = minerManager.getTelemetry();
+        io.emit('telemetry', telemetry);
+    }, 2000);
 
     // Delay auto-start to allow server to initialize
     setTimeout(() => {

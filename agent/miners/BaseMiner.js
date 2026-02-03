@@ -85,8 +85,7 @@ export class BaseMiner {
      * Add a log entry
      */
     addLog(msg) {
-        const timestamp = new Date().toLocaleTimeString();
-        const entry = `[${timestamp}] [${this.coin}] ${msg}`;
+        const entry = `[${this.coin}] ${msg}`;
         console.log(entry);
         this.logs.unshift(entry);
         if (this.logs.length > this.maxLogs) {
