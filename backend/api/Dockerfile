@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:18-bullseye-slim
 
 # Install OpenSSL for Prisma
 RUN apt-get update -y && apt-get install -y openssl
