@@ -2,9 +2,7 @@
 import { User, UserCredentials } from '../types';
 
 // Railway backend URL - uses VITE_API_URL in production, localhost only for local dev
-// Railway backend URL - must be set in environment variables
-// Railway backend URL - hardcoded to ensure it works
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
 
 export const registerUser = async (creds: UserCredentials): Promise<User | null> => {
     try {
