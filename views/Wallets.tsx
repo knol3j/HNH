@@ -1,62 +1,661 @@
-[
-    {
-        "react": "import { MiningWallet",
-        "../types": "import {\n  getMiningWallets",
-        "../services/miningWalletService": "import {\n  Wallet as WalletIcon",
-        "lucide-react": "const Wallets: React.FC = () => {\n  const [wallets",
-        "coin": "XMR",
-        "address": ",\n    pool:",
-        "workerName": ""
-    },
-    [
-        "error, setError] = useState<string | null>(null);\n  const [success, setSuccess] = useState<string | null>(null);\n  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);\n\n  // Load wallets on mount\n  useEffect(() => {\n    loadWallets();\n    \n    // Subscribe to wallet changes\n    const unsubscribe = onWalletsChanged(loadWallets);\n    return unsubscribe;\n  }, []);\n\n  const loadWallets = () => {\n    setWallets(getMiningWallets());\n  };\n\n  const handleAddWallet = () => {\n    setIsAdding(true);\n    setEditingWallet(null);\n    setFormData({\n      coin: 'XMR',\n      address: '',\n      pool: getPoolSuggestion('XMR'),\n      workerName: ''\n    });\n    setError(null);\n    setSuccess(null);\n  };\n\n  const handleEditWallet = (wallet: MiningWallet) => {\n    setIsAdding(false);\n    setEditingWallet(wallet);\n    setFormData({\n      coin: wallet.coin,\n      address: wallet.address,\n      pool: wallet.pool,\n      workerName: wallet.workerName\n    });\n    setError(null);\n    setSuccess(null);\n  };\n\n  const handleCancel = () => {\n    setIsAdding(false);\n    setEditingWallet(null);\n    setFormData({\n      coin: 'XMR',\n      address: '',\n      pool: '',\n      workerName: ''\n    });\n    setError(null);\n  };\n\n  const handleSave = () => {\n    setError(null);\n    setSuccess(null);\n\n    // Validate\n    if (!formData.address.trim()) {\n      setError('Wallet address is required');\n      return;\n    }\n\n    if (!formData.pool.trim()) {\n      setError('Pool address is required');\n      return;\n    }\n\n    if (!formData.workerName.trim()) {\n      setError('Worker name is required');\n      return;\n    }\n\n    // Validate address format\n    if (!validateAddress(formData.coin, formData.address)) {\n      setError(`Invalid ${formData.coin} wallet address format`);\n      return;\n    }\n\n    // Save wallet\n    const result = saveWallet(formData);\n    \n    if (result.success) {\n      setSuccess(`Wallet for ${formData.coin} saved successfully!`);\n      loadWallets();\n      handleCancel();\n      \n      // Clear success message after 3 seconds\n      setTimeout(() => setSuccess(null), 3000);\n    } else {\n      setError(result.error || 'Failed to save wallet');\n    }\n  };\n\n  const handleDelete = (wallet: MiningWallet) => {\n    if (window.confirm(`Are you sure you want to delete your ${wallet.coin} wallet?`)) {\n      deleteWallet(wallet.id);\n      loadWallets();\n      setSuccess(`${wallet.coin} wallet deleted`);\n      setTimeout(() => setSuccess(null), 2000);\n    }\n  };\n\n  const handleCopyAddress = (address: string) => {\n    navigator.clipboard.writeText(address);\n    setCopiedAddress(address);\n    setTimeout(() => setCopiedAddress(null), 2000);\n  };\n\n  const stats = getWalletStats();\n  const allConfigured = hasAllWallets();\n\n  // Coin colors for visual distinction\n  const coinColors: Record<MiningCoin, string> = {\n    XMR: 'from-orange-500 to-orange-700',\n    RVN: 'from-blue-500 to-blue-700',\n    ETC: 'from-green-500 to-green-700',\n    ERG: 'from-purple-500 to-purple-700',\n    KAS: 'from-pink-500 to-pink-700'\n  };\n\n  const coinIcons: Record<MiningCoin, string> = {\n    XMR: '₿',\n    RVN: '🦅',\n    ETC: '⟠',\n    ERG: '⚡',\n    KAS: '💎'\n  };\n\n  return (\n    <div className=\"space-y-6\">\n      {/* Header */}\n      <div className=\"flex items-center justify-between\">\n        <div>\n          <h1 className=\"text-3xl font-bold text-white mb-2\">Mining Wallets</h1>\n          <p className=\"text-muted\">\n            Configure your wallet addresses to receive mining rewards. This is required before you can start mining.\n          </p>\n        </div>\n        {!isAdding && !editingWallet && (\n          <button\n            onClick={handleAddWallet}\n            className=\"flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-lg shadow-primary/20\"\n          >\n            <Plus size={18} />\n            Add Wallet\n          </button>\n        )}\n      </div>\n\n      {/* Status Banner */}\n      <div className={`p-4 rounded-xl border ${\n        allConfigured \n          ? 'bg-emerald-500/10 border-emerald-500/30' \n          : 'bg-amber-500/10 border-amber-500/30'\n      }`}>\n        <div className=\"flex items-start gap-3\">\n          {allConfigured ? (\n            <Check className=\"text-emerald-400 mt-0.5\" size={20} />\n          ) : (\n            <AlertTriangle className=\"text-amber-400 mt-0.5\" size={20} />\n          )}\n          <div className=\"flex-1\">\n            <p className={`font-medium ${allConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>\n              {allConfigured \n                ? 'All wallets configured! You can start mining.' \n                : `${stats.missingCoins.length} wallet(s) still needed to start mining.`\n              }\n            </p>\n            {!allConfigured && (\n              <p className=\"text-sm text-muted mt-1",
-        "Missing: {stats.missingCoins.join(', ')}\n              </p>\n            )}\n          </div>\n        </div>\n      </div>\n\n      {/* Success/Error Messages */}\n      {success && (\n        <div className=\"p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3\">\n          <Check className=\"text-emerald-400\" size={20} />\n          <p className=\"text-emerald-400\">{success}</p>\n        </div>\n      )}\n\n      {error && (\n        <div className=\"p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3\">\n          <X className=\"text-red-400\" size={20} />\n          <p className=\"text-red-400\">{error}</p>\n        </div>\n      )}\n\n      {/* Add/Edit Form */}\n      {(isAdding || editingWallet) && (\n        <div className=\"bg-surface/50 border border-white/10 rounded-xl p-6 space-y-6\">\n          <div className=\"flex items-center justify-between\">\n            <h2 className=\"text-xl font-bold text-white\">\n              {editingWallet ? 'Edit Wallet' : 'Add New Wallet'}\n            </h2>\n            <button\n              onClick={handleCancel}\n              className=\"text-muted hover:text-white transition-colors\"\n            >\n              <X size={20} />\n            </button>\n          </div>\n\n          {/* Coin Selection */}\n          <div className=\"space-y-2\">\n            <label className=\"text-sm font-medium text-muted\">Coin</label>\n            <div className=\"grid grid-cols-5 gap-2",
-        {
-            "pool": "getPoolSuggestion(coin)"
-        },
-        "setError(null);\n                  }}\n                  disabled={!isAdding && editingWallet?.coin !== coin}\n                  className={`p-3 rounded-lg border transition-all ${\n                    formData.coin === coin\n                      ? 'bg-primary/20 border-primary text-primary'\n                      : 'bg-white/5 border-white/10 text-muted hover:bg-white/10'\n                  } ${!isAdding && editingWallet?.coin !== coin ? 'opacity-50 cursor-not-allowed' : ''}`}\n                >\n                  <div className=\"text-2xl mb-1",
-        {
-            "font-medium": {
-                "text-muted": "Wallet Address\n              <a\n                href={POOL_CONFIGS[formData.coin].website"
-            },
-            "className=": "l-2 text-primary hover:underline text-xs",
-            "type=\"text": "alue={formData.address"
-        },
-        "onChange={(e) => {\n                setFormData({ ...formData, address: e.target.value });\n                setError(null);\n              }}\n              placeholder={POOL_CONFIGS[formData.coin].exampleAddress}\n              className=\"w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-muted/50 focus:outline-none focus:border-primary/50 transition-colors font-mono text-sm\"\n            />\n            <p className=\"text-xs text-muted",
-        "Example: {POOL_CONFIGS[formData.coin].exampleAddress}\n            </p>\n          </div>\n\n          {/* Pool Address */}\n          <div className=\"space-y-2\">\n            <label className=\"text-sm font-medium text-muted\">Mining Pool</label>\n            <input\n              type=\"text",
-        "value={formData.pool}\n              onChange={(e) => {\n                setFormData({ ...formData, pool: e.target.value });\n                setError(null);\n              }}\n              placeholder={getPoolSuggestion(formData.coin)}\n              className=\"w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-muted/50 focus:outline-none focus:border-primary/50 transition-colors font-mono text-sm\"\n            />\n            <p className=\"text-xs text-muted\">\n              Default: {getPoolSuggestion(formData.coin)}\n            </p>\n          </div>\n\n          {/* Worker Name */}\n          <div className=\"space-y-2\">\n            <label className=\"text-sm font-medium text-muted\">Worker Name</label>\n            <input\n              type=\"text",
-        "value={formData.workerName}\n              onChange={(e) => {\n                setFormData({ ...formData, workerName: e.target.value });\n                setError(null);\n              }}\n              placeholder=\"my-worker-1\"\n              className=\"w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-muted/50 focus:outline-none focus:border-primary/50 transition-colors font-mono text-sm\"\n            />\n            <p className=\"text-xs text-muted",
-        "3-32",
-        "characters, used to identify your miner on the pool\n            </p>\n          </div>\n\n          {/* Save Button */}\n          <button\n            onClick={handleSave}\n            className=\"w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-3 rounded-lg font-medium transition-all shadow-lg shadow-primary/20\"\n          >\n            <Save size={18} />\n            {editingWallet ? 'Update Wallet' : 'Save Wallet'}\n          </button>\n        </div>\n      )}\n\n      {/* Wallets List */}\n      <div className=\"space-y-4\">\n        <h2 className=\"text-lg font-bold text-white\">Your Wallets</h2>\n        \n        {wallets.length === 0 ? (\n          <div className=\"bg-surface/30 border border-white/10 rounded-xl p-8 text-center\">\n            <WalletIcon size={48} className=\"text-muted mx-auto mb-4\" />\n            <p className=\"text-muted mb-4\">No wallets configured yet</p>\n            <button\n              onClick={handleAddWallet}\n              className=\"inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium transition-all\"\n            >\n              <Plus size={18} />\n              Add Your First Wallet\n            </button>\n          </div>\n        ) : (\n          <div className=\"grid gap-4\">\n            {wallets.map((wallet) => (\n              <div\n                key={wallet.id}\n                className={`bg-surface/50 border border-white/10 rounded-xl p-5 transition-all hover:border-white/20 ${\n                  wallet.isValid ? '' : 'opacity-60'\n                }`}\n              >\n                <div className=\"flex items-start justify-between\">\n                  <div className=\"flex items-start gap-4",
-        {
-            "text-white": {
-                "text-muted": {
-                    "rounded-full": "Check size={10"
-                },
-                "text-emerald-400": "Valid</span>\n                          </div>\n                        )"
-            },
-            "text-muted": "Address:</span>\n                          <code className=",
-            "rounded": {
-                "className=": -2,
-                "address": {
-                    "className=\"text-emerald-400": "Copy size={14"
-                },
-                "text-muted": "Pool:</span>\n                          <code className=",
-                "rounded": {
-                    "text-muted": "Worker:</span>\n                          <span className=",
-                    "text-white": {
-                        "gap-2": "button\n                      onClick={() => handleEditWallet(wallet)"
+import React, { useState, useEffect } from 'react';
+import {
+    Plus,
+    Wallet as WalletIcon,
+    Trash2,
+    Edit2,
+    Save,
+    X,
+    Check,
+    Copy,
+    AlertTriangle,
+    ChevronRight,
+    Shield,
+    RefreshCw,
+    Key,
+    Database,
+    Eye,
+    EyeOff,
+    Layout,
+    Zap
+} from 'lucide-react';
+import { MiningWallet, MiningCoin } from '../types';
+import {
+    getMiningWallets,
+    saveWallet,
+    deleteWallet,
+    validateAddress,
+    getPoolSuggestion,
+    getWalletStats,
+    hasAllWallets,
+    onWalletsChanged,
+    applyDerivedAddresses
+} from '../services/miningWalletService';
+import { POOL_CONFIGS } from '../services/miningWalletService';
+import {
+    generateMnemonic,
+    saveMnemonic,
+    getMnemonic,
+    deriveAllAddresses,
+    clearMnemonic
+} from '../services/unifiedWalletService';
+
+const Wallets: React.FC = () => {
+    const [wallets, setWallets] = useState<MiningWallet[]>([]);
+    const [isAdding, setIsAdding] = useState(false);
+    const [editingWallet, setEditingWallet] = useState<MiningWallet | null>(null);
+    const [formData, setFormData] = useState({
+        coin: 'XMR' as MiningCoin,
+        address: '',
+        pool: '',
+        workerName: ''
+    });
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+
+    // Mnemonic related state
+    const [mnemonic, setMnemonic] = useState<string | null>(null);
+    const [showMnemonic, setShowMnemonic] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [derivedAddresses, setDerivedAddresses] = useState<Record<MiningCoin, string> | null>(null);
+
+    // Onboarding state
+    const [onboardingView, setOnboardingView] = useState<'INITIAL' | 'GENERATE' | 'IMPORT' | 'COMPLETE' | 'NONE'>('INITIAL');
+
+    // Load wallets and mnemonic on mount
+    useEffect(() => {
+        loadData();
+
+        // Subscribe to wallet changes
+        const unsubscribe = onWalletsChanged(loadData);
+        return unsubscribe;
+    }, []);
+
+    const loadData = () => {
+        setWallets(getMiningWallets());
+        const savedMnemonic = getMnemonic();
+        setMnemonic(savedMnemonic);
+        if (savedMnemonic) {
+            setOnboardingView('NONE');
+            handleDerive(savedMnemonic);
+        } else {
+            setOnboardingView('INITIAL');
+        }
+    };
+
+    const handleDerive = async (m: string) => {
+        try {
+            const addresses = await deriveAllAddresses(m);
+            setDerivedAddresses(addresses);
+        } catch (e) {
+            console.error("Derivation failed", e);
+        }
+    };
+
+    const handleGenerateMnemonic = () => {
+        const m = generateMnemonic();
+        setMnemonic(m);
+        setOnboardingView('GENERATE');
+    };
+
+    const confirmGeneratedMnemonic = () => {
+        if (mnemonic) {
+            saveMnemonic(mnemonic);
+            handleDerive(mnemonic);
+            setOnboardingView('COMPLETE');
+        }
+    };
+
+    const handleOneClickSetup = () => {
+        if (!derivedAddresses) return;
+
+        setIsGenerating(true);
+        setSuccess(null);
+        setError(null);
+
+        // Apply derived addresses to the local wallet storage
+        const result = applyDerivedAddresses(derivedAddresses);
+
+        if (result.success) {
+            // Also try to push to local agent
+            pushToAgent(derivedAddresses);
+            setSuccess("One-click node setup successful! All addresses configured.");
+            setTimeout(() => setSuccess(null), 5000);
+        } else {
+            setError("Failed to apply addresses.");
+        }
+        setIsGenerating(false);
+    };
+
+    const pushToAgent = async (addresses: Record<MiningCoin, string>) => {
+        try {
+            const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+            const secret = localStorage.getItem('agent_secret') || 'HNH_LOCAL_AGENT_SECRET';
+
+            // We'll update the wallets on the agent one by one or via a bulk endpoint if we add it
+            for (const [coin, address] of Object.entries(addresses)) {
+                await fetch(`${agentUrl}/wallet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${secret}`
                     },
-                    "className=": -2,
-                    "hover": "text-white hover:bg-white/10 rounded-lg transition-colors",
-                    "wallet": "Edit2 size={16"
-                },
-                "hover": "text-red-400 hover:bg-red-500/10 rounded-lg transition-colors",
-                "wallet": "Trash2 size={16"
-            },
-            "mt-0.5": "ize={20"
-        },
-        "div>\n            <h3 className=\"font-bold text-white mb-1\">Security Notice</h3>\n            <p className=\"text-sm text-muted\">\n              Your wallet addresses are stored locally in your browser. Never share your private keys or seed phrases. \n              Only the public wallet address is needed for mining rewards.\n            </p>\n          </div>\n        </div>\n        <div className=\"flex items-start gap-3\">\n          <ChevronRight className=\"text-primary mt-0.5\" size={20} />\n          <div>\n            <h3 className=\"font-bold text-white mb-1\">Next Steps</h3>\n            <p className=\"text-sm text-muted",
-        "Once all wallets are configured, you can start mining. The miner agent will use these addresses to route mining rewards to your wallets.\n            </p>\n          </div>\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default Wallets;"
-    ]
-]
+                    body: JSON.stringify({ coin, address })
+                });
+            }
+        } catch (e) {
+            console.warn("Could not sync with local agent automatically. Please sync manually.");
+        }
+    };
+
+    const handleAddWallet = () => {
+        setIsAdding(true);
+        setEditingWallet(null);
+        setFormData({
+            coin: 'XMR',
+            address: '',
+            pool: getPoolSuggestion('XMR'),
+            workerName: 'HNH_Worker'
+        });
+        setError(null);
+        setSuccess(null);
+    };
+
+    const handleEditWallet = (wallet: MiningWallet) => {
+        setIsAdding(false);
+        setEditingWallet(wallet);
+        setFormData({
+            coin: wallet.coin,
+            address: wallet.address,
+            pool: wallet.pool,
+            workerName: wallet.workerName
+        });
+        setError(null);
+        setSuccess(null);
+    };
+
+    const handleCancel = () => {
+        setIsAdding(false);
+        setEditingWallet(null);
+        setFormData({
+            coin: 'XMR',
+            address: '',
+            pool: '',
+            workerName: ''
+        });
+        setError(null);
+    };
+
+    const handleSave = () => {
+        setError(null);
+        setSuccess(null);
+
+        if (!formData.address.trim()) {
+            setError('Wallet address is required');
+            return;
+        }
+
+        if (!validateAddress(formData.coin, formData.address)) {
+            setError(`Invalid ${formData.coin} wallet address format`);
+            return;
+        }
+
+        const result = saveWallet(formData);
+
+        if (result.success) {
+            setSuccess(`Wallet for ${formData.coin} saved successfully!`);
+            loadData();
+            handleCancel();
+            setTimeout(() => setSuccess(null), 3000);
+        } else {
+            setError(result.error || 'Failed to save wallet');
+        }
+    };
+
+    const handleDelete = (wallet: MiningWallet) => {
+        if (window.confirm(`Are you sure you want to delete your ${wallet.coin} wallet?`)) {
+            deleteWallet(wallet.id);
+            loadData();
+            setSuccess(`${wallet.coin} wallet deleted`);
+            setTimeout(() => setSuccess(null), 2000);
+        }
+    };
+
+    const handleCopyAddress = (address: string) => {
+        navigator.clipboard.writeText(address);
+        setCopiedAddress(address);
+        setTimeout(() => setCopiedAddress(null), 2000);
+    };
+
+    const handleLogoutWallet = () => {
+        if (window.confirm("Are you sure? This will remove the mnemonic from local storage. Ensure you have it backed up!")) {
+            clearMnemonic();
+            loadData();
+        }
+    };
+
+    const stats = getWalletStats();
+    const allConfigured = hasAllWallets();
+
+    // Onboarding Screen
+    if (onboardingView !== 'NONE') {
+        return (
+            <div className="max-w-2xl mx-auto py-12">
+                <div className="bg-surface/50 border border-white/10 rounded-2xl p-8 space-y-8 backdrop-blur-xl">
+                    <div className="text-center space-y-4">
+                        <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Key className="text-primary" size={32} />
+                        </div>
+                        <h1 className="text-3xl font-bold text-white">Master Wallet App</h1>
+                        <p className="text-muted">
+                            Generate one master phrase to manage wallets for all main mining coins instantly.
+                        </p>
+                    </div>
+
+                    {onboardingView === 'INITIAL' && (
+                        <div className="grid gap-4">
+                            <button
+                                onClick={handleGenerateMnemonic}
+                                className="w-full bg-primary hover:bg-primary/90 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20"
+                            >
+                                <Plus size={20} /> Generate New Master Phrase
+                            </button>
+                            <button
+                                onClick={() => setOnboardingView('IMPORT')}
+                                className="w-full bg-white/5 hover:bg-white/10 text-white p-4 rounded-xl font-bold border border-white/10 transition-all"
+                            >
+                                Import Existing Phrase
+                            </button>
+                        </div>
+                    )}
+
+                    {onboardingView === 'GENERATE' && (
+                        <div className="space-y-6">
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
+                                <AlertTriangle className="text-amber-400 shrink-0" size={20} />
+                                <p className="text-sm text-amber-400">
+                                    Write down these 12 words and keep them safe. Anyone with this phrase can access your funds.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                {mnemonic?.split(' ').map((word, i) => (
+                                    <div key={i} className="bg-black/40 border border-white/10 p-3 rounded-lg text-center">
+                                        <span className="text-xs text-muted block mb-1">{i + 1}</span>
+                                        <span className="text-white font-mono font-medium">{word}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={confirmGeneratedMnemonic}
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white p-4 rounded-xl font-bold transition-all"
+                            >
+                                I have backed it up
+                            </button>
+                            <button
+                                onClick={() => setOnboardingView('INITIAL')}
+                                className="w-full text-muted hover:text-white text-sm"
+                            >
+                                Go Back
+                            </button>
+                        </div>
+                    )}
+
+                    {onboardingView === 'IMPORT' && (
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted">Enter your 12-word phrase</label>
+                                <textarea
+                                    className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white font-mono focus:outline-none focus:border-primary/50 transition-all"
+                                    placeholder="word1 word2 word3..."
+                                    onChange={(e) => setMnemonic(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                onClick={confirmGeneratedMnemonic}
+                                className="w-full bg-primary hover:bg-primary/90 text-white p-4 rounded-xl font-bold transition-all"
+                            >
+                                Restore Wallet
+                            </button>
+                            <button
+                                onClick={() => setOnboardingView('INITIAL')}
+                                className="w-full text-muted hover:text-white text-sm"
+                            >
+                                Go Back
+                            </button>
+                        </div>
+                    )}
+
+                    {onboardingView === 'COMPLETE' && (
+                        <div className="text-center space-y-6">
+                            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
+                                <Check className="text-emerald-500" size={32} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white">Wallet Generated!</h2>
+                            <p className="text-muted">
+                                Your addresses for XMR, RVN, ETC, ERG, and KAS have been derived.
+                                You can now perform a 1-click node setup.
+                            </p>
+                            <button
+                                onClick={() => setOnboardingView('NONE')}
+                                className="w-full bg-primary hover:bg-primary/90 text-white p-4 rounded-xl font-bold transition-all"
+                            >
+                                Continue to App
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Wallet App</h1>
+                    <p className="text-muted">
+                        Manage your mining rewards and node configurations from one master wallet.
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    {!isAdding && !editingWallet && (
+                        <button
+                            onClick={handleAddWallet}
+                            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg font-medium transition-all border border-white/10"
+                        >
+                            <Plus size={18} />
+                            Manual Add
+                        </button>
+                    )}
+                    <button
+                        onClick={handleLogoutWallet}
+                        className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg font-medium transition-all border border-red-500/20"
+                    >
+                        Logout Wallet
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Master Phrase Card */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-gradient-to-br from-indigo-900/30 to-surface border border-indigo-500/20 rounded-2xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center">
+                                    <Shield className="text-indigo-400" size={20} />
+                                </div>
+                                <h3 className="font-bold text-white">Master Security</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowMnemonic(!showMnemonic)}
+                                className="text-muted hover:text-white transition-colors"
+                                title={showMnemonic ? "Hide Phrase" : "Show Phrase"}
+                            >
+                                {showMnemonic ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <p className="text-xs text-indigo-300">GENERATE/RESTORE PHRASE</p>
+                            <div className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-sm break-all">
+                                {showMnemonic ? (
+                                    <span className="text-indigo-200">{mnemonic}</span>
+                                ) : (
+                                    <span className="text-muted/30 italic">•••• •••• •••• •••• •••• •••• •••• •••• •••• •••• •••• ••••</span>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-muted leading-relaxed">
+                                Your master phrase is used to derive all mining addresses. Never share this with anyone.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-emerald-900/30 to-surface border border-emerald-500/20 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                                <Database className="text-emerald-400" size={20} />
+                            </div>
+                            <h3 className="font-bold text-white">Node Setup</h3>
+                        </div>
+
+                        <p className="text-sm text-emerald-300 mb-6 leading-relaxed">
+                            Instantly configure your local mining agent with addresses for all supported coins.
+                        </p>
+
+                        <button
+                            onClick={handleOneClickSetup}
+                            disabled={isGenerating || !derivedAddresses}
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                        >
+                            {isGenerating ? <RefreshCw className="animate-spin" size={18} /> : <Zap size={18} />}
+                            1-Click Node Setup
+                        </button>
+                        <p className="text-[10px] text-muted mt-3 text-center">
+                            Requires HNH Local Agent (Default: localhost:4343)
+                        </p>
+                    </div>
+                </div>
+
+                {/* Wallets List Section */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Status Banner */}
+                    <div className={`p-4 rounded-xl border transition-all ${allConfigured
+                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                            : 'bg-amber-500/10 border-amber-500/30'
+                        }`}>
+                        <div className="flex items-start gap-3">
+                            {allConfigured ? (
+                                <Check className="text-emerald-400 mt-0.5" size={20} />
+                            ) : (
+                                <AlertTriangle className="text-amber-400 mt-0.5" size={20} />
+                            )}
+                            <div className="flex-1">
+                                <p className={`font-medium ${allConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    {allConfigured
+                                        ? 'All wallets configured! You can start mining.'
+                                        : `${stats.missingCoins.length} wallet(s) still needed for full coverage.`
+                                    }
+                                </p>
+                                {!allConfigured && (
+                                    <p className="text-sm text-muted mt-1">
+                                        Missing: {stats.missingCoins.join(', ')}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    {success && (
+                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 animate-slide-in">
+                            <Check className="text-emerald-400" size={20} />
+                            <p className="text-emerald-400 text-sm">{success}</p>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 animate-slide-in">
+                            <X className="text-red-400" size={20} />
+                            <p className="text-red-400 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {/* Add/Edit Form */}
+                    {(isAdding || editingWallet) && (
+                        <div className="bg-surface/50 border border-white/10 rounded-2xl p-6 space-y-6 animate-fade-in">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-white">
+                                    {editingWallet ? 'Edit Wallet' : 'Add New Wallet'}
+                                </h2>
+                                <button onClick={handleCancel} className="text-muted hover:text-white transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted">Coin</label>
+                                    <select
+                                        value={formData.coin}
+                                        onChange={(e) => setFormData({ ...formData, coin: e.target.value as MiningCoin, pool: getPoolSuggestion(e.target.value as MiningCoin) })}
+                                        disabled={!isAdding}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                    >
+                                        {Object.keys(POOL_CONFIGS).map(coin => (
+                                            <option key={coin} value={coin}>{coin} - {POOL_CONFIGS[coin as MiningCoin].name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted">Worker Name</label>
+                                    <input
+                                        type="text"
+                                        value={formData.workerName}
+                                        onChange={(e) => setFormData({ ...formData, workerName: e.target.value })}
+                                        placeholder="my-worker-1"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-muted/50 focus:outline-none focus:border-primary/50 transition-colors font-mono text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted">Wallet Address</label>
+                                <input
+                                    type="text"
+                                    value={formData.address}
+                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                    placeholder={POOL_CONFIGS[formData.coin].exampleAddress}
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-muted/50 focus:outline-none focus:border-primary/50 transition-colors font-mono text-sm"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleSave}
+                                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
+                            >
+                                <Save size={18} />
+                                {editingWallet ? 'Update Wallet' : 'Save Wallet'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Wallets List */}
+                    <div className="grid gap-4">
+                        {Object.keys(POOL_CONFIGS).map((coin) => {
+                            const coinSym = coin as MiningCoin;
+                            const wallet = wallets.find(w => w.coin === coinSym);
+                            const derived = derivedAddresses ? derivedAddresses[coinSym] : null;
+
+                            return (
+                                <div
+                                    key={coin}
+                                    className={`bg-surface/50 border rounded-2xl p-5 transition-all hover:border-white/20 ${wallet ? 'border-primary/30' : 'border-white/5 opacity-80'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold bg-gradient-to-br ${coinSym === 'XMR' ? 'from-orange-500 to-orange-700' :
+                                                    coinSym === 'RVN' ? 'from-blue-500 to-blue-700' :
+                                                        coinSym === 'ETC' ? 'from-green-500 to-green-700' :
+                                                            coinSym === 'ERG' ? 'from-purple-500 to-purple-700' :
+                                                                'from-pink-500 to-pink-700'
+                                                } text-white`}>
+                                                {coinSym === 'XMR' ? 'X' : coinSym.substring(0, 1)}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-bold text-white text-lg">{POOL_CONFIGS[coinSym].name}</h3>
+                                                    <span className="text-xs text-muted font-mono">{coinSym}</span>
+                                                    {wallet && (
+                                                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                            <Check size={10} /> CONFIGURED
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-1 flex items-center gap-2">
+                                                    <code className="text-[11px] text-muted font-mono truncate max-w-[200px] md:max-w-md">
+                                                        {wallet ? wallet.address : derived ? derived : 'No address set'}
+                                                    </code>
+                                                    <button
+                                                        onClick={() => handleCopyAddress(wallet ? wallet.address : derived || '')}
+                                                        className="text-muted hover:text-white transition-colors"
+                                                    >
+                                                        <Copy size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {wallet ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEditWallet(wallet)}
+                                                        className="p-2 text-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                                                    >
+                                                        <Edit2 size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(wallet)}
+                                                        className="p-2 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        if (derived) {
+                                                            setFormData({
+                                                                coin: coinSym,
+                                                                address: derived,
+                                                                pool: getPoolSuggestion(coinSym),
+                                                                workerName: 'HNH_Worker'
+                                                            });
+                                                            setIsAdding(true);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-medium border border-primary/20 transition-all"
+                                                >
+                                                    <Plus size={14} /> Setup
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="bg-surface/30 border border-white/5 rounded-2xl p-6">
+                        <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <Shield size={16} className="text-primary" /> Security Best Practices
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex items-start gap-3">
+                                <ChevronRight className="text-primary mt-1 shrink-0" size={16} />
+                                <p className="text-xs text-muted leading-relaxed">
+                                    <strong>Encryption:</strong> Your master phrase is stored in your browser's local storage. Avoid using shared computers.
+                                </p>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <ChevronRight className="text-primary mt-1 shrink-0" size={16} />
+                                <p className="text-xs text-muted leading-relaxed">
+                                    <strong>Persistence:</strong> If you clear your browser cache, you will need to restore your master phrase. Always keep a physical backup.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Wallets;

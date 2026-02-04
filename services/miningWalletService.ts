@@ -258,6 +258,40 @@ export const exportWalletsForAgent = (): Record<MiningCoin, { address: string; p
 };
 
 /**
+ * Bulk apply derived addresses to all coins
+ */
+export const applyDerivedAddresses = (addresses: Record<MiningCoin, string>): { success: boolean } => {
+    const wallets = getMiningWallets();
+    const now = Date.now();
+
+    (Object.entries(addresses) as [MiningCoin, string][]).forEach(([coin, address]) => {
+        const existingIndex = wallets.findIndex(w => w.coin === coin);
+        const wallet: MiningWallet = {
+            id: existingIndex >= 0 ? wallets[existingIndex].id : `wallet_${now}_${Math.random().toString(36).substr(2, 9)}`,
+            coin,
+            address,
+            pool: getPoolSuggestion(coin),
+            workerName: existingIndex >= 0 ? wallets[existingIndex].workerName : 'HNH_Worker',
+            createdAt: existingIndex >= 0 ? wallets[existingIndex].createdAt : now,
+            updatedAt: now,
+            isValid: true,
+            lastValidated: now
+        };
+
+        if (existingIndex >= 0) {
+            wallets[existingIndex] = wallet;
+        } else {
+            wallets.push(wallet);
+        }
+    });
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
+    window.dispatchEvent(new Event('wallets-updated'));
+
+    return { success: true };
+};
+
+/**
  * Subscribe to wallet changes
  */
 export const onWalletsChanged = (callback: () => void) => {
