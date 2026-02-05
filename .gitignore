@@ -39,3 +39,4 @@ dist-ssr
 
 # Agent Config
 agent/data.json
+.claude/settings.local.json
