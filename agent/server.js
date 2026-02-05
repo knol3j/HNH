@@ -397,6 +397,33 @@ app.post('/wallet', (req, res) => {
 });
 
 /**
+ * POST /wallet/bulk - Bulk update wallets
+ */
+app.post('/wallet/bulk', (req, res) => {
+    const { wallets } = req.body;
+
+    if (!wallets || typeof wallets !== 'object') {
+        return res.status(400).json({ error: 'Wallets object is required' });
+    }
+
+    let updatedCount = 0;
+    for (const [coin, address] of Object.entries(wallets)) {
+        const upperCoin = coin.toUpperCase();
+        if (COIN_CONFIG[upperCoin]) {
+            persistedData.wallets[upperCoin] = address;
+            minerManager.setWallet(upperCoin, address);
+            updatedCount++;
+        }
+    }
+
+    if (updatedCount > 0) {
+        saveData();
+    }
+
+    res.json({ success: true, updatedCount });
+});
+
+/**
  * GET /wallets - Get all configured wallets
  */
 app.get('/wallets', (req, res) => {

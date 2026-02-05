@@ -11,6 +11,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { syncDbToStore, restoreFromStoreToDb } from './persistentStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,11 @@ try {
 
 const app = express();
 const prisma = new PrismaClient();
+
+// --- PERSISTENCE: Restore data on startup ---
+console.log('[PERSISTENCE] Checking for data to restore...');
+restoreFromStoreToDb(prisma).catch(e => console.error('[PERSISTENCE] Initial restore failed:', e));
+
 const PORT = process.env.PORT || 8080;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -232,7 +238,7 @@ app.use((req, res, next) => {
         const logMessage = `[${req.method}] ${req.path} - ${res.statusCode} (${duration}ms)`;
 
         if (logLevel === 'warn') {
-            console.warn(logMessage, { ip: req.ip, userAgent: req.get('user-agent') });
+            console.warn('[SECURITY_WARN]', logMessage, { ip: req.ip, userAgent: req.get('user-agent') });
         } else if (NODE_ENV === 'development') {
             console.log(logMessage);
         }
@@ -341,7 +347,19 @@ app.post('/api/public/forum', (req, res) => {
     const { title, content, category, author } = req.body;
 
     // Sanitize by stripping HTML-like content
-    const sanitize = (str) => str.replace(/<[^>]*>/g, '').trim();
+    // Sanitize by stripping HTML tags and basic XSS prevention
+    const sanitize = (str) => {
+        if (!str || typeof str !== 'string') return '';
+        // Use a simpler, non-backtracking approach for tag stripping
+        let result = '';
+        let insideTag = false;
+        for (let i = 0; i < str.length; i++) {
+            if (str[i] === '<') insideTag = true;
+            else if (str[i] === '>') insideTag = false;
+            else if (!insideTag) result += str[i];
+        }
+        return result.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+    };
 
     const newPost = {
         id: Date.now().toString(),
@@ -432,6 +450,10 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req, re
             { algorithm: 'HS256', expiresIn: '24h' }
         );
         console.log(`[REGISTER] Successfully registered user: ${username}`);
+
+        // --- PERSISTENCE: Backup after new user registration ---
+        syncDbToStore(prisma);
+
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
         console.error('[REGISTER] Error:', e.message);
@@ -608,6 +630,10 @@ app.post('/user/wallets', authenticateToken, validate(walletSchema), async (req,
                 isDefault: isDefault || false
             }
         });
+
+        // --- PERSISTENCE: Backup after wallet update ---
+        syncDbToStore(prisma);
+
         res.json(wallet);
     } catch (e) {
         res.status(500).json({ error: e.message });

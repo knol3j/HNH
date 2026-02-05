@@ -133,17 +133,14 @@ const Wallets: React.FC = () => {
             const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
             const secret = localStorage.getItem('agent_secret') || 'HNH_LOCAL_AGENT_SECRET';
 
-            // We'll update the wallets on the agent one by one or via a bulk endpoint if we add it
-            for (const [coin, address] of Object.entries(addresses)) {
-                await fetch(`${agentUrl}/wallet`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${secret}`
-                    },
-                    body: JSON.stringify({ coin, address })
-                });
-            }
+            await fetch(`${agentUrl}/wallet/bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${secret}`
+                },
+                body: JSON.stringify({ wallets: addresses })
+            });
         } catch (e) {
             console.warn("Could not sync with local agent automatically. Please sync manually.");
         }
@@ -445,8 +442,8 @@ const Wallets: React.FC = () => {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Status Banner */}
                     <div className={`p-4 rounded-xl border transition-all ${allConfigured
-                            ? 'bg-emerald-500/10 border-emerald-500/30'
-                            : 'bg-amber-500/10 border-amber-500/30'
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : 'bg-amber-500/10 border-amber-500/30'
                         }`}>
                         <div className="flex items-start gap-3">
                             {allConfigured ? (
@@ -492,7 +489,7 @@ const Wallets: React.FC = () => {
                                 <h2 className="text-xl font-bold text-white">
                                     {editingWallet ? 'Edit Wallet' : 'Add New Wallet'}
                                 </h2>
-                                <button onClick={handleCancel} className="text-muted hover:text-white transition-colors">
+                                <button onClick={handleCancel} className="text-muted hover:text-white transition-colors" title="Cancel">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -505,6 +502,7 @@ const Wallets: React.FC = () => {
                                         onChange={(e) => setFormData({ ...formData, coin: e.target.value as MiningCoin, pool: getPoolSuggestion(e.target.value as MiningCoin) })}
                                         disabled={!isAdding}
                                         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                        title="Select Coin"
                                     >
                                         {Object.keys(POOL_CONFIGS).map(coin => (
                                             <option key={coin} value={coin}>{coin} - {POOL_CONFIGS[coin as MiningCoin].name}</option>
@@ -561,10 +559,10 @@ const Wallets: React.FC = () => {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold bg-gradient-to-br ${coinSym === 'XMR' ? 'from-orange-500 to-orange-700' :
-                                                    coinSym === 'RVN' ? 'from-blue-500 to-blue-700' :
-                                                        coinSym === 'ETC' ? 'from-green-500 to-green-700' :
-                                                            coinSym === 'ERG' ? 'from-purple-500 to-purple-700' :
-                                                                'from-pink-500 to-pink-700'
+                                                coinSym === 'RVN' ? 'from-blue-500 to-blue-700' :
+                                                    coinSym === 'ETC' ? 'from-green-500 to-green-700' :
+                                                        coinSym === 'ERG' ? 'from-purple-500 to-purple-700' :
+                                                            'from-pink-500 to-pink-700'
                                                 } text-white`}>
                                                 {coinSym === 'XMR' ? 'X' : coinSym.substring(0, 1)}
                                             </div>
@@ -585,6 +583,7 @@ const Wallets: React.FC = () => {
                                                     <button
                                                         onClick={() => handleCopyAddress(wallet ? wallet.address : derived || '')}
                                                         className="text-muted hover:text-white transition-colors"
+                                                        title="Copy Address"
                                                     >
                                                         <Copy size={12} />
                                                     </button>
@@ -598,12 +597,14 @@ const Wallets: React.FC = () => {
                                                     <button
                                                         onClick={() => handleEditWallet(wallet)}
                                                         className="p-2 text-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                                                        title="Edit Wallet"
                                                     >
                                                         <Edit2 size={18} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(wallet)}
                                                         className="p-2 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                        title="Delete Wallet"
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
