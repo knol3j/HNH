@@ -17,7 +17,11 @@
     "test:ui": "vitest --ui",
     "test:all": "npm run test && npm run test:backend && npm run test:agent",
     "test:backend": "cd backend/api && npm test",
-    "test:agent": "cd agent && npm test"
+    "test:agent": "cd agent && npm test",
+    "verify": "powershell -ExecutionPolicy Bypass -File scripts/verify-deployment.ps1",
+    "push": "powershell -ExecutionPolicy Bypass -File scripts/push-and-verify.ps1",
+    "push:quick": "git push",
+    "ci:status": "gh run list --limit 5"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

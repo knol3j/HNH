@@ -5,9 +5,9 @@ RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package.json ./
-RUN npm install
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # Copy Prisma schema (must be in build context - either copied to api/ or build context is backend/)
 COPY schema.prisma ./
@@ -15,8 +15,11 @@ COPY schema.prisma ./
 # Generate Prisma client
 RUN npx prisma generate
 
-# Copy the API server file
+# Copy API server files
 COPY index.js ./
+COPY persistentStore.js ./
+COPY hardware_data.json ./
+COPY posts.json ./
 
 # Expose API port
 EXPOSE 8080
