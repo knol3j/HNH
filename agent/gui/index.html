@@ -1,72 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HashNHedge AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // GitHub Pages SPA redirect handler
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('p');
+        if (redirect) {
+          params.delete('p');
+          const remaining = params.toString();
+          const newUrl = decodeURIComponent(redirect) + (remaining ? '?' + remaining : '');
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: '#09090b',
+              surface: '#18181b',
+              primary: '#10b981', // Emerald 500
+              'primary-hover': '#059669',
+              accent: '#3b82f6', // Blue 500
+              danger: '#ef4444',
+              warning: '#f59e0b',
+              text: '#e4e4e7',
+              muted: '#a1a1aa',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4626165154390205" crossorigin="anonymous"></script>
+    <style>
+      body {
+        background-color: #09090b;
+        color: #e4e4e7;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #18181b; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #52525b; 
+      }
+    </style>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HNH Miner Agent</title>
-    <link rel="stylesheet" href="style.css">
+  <script type="module" crossorigin src="./assets/index-qCezw8c8.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DmHHO85v.css">
 </head>
-
-<body>
-    <div class="container">
-        <header>
-            <h1><span class="pulse">●</span> HNH Miner Agent</h1>
-            <div id="status-badge" class="badge">OFFLINE</div>
-        </header>
-
-        <section class="stats-grid">
-            <div class="stat-card">
-                <h3>Hashrate</h3>
-                <p id="hashrate" class="value">0.00 H/s</p>
-            </div>
-            <div class="stat-card">
-                <h3>GPU Temp</h3>
-                <p id="temp" class="value">0°C</p>
-            </div>
-            <div class="stat-card">
-                <h3>Power</h3>
-                <p id="power" class="value">0 W</p>
-            </div>
-            <div class="stat-card">
-                <h3>Shares</h3>
-                <p id="shares" class="value">0</p>
-            </div>
-        </section>
-
-        <section class="config-panel">
-            <h2>Configuration</h2>
-            <div class="control-group">
-                <label>Coin</label>
-                <select id="coin-select"></select>
-            </div>
-            <div class="control-group">
-                <label>Pool</label>
-                <select id="pool-select"></select>
-            </div>
-            <div class="control-group full-width">
-                <label>Wallet Address</label>
-                <div class="wallet-wrapper">
-                    <select id="wallet-select"></select>
-                    <input type="text" id="wallet-input" class="hidden" placeholder="Enter Wallet Address...">
-                    <button id="cancel-edit-btn" class="btn small hidden">✕</button>
-                    <span class="save-indicator" id="save-status">Saved</span>
-                </div>
-            </div>
-            <div class="actions">
-                <button id="start-btn" class="btn primary">Start Mining</button>
-                <button id="stop-btn" class="btn danger">Stop</button>
-            </div>
-        </section>
-
-        <section class="logs-panel">
-            <h2>Terminal Log</h2>
-            <div id="terminal" class="terminal-window">
-                <div class="log-line">Waiting for connection...</div>
-            </div>
-        </section>
-    </div>
-    <script src="app.js"></script>
+  <body>
+    <div id="root"></div>
 </body>
-
 </html>

@@ -296,6 +296,49 @@ const Provider: React.FC = () => {
                 </div>
             </div>
 
+            {/* Agent Setup Downloads */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Server size={20} className="text-primary" />
+                            Setup Local Mining Agent
+                        </h3>
+                        <p className="text-muted text-sm mt-1">
+                            Download and run the setup script to install the local mining agent on your computer.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                        <a
+                            href="/scripts/setup_miner_windows.ps1"
+                            download="setup_miner_windows.ps1"
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors"
+                        >
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M0 3.449L9.75 2.1v9.45H0m10.949-9.6L24 0v11.4H10.949M0 12.6h9.75v9.45L0 20.699M10.949 12.6H24V24l-13.051-1.949" />
+                            </svg>
+                            Windows (PowerShell)
+                        </a>
+                        <a
+                            href="/scripts/setup_miner.sh"
+                            download="setup_miner.sh"
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-bold transition-colors"
+                        >
+                            <Terminal size={20} />
+                            Linux / Mac (Bash)
+                        </a>
+                    </div>
+                </div>
+                <div className="mt-4 p-3 bg-black/40 rounded-lg border border-white/5 text-sm text-muted">
+                    <p className="font-mono">
+                        <strong className="text-white">Windows:</strong> Right-click the downloaded file → "Run with PowerShell"
+                    </p>
+                    <p className="font-mono mt-1">
+                        <strong className="text-white">Linux/Mac:</strong> <code className="bg-white/10 px-1 rounded">chmod +x setup_miner.sh && ./setup_miner.sh</code>
+                    </p>
+                </div>
+            </div>
+
             {/* Console / Logs */}
             <div className="bg-black/80 border border-white/10 rounded-2xl p-6 font-mono text-sm relative overflow-hidden">
                 <div className="flex items-center gap-2 text-muted mb-4 border-b border-white/10 pb-2">

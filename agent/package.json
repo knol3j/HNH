@@ -15,10 +15,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "adm-zip": "^0.5.16",
     "cors": "^2.8.5",
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
