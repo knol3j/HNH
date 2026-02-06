@@ -29,7 +29,8 @@ import {
     getWalletStats,
     hasAllWallets,
     onWalletsChanged,
-    applyDerivedAddresses
+    applyDerivedAddresses,
+    syncWithBackend
 } from '../services/miningWalletService';
 import { POOL_CONFIGS } from '../services/miningWalletService';
 import {
@@ -72,10 +73,15 @@ const Wallets: React.FC = () => {
         return unsubscribe;
     }, []);
 
-    const loadData = () => {
+    const loadData = async () => {
         setWallets(getMiningWallets());
         const savedMnemonic = getMnemonic();
         setMnemonic(savedMnemonic);
+
+        // Sync with backend to ensure we have the latest wallets
+        await syncWithBackend();
+        setWallets(getMiningWallets());
+
         if (savedMnemonic) {
             setOnboardingView('NONE');
             handleDerive(savedMnemonic);
@@ -107,23 +113,24 @@ const Wallets: React.FC = () => {
         }
     };
 
-    const handleOneClickSetup = () => {
+    const handleOneClickSetup = async () => {
         if (!derivedAddresses) return;
 
         setIsGenerating(true);
         setSuccess(null);
         setError(null);
 
-        // Apply derived addresses to the local wallet storage
-        const result = applyDerivedAddresses(derivedAddresses);
+        // Apply derived addresses to the local wallet storage AND backend
+        const result = await applyDerivedAddresses(derivedAddresses);
 
         if (result.success) {
             // Also try to push to local agent
             pushToAgent(derivedAddresses);
-            setSuccess("One-click node setup successful! All addresses configured.");
+            setSuccess("One-click node setup successful! All addresses configured and synced to your account.");
             setTimeout(() => setSuccess(null), 5000);
+            loadData();
         } else {
-            setError("Failed to apply addresses.");
+            setError("Failed to apply addresses: " + result.error);
         }
         setIsGenerating(false);
     };
@@ -184,7 +191,7 @@ const Wallets: React.FC = () => {
         setError(null);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setError(null);
         setSuccess(null);
 
@@ -198,10 +205,10 @@ const Wallets: React.FC = () => {
             return;
         }
 
-        const result = saveWallet(formData);
+        const result = await saveWallet(formData);
 
         if (result.success) {
-            setSuccess(`Wallet for ${formData.coin} saved successfully!`);
+            setSuccess(`Wallet for ${formData.coin} saved successfully and synced to account!`);
             loadData();
             handleCancel();
             setTimeout(() => setSuccess(null), 3000);

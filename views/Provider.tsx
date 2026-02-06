@@ -3,6 +3,7 @@ import { Activity, Cpu, Zap, Server, Coins, Terminal, Play, Square, Settings } f
 import { io } from 'socket.io-client';
 import { DynamicDiv } from '../components/DynamicDiv';
 import './Provider.css';
+import { explainFetchError, isMixedContentError } from '../services/networkStatusHelper';
 
 interface MinerConfig {
     coin: string;
@@ -169,8 +170,10 @@ const Provider: React.FC = () => {
                     'Authorization': `Bearer ${AGENT_SECRET}`
                 }
             });
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to toggle miner", e);
+            const explanation = explainFetchError(e, customAgentUrl);
+            alert("Failed to toggle miner: " + explanation);
             setMinerStatus('OFFLINE');
         }
     };
@@ -490,15 +493,32 @@ const Provider: React.FC = () => {
                         <div className="flex gap-3 mt-8">
                             <button
                                 onClick={async () => {
-                                    const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-                                    try {
-                                        // Update Local Config First
-                                        if (customAgentUrl !== agentUrl) {
-                                            localStorage.setItem('hnh_agent_url', customAgentUrl);
-                                        }
+                                    // Always save locally first
+                                    localStorage.setItem('hnh_miner_config', JSON.stringify(config));
+                                    if (customAgentUrl !== localStorage.getItem('hnh_agent_url')) {
+                                        localStorage.setItem('hnh_agent_url', customAgentUrl);
+                                    }
 
-                                        // Send Config to Agent
-                                        await fetch(`${customAgentUrl}/config`, {
+                                    // Also save to backend for cloud persistence
+                                    const token = localStorage.getItem('hnh_token');
+                                    if (token) {
+                                        try {
+                                            await fetch('https://api.hashnhedge.com/user/miner-config', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                },
+                                                body: JSON.stringify(config)
+                                            });
+                                        } catch (backendErr) {
+                                            console.warn('Could not sync to backend', backendErr);
+                                        }
+                                    }
+
+                                    // Now try to send to local agent (may fail due to Mixed Content)
+                                    try {
+                                        const res = await fetch(`${customAgentUrl}/config`, {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json',
@@ -507,13 +527,32 @@ const Provider: React.FC = () => {
                                             body: JSON.stringify(config)
                                         });
 
+                                        if (!res.ok) {
+                                            throw new Error(`Agent responded with ${res.status}`);
+                                        }
+
                                         setIsConfigOpen(false);
-                                        // Trigger a reload or just let telemetry pick it up?
-                                        // Let's reload to be safe and clean state
-                                        // window.location.reload(); 
-                                        // Actually better to just close and let telemetry update status to 'STARTING'
-                                    } catch (e) {
-                                        alert("Failed to save config: " + e);
+                                    } catch (e: any) {
+                                        // Config is saved locally, but agent sync failed
+                                        const isHttps = window.location.protocol === 'https:';
+                                        const isLocalAgent = customAgentUrl.includes('localhost') || customAgentUrl.includes('127.0.0.1');
+
+                                        if (isHttps && isLocalAgent && !customAgentUrl.startsWith('https://')) {
+                                            alert(
+                                                "Your configuration has been saved to your account!\n\n" +
+                                                "However, connecting to your local mining agent failed because your browser blocks HTTP requests from HTTPS pages (Mixed Content).\n\n" +
+                                                "To fix this:\n" +
+                                                "1. Open your local HNH Agent app\n" +
+                                                "2. Or run the frontend locally (npm run dev)\n" +
+                                                "3. Or enable 'Insecure Content' for this site in your browser settings"
+                                            );
+                                        } else {
+                                            alert(
+                                                "Your configuration has been saved, but the agent could not be reached.\n\n" +
+                                                "Make sure your mining agent is running at: " + customAgentUrl
+                                            );
+                                        }
+                                        setIsConfigOpen(false);
                                     }
                                 }}
                                 className="flex-1 bg-primary text-black py-3 rounded-lg font-bold hover:bg-primary-hover shadow-lg shadow-primary/20"
@@ -531,6 +570,7 @@ const Provider: React.FC = () => {
                 </div>
             )
             }
+
         </div >
     );
 };

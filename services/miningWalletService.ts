@@ -91,7 +91,7 @@ export const getWalletByCoin = (coin: MiningCoin): MiningWallet | undefined => {
 /**
  * Save a new wallet or update existing one
  */
-export const saveWallet = (data: WalletFormData): { success: boolean; wallet?: MiningWallet; error?: string } => {
+export const saveWallet = async (data: WalletFormData): Promise<{ success: boolean; wallet?: MiningWallet; error?: string }> => {
     // Validate address
     const pattern = ADDRESS_PATTERNS[data.coin];
     if (!pattern.test(data.address)) {
@@ -129,10 +129,86 @@ export const saveWallet = (data: WalletFormData): { success: boolean; wallet?: M
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
 
+    // --- SYNC TO BACKEND ---
+    const token = localStorage.getItem('hnh_token');
+    const API_URL = localStorage.getItem('hnh_api_url') || 'https://api.hashnhedge.com';
+
+    if (token) {
+        try {
+            await fetch(`${API_URL}/user/wallets`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    coin: wallet.coin,
+                    address: wallet.address,
+                    label: wallet.workerName, // Use workerName as label
+                    poolUrl: wallet.pool,
+                    isDefault: true
+                })
+            });
+        } catch (e) {
+            console.warn('[BACKEND] Failed to sync wallet to database', e);
+            // We continue as it's saved locally
+        }
+    }
+
     // Dispatch event for real-time updates
     window.dispatchEvent(new Event('wallets-updated'));
 
     return { success: true, wallet };
+};
+
+/**
+ * Sync wallets from backend
+ */
+export const syncWithBackend = async (): Promise<void> => {
+    const token = localStorage.getItem('hnh_token');
+    const API_URL = localStorage.getItem('hnh_api_url') || 'https://api.hashnhedge.com';
+
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_URL}/user/wallets`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            const backendWallets = await res.json();
+            if (Array.isArray(backendWallets)) {
+                const localWallets = getMiningWallets();
+                const now = Date.now();
+
+                backendWallets.forEach(bw => {
+                    const existingIndex = localWallets.findIndex(lw => lw.coin === bw.coin);
+                    const wallet: MiningWallet = {
+                        id: existingIndex >= 0 ? localWallets[existingIndex].id : `wallet_sync_${bw.id}`,
+                        coin: bw.coin as MiningCoin,
+                        address: bw.address,
+                        pool: bw.poolUrl || getPoolSuggestion(bw.coin as MiningCoin),
+                        workerName: bw.label || 'HNH_Worker',
+                        createdAt: now,
+                        updatedAt: now,
+                        isValid: true,
+                        lastValidated: now
+                    };
+
+                    if (existingIndex >= 0) {
+                        localWallets[existingIndex] = wallet;
+                    } else {
+                        localWallets.push(wallet);
+                    }
+                });
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(localWallets));
+                window.dispatchEvent(new Event('wallets-updated'));
+            }
+        }
+    } catch (e) {
+        console.error('[BACKEND] Failed to sync from database', e);
+    }
 };
 
 /**
@@ -260,35 +336,29 @@ export const exportWalletsForAgent = (): Record<MiningCoin, { address: string; p
 /**
  * Bulk apply derived addresses to all coins
  */
-export const applyDerivedAddresses = (addresses: Record<MiningCoin, string>): { success: boolean } => {
-    const wallets = getMiningWallets();
-    const now = Date.now();
+export const applyDerivedAddresses = async (addresses: Record<MiningCoin, string>): Promise<{ success: boolean; error?: string }> => {
+    try {
+        const results = await Promise.all(
+            (Object.entries(addresses) as [MiningCoin, string][]).map(([coin, address]) =>
+                saveWallet({
+                    coin,
+                    address,
+                    pool: getPoolSuggestion(coin),
+                    workerName: 'HNH_Worker'
+                })
+            )
+        );
 
-    (Object.entries(addresses) as [MiningCoin, string][]).forEach(([coin, address]) => {
-        const existingIndex = wallets.findIndex(w => w.coin === coin);
-        const wallet: MiningWallet = {
-            id: existingIndex >= 0 ? wallets[existingIndex].id : `wallet_${now}_${Math.random().toString(36).substr(2, 9)}`,
-            coin,
-            address,
-            pool: getPoolSuggestion(coin),
-            workerName: existingIndex >= 0 ? wallets[existingIndex].workerName : 'HNH_Worker',
-            createdAt: existingIndex >= 0 ? wallets[existingIndex].createdAt : now,
-            updatedAt: now,
-            isValid: true,
-            lastValidated: now
-        };
-
-        if (existingIndex >= 0) {
-            wallets[existingIndex] = wallet;
-        } else {
-            wallets.push(wallet);
+        const failed = results.filter(r => !r.success);
+        if (failed.length > 0) {
+            return { success: false, error: `Failed to save ${failed.length} wallets` };
         }
-    });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
-    window.dispatchEvent(new Event('wallets-updated'));
-
-    return { success: true };
+        return { success: true };
+    } catch (e) {
+        console.error("Failed to apply derived addresses", e);
+        return { success: false, error: String(e) };
+    }
 };
 
 /**

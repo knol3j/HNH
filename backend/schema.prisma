@@ -18,6 +18,7 @@ model User {
   referralCode  String   @unique
   referredBy    String?
   referralBonus Float    @default(0.0)
+  minerConfig   String?  // JSON string storing miner configuration
   createdAt     DateTime @default(now())
 
   workers         Worker[]

@@ -687,6 +687,50 @@ app.delete('/user/wallets/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// --- MINER CONFIG ---
+
+// Save/Update Miner Config (stores in user metadata as JSON)
+app.post('/user/miner-config', authenticateToken, async (req, res) => {
+    try {
+        const config = req.body;
+
+        // Validate basic structure
+        if (!config || typeof config !== 'object') {
+            return res.status(400).json({ error: 'Invalid config format' });
+        }
+
+        // Store the config as JSON in the user's metadata field
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: { minerConfig: JSON.stringify(config) }
+        });
+
+        res.json({ success: true, config });
+    } catch (e) {
+        console.error('[MINER_CONFIG] Save error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get Miner Config
+app.get('/user/miner-config', authenticateToken, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { minerConfig: true }
+        });
+
+        if (user?.minerConfig) {
+            res.json(JSON.parse(user.minerConfig));
+        } else {
+            res.json(null);
+        }
+    } catch (e) {
+        console.error('[MINER_CONFIG] Get error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Telemetry from Agent - requires authentication
 app.post('/miner/telemetry', authenticateToken, validate(telemetrySchema), async (req, res) => {
     const { workerName, hashrate, temp, power } = req.body;
