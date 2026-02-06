@@ -51,8 +51,47 @@ const requireAuth = (req, res, next) => {
 app.use(requireAuth);
 
 const PORT = 4343;
-const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
+
+// --- COIN-SPECIFIC MINER CONFIGURATION ---
+const COIN_MINERS = {
+    XMR: {
+        binary: process.platform === 'win32' ? 'xmrig.exe' : 'xmrig',
+        algorithm: 'rx/0',
+        pool: 'stratum+tcp://pool.supportxmr.com:5555',
+        apiPort: 4444
+    },
+    RVN: {
+        binary: process.platform === 'win32' ? 't-rex.exe' : 't-rex',
+        algorithm: 'kawpow',
+        pool: 'stratum+tcp://rvn.2miners.com:6060',
+        apiPort: 4067
+    },
+    ETC: {
+        binary: process.platform === 'win32' ? 't-rex.exe' : 't-rex',
+        algorithm: 'etchash',
+        pool: 'stratum+tcp://etc.2miners.com:1010',
+        apiPort: 4068
+    },
+    ERG: {
+        binary: process.platform === 'win32' ? 'lolMiner.exe' : 'lolMiner',
+        algorithm: 'AUTOLYKOS2',
+        pool: 'stratum+tcp://de.ergo.herominers.com:11800',
+        apiPort: 4069
+    },
+    KAS: {
+        binary: process.platform === 'win32' ? 'lolMiner.exe' : 'lolMiner',
+        algorithm: 'KASPA',
+        pool: 'stratum+tcp://kas.2miners.com:2020',
+        apiPort: 4070
+    }
+};
+
+// Helper to get miner path for current coin
+const getMinerPath = (coin) => {
+    const coinConfig = COIN_MINERS[coin] || COIN_MINERS.XMR;
+    return path.join(__dirname, 'bin', coinConfig.binary);
+};
 
 // --- PLATFORM FEE CONFIG ---
 const PLATFORM_FEE_TIERS = {
@@ -64,11 +103,11 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    XMR: 'stratum+tcp://pool.supportxmr.com:5555',
     RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
-    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
+    ETC: 'stratum+tcp://etc.2miners.com:1010', // GPU
     ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
-    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
+    KAS: 'stratum+tcp://kas.2miners.com:2020' // GPU
 };
 
 // --- STATE ---
@@ -152,56 +191,70 @@ const startMiner = () => {
         killMiner();
     }
 
-    // Clean URL
+    // Get coin-specific miner configuration
+    const coinConfig = COIN_MINERS[currentCoin] || COIN_MINERS.XMR;
+    const minerBin = getMinerPath(currentCoin);
     const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
-
-    addLog(`🚀 Launching XMRig...`);
-    addLog(`   Pool: ${cleanUrl}`);
     const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
-    addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
-    // XMRig Args
-    // XMRig Args
-    const args = [
-        '-o', cleanUrl,
-        '-u', config.wallet,
-        '-p', config.password,
-        '--no-color',
-        '--api-worker-id', 'AntigravityAgent',
-        '--http-host', '127.0.0.1', // SECURITY: Bind to localhost only
-        '--http-port', '4444', // Enable HTTP API for telemetry
-        '--http-access-token', 'antigravity_secret',
-        '--http-no-restricted',
-        '--donate-level', '1'
-    ];
+    addLog(`🚀 Launching ${coinConfig.binary} for ${currentCoin}...`);
+    addLog(`   Pool: ${cleanUrl}`);
+    addLog(`   User: ${displayWallet.substring(0, 8)}...`);
+    addLog(`   Algorithm: ${coinConfig.algorithm}`);
 
     // SECURITY: Input Validation
     if (config.poolUrl && !config.poolUrl.match(/^(stratum\+tcp|ssl):\/\/[a-zA-Z0-9.:-]+$/)) {
         addLog(`❌ Security: Invalid Pool URL detected: ${config.poolUrl}`);
         return;
     }
-    if (config.wallet && !config.wallet.match(/^[a-zA-Z0-9]+$/)) {
-        // Basic alphanumeric check - might need adjustment for specific coin formats
-        // but prevents obvious shell injection chars like ; | &
-        // addLog(`⚠️ Warning: Wallet contains special characters`); 
-    }
 
-    // Add Algorithm if specified (Critical for GPU switching)
-    if (config.algorithm) {
-        if ((config.algorithm === 'kawpow' || config.algorithm === 'etchash') && config.mode === 'gpu') {
-            args.push('--cuda'); // Try to enable CUDA if available (user must have plugin)
-            args.push('--opencl'); // Try OpenCL
-        }
-        args.push('-a', config.algorithm);
-    }
+    // Build miner-specific arguments
+    let args = [];
 
-    // Algorithm override if needed (XMRig auto-detects mostly)
-    // if (config.algorithm) args.push('-a', config.algorithm);
+    if (coinConfig.binary.includes('xmrig')) {
+        // XMRig arguments
+        args = [
+            '-o', cleanUrl,
+            '-u', config.wallet,
+            '-p', 'x',
+            '-a', coinConfig.algorithm,
+            '--no-color',
+            '--api-worker-id', 'HNH_Worker',
+            '--http-host', '127.0.0.1',
+            '--http-port', String(coinConfig.apiPort),
+            '--http-access-token', 'antigravity_secret',
+            '--http-no-restricted',
+            '--donate-level', '1',
+            '--rig-id', 'HNH_Worker'
+        ];
+    } else if (coinConfig.binary.includes('t-rex')) {
+        // T-Rex arguments
+        args = [
+            '-a', coinConfig.algorithm,
+            '-o', config.poolUrl,
+            '-u', config.wallet,
+            '-p', 'x',
+            '--api-bind-http', `127.0.0.1:${coinConfig.apiPort}`,
+            '--no-watchdog',
+            '-w', 'HNH_Worker'
+        ];
+    } else if (coinConfig.binary.includes('lolMiner')) {
+        // lolMiner arguments
+        args = [
+            '--algo', coinConfig.algorithm,
+            '--pool', config.poolUrl,
+            '--user', config.wallet,
+            '--pass', 'x',
+            '--apiport', String(coinConfig.apiPort),
+            '--apihost', '127.0.0.1',
+            '--worker', 'HNH_Worker'
+        ];
+    }
 
     minerStatus = 'STARTING';
 
     try {
-        minerProcess = spawn(MINER_BIN, args);
+        minerProcess = spawn(minerBin, args);
 
         minerProcess.stdout.on('data', (data) => {
             const line = data.toString().trim();
@@ -209,12 +262,12 @@ const startMiner = () => {
         });
 
         minerProcess.stderr.on('data', (data) => {
-            console.error(`[XMRIG ERR] ${data}`);
+            console.error(`[${coinConfig.binary} ERR] ${data}`);
             addLog(`ERR: ${data.toString().trim()}`);
         });
 
         minerProcess.on('close', (code) => {
-            addLog(`⚠️ Miner exitted with code ${code}`);
+            addLog(`⚠️ Miner exited with code ${code}`);
             minerStatus = 'OFFLINE';
             telemetry.hashrate = 0;
             minerProcess = null;
