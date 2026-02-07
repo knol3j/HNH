@@ -11,7 +11,9 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { syncDbToStore, restoreFromStoreToDb } from './persistentStore.js';
+import { syncDbToStore, restoreFromStoreToDb, encrypt, decrypt } from './persistentStore.js';
+import * as bip39 from 'bip39';
+import { ethers } from 'ethers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -683,6 +685,204 @@ app.delete('/user/wallets/:id', authenticateToken, async (req, res) => {
         await prisma.userWallet.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- WALLET SEED MANAGEMENT (Per-User HD Wallet) ---
+
+// Helper: Derive addresses from mnemonic (server-side)
+const deriveAddressesFromMnemonic = async (mnemonic) => {
+    const seed = await bip39.mnemonicToSeed(mnemonic);
+    const hdNode = ethers.utils.HDNode.fromSeed(seed);
+
+    // ETC: Standard m/44'/61'/0'/0/0
+    const etcNode = hdNode.derivePath("m/44'/61'/0'/0/0");
+    const etcAddress = etcNode.address;
+
+    // Helper for deterministic mock addresses
+    const formatAsRVN = (privKey) => {
+        const hash = ethers.utils.sha256(privKey).substring(2, 34);
+        return 'R' + hash;
+    };
+    const formatAsXMR = (privKey) => {
+        const hash = ethers.utils.sha256(privKey).substring(2) + ethers.utils.sha256(privKey + '1').substring(2);
+        return '4' + hash.substring(0, 94);
+    };
+    const formatAsERG = (privKey) => {
+        const hash = ethers.utils.sha256(privKey).substring(2, 53);
+        return '9' + hash;
+    };
+    const formatAsKAS = (privKey) => {
+        const hash = ethers.utils.sha256(privKey).substring(2, 60);
+        return 'kaspa:q' + hash;
+    };
+
+    // Derive keys for each coin
+    const rvnKey = hdNode.derivePath("m/44'/175'/0'/0/0").privateKey;
+    const xmrKey = hdNode.derivePath("m/44'/128'/0'/0/0").privateKey;
+    const ergKey = hdNode.derivePath("m/44'/429'/0'/0/0").privateKey;
+    const kasKey = hdNode.derivePath("m/44'/11111'/0'/0/0").privateKey;
+
+    return {
+        ETC: etcAddress,
+        RVN: formatAsRVN(rvnKey),
+        XMR: formatAsXMR(xmrKey),
+        ERG: formatAsERG(ergKey),
+        KAS: formatAsKAS(kasKey)
+    };
+};
+
+// Generate wallet seed for user (if none exists)
+app.post('/user/wallet/generate-seed', authenticateToken, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { walletSeed: true }
+        });
+
+        // If user already has a seed, don't overwrite
+        if (user?.walletSeed) {
+            // Decrypt and derive addresses
+            try {
+                const decrypted = decrypt(JSON.parse(user.walletSeed));
+                const addresses = await deriveAddressesFromMnemonic(decrypted);
+                return res.json({ success: true, addresses, existing: true });
+            } catch (e) {
+                console.error('[WALLET_SEED] Failed to decrypt existing seed:', e);
+                return res.status(500).json({ error: 'Failed to decrypt existing seed' });
+            }
+        }
+
+        // Generate new mnemonic
+        const mnemonic = bip39.generateMnemonic();
+
+        // Encrypt the mnemonic
+        const encryptedSeed = JSON.stringify(encrypt(mnemonic));
+
+        // Store encrypted seed
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: { walletSeed: encryptedSeed }
+        });
+
+        // Derive addresses
+        const addresses = await deriveAddressesFromMnemonic(mnemonic);
+
+        // Auto-create wallet entries for each coin
+        for (const [coin, address] of Object.entries(addresses)) {
+            await prisma.userWallet.upsert({
+                where: {
+                    userId_coin_address: {
+                        userId: req.user.id,
+                        coin,
+                        address
+                    }
+                },
+                update: { isDefault: true },
+                create: {
+                    userId: req.user.id,
+                    coin,
+                    address,
+                    label: 'Auto-generated',
+                    isDefault: true
+                }
+            });
+        }
+
+        // Backup to persistent store
+        syncDbToStore(prisma);
+
+        console.log(`[WALLET_SEED] Generated new seed for user ${req.user.username}`);
+        res.json({ success: true, addresses, existing: false });
+    } catch (e) {
+        console.error('[WALLET_SEED] Generate error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get derived addresses from user's stored seed
+app.get('/user/wallet/addresses', authenticateToken, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { walletSeed: true }
+        });
+
+        if (!user?.walletSeed) {
+            return res.json({ hasSeed: false, addresses: null });
+        }
+
+        try {
+            const decrypted = decrypt(JSON.parse(user.walletSeed));
+            const addresses = await deriveAddressesFromMnemonic(decrypted);
+            res.json({ hasSeed: true, addresses });
+        } catch (e) {
+            console.error('[WALLET_SEED] Failed to decrypt seed:', e);
+            res.status(500).json({ error: 'Failed to decrypt wallet seed' });
+        }
+    } catch (e) {
+        console.error('[WALLET_SEED] Get addresses error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Import existing mnemonic (for migration from browser storage)
+app.post('/user/wallet/import-seed', authenticateToken, async (req, res) => {
+    const { mnemonic } = req.body;
+
+    if (!mnemonic || typeof mnemonic !== 'string') {
+        return res.status(400).json({ error: 'Mnemonic is required' });
+    }
+
+    // Validate mnemonic
+    if (!bip39.validateMnemonic(mnemonic.trim())) {
+        return res.status(400).json({ error: 'Invalid mnemonic phrase' });
+    }
+
+    try {
+        const cleanMnemonic = mnemonic.trim();
+
+        // Encrypt the mnemonic
+        const encryptedSeed = JSON.stringify(encrypt(cleanMnemonic));
+
+        // Store encrypted seed (overwrites any existing)
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: { walletSeed: encryptedSeed }
+        });
+
+        // Derive addresses
+        const addresses = await deriveAddressesFromMnemonic(cleanMnemonic);
+
+        // Auto-create wallet entries for each coin
+        for (const [coin, address] of Object.entries(addresses)) {
+            await prisma.userWallet.upsert({
+                where: {
+                    userId_coin_address: {
+                        userId: req.user.id,
+                        coin,
+                        address
+                    }
+                },
+                update: { isDefault: true },
+                create: {
+                    userId: req.user.id,
+                    coin,
+                    address,
+                    label: 'Imported',
+                    isDefault: true
+                }
+            });
+        }
+
+        // Backup to persistent store
+        syncDbToStore(prisma);
+
+        console.log(`[WALLET_SEED] Imported seed for user ${req.user.username}`);
+        res.json({ success: true, addresses });
+    } catch (e) {
+        console.error('[WALLET_SEED] Import error:', e);
         res.status(500).json({ error: e.message });
     }
 });

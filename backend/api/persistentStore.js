@@ -88,6 +88,9 @@ export const loadFromStore = () => {
     }
 };
 
+// Export encryption utilities for wallet seed encryption
+export { encrypt, decrypt };
+
 /**
  * Full Sync: Database -> Store
  */
@@ -115,6 +118,7 @@ export const syncDbToStore = async (prisma) => {
                     poolUrl: w.poolUrl,
                     isDefault: w.isDefault
                 })),
+                walletSeed: u.walletSeed, // Encrypted HD wallet seed
                 stats: u.userStats ? {
                     totalShares: u.userStats.totalShares,
                     totalMinedUsd: u.userStats.totalMinedUsd,
@@ -154,7 +158,8 @@ export const restoreFromStoreToDb = async (prisma) => {
                     tier: u.tier,
                     role: u.role,
                     referralCode: u.referralCode,
-                    referredBy: u.referredBy
+                    referredBy: u.referredBy,
+                    walletSeed: u.walletSeed || undefined  // Restore encrypted seed
                 },
                 create: {
                     username: u.username,
@@ -162,7 +167,8 @@ export const restoreFromStoreToDb = async (prisma) => {
                     tier: u.tier,
                     role: u.role,
                     referralCode: u.referralCode,
-                    referredBy: u.referredBy
+                    referredBy: u.referredBy,
+                    walletSeed: u.walletSeed || undefined  // Restore encrypted seed
                 }
             });
 

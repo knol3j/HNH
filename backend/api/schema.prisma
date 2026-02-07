@@ -18,6 +18,8 @@ model User {
   referredBy    String?
   referralBonus Float    @default(0.0)
   createdAt     DateTime @default(now())
+  walletSeed    String?  // Encrypted HD wallet mnemonic for per-user address generation
+  minerConfig   String?  // JSON config for miner settings
 
   workers         Worker[]
   shares          Share[]

@@ -38,7 +38,10 @@ import {
     saveMnemonic,
     getMnemonic,
     deriveAllAddresses,
-    clearMnemonic
+    clearMnemonic,
+    fetchAddressesFromBackend,
+    generateSeedOnBackend,
+    importSeedToBackend
 } from '../services/unifiedWalletService';
 
 const Wallets: React.FC = () => {
@@ -75,14 +78,30 @@ const Wallets: React.FC = () => {
 
     const loadData = async () => {
         setWallets(getMiningWallets());
-        const savedMnemonic = getMnemonic();
-        setMnemonic(savedMnemonic);
 
         // Sync with backend to ensure we have the latest wallets
         await syncWithBackend();
         setWallets(getMiningWallets());
 
+        // First, check backend for wallet seed (source of truth)
+        const backendResult = await fetchAddressesFromBackend();
+
+        if (backendResult.hasSeed && backendResult.addresses) {
+            // User has seed stored on backend - use those addresses
+            setDerivedAddresses(backendResult.addresses);
+            setOnboardingView('NONE');
+            // Also check for local mnemonic (for display purposes)
+            const savedMnemonic = getMnemonic();
+            setMnemonic(savedMnemonic);
+            return;
+        }
+
+        // Fallback: check localStorage for existing mnemonic
+        const savedMnemonic = getMnemonic();
+        setMnemonic(savedMnemonic);
+
         if (savedMnemonic) {
+            // User has local mnemonic but no backend seed - offer migration
             setOnboardingView('NONE');
             handleDerive(savedMnemonic);
         } else {
@@ -99,17 +118,49 @@ const Wallets: React.FC = () => {
         }
     };
 
-    const handleGenerateMnemonic = () => {
-        const m = generateMnemonic();
-        setMnemonic(m);
-        setOnboardingView('GENERATE');
+    const handleGenerateMnemonic = async () => {
+        setIsGenerating(true);
+        setError(null);
+
+        // Generate on backend first (this creates and stores the seed)
+        const result = await generateSeedOnBackend();
+
+        if (result.success && result.addresses) {
+            setDerivedAddresses(result.addresses);
+            // We don't expose the mnemonic from backend - it's sealed
+            setMnemonic(null);
+            setOnboardingView('COMPLETE');
+        } else {
+            // Fallback to local generation if backend fails
+            const m = generateMnemonic();
+            setMnemonic(m);
+            setOnboardingView('GENERATE');
+        }
+
+        setIsGenerating(false);
     };
 
-    const confirmGeneratedMnemonic = () => {
+    const confirmGeneratedMnemonic = async () => {
         if (mnemonic) {
+            setIsGenerating(true);
+
+            // Save locally for backwards compatibility
             saveMnemonic(mnemonic);
-            handleDerive(mnemonic);
+
+            // Import to backend for persistence
+            const result = await importSeedToBackend(mnemonic);
+
+            if (result.success && result.addresses) {
+                setDerivedAddresses(result.addresses);
+                setSuccess('Wallet seed backed up to your account!');
+            } else {
+                // Still derive locally even if backend import fails
+                handleDerive(mnemonic);
+                console.warn('Backend import failed, using local seed:', result.error);
+            }
+
             setOnboardingView('COMPLETE');
+            setIsGenerating(false);
         }
     };
 
