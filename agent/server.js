@@ -356,10 +356,11 @@ const handleMinerOutput = (rawLine) => {
 };
 
 // Start on Load
-if (fs.existsSync(MINER_BIN)) {
+const minerBinPath = getMinerPath(currentCoin);
+if (fs.existsSync(minerBinPath)) {
     startMiner();
 } else {
-    addLog("❌ Miner binary not found. Run 'setup_miner.sh' first.");
+    addLog(`❌ Miner binary not found at ${minerBinPath}. Run 'setup_miner.sh' first.`);
 }
 
 // --- API ---
