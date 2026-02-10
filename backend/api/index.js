@@ -388,8 +388,18 @@ app.get(['/', '/health', '/healthck'], async (req, res) => {
         // Load version info
         let version = 'unknown';
         try {
-            const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, '../../version.json'), 'utf8'));
-            version = versionData.version;
+            const paths = [
+                path.join(__dirname, 'version.json'),
+                path.join(__dirname, '../../version.json')
+            ];
+            let versionData;
+            for (const p of paths) {
+                if (fs.existsSync(p)) {
+                    versionData = JSON.parse(fs.readFileSync(p, 'utf8'));
+                    break;
+                }
+            }
+            if (versionData) version = versionData.version;
         } catch (e) {
             console.warn('Failed to load version info', e);
         }
