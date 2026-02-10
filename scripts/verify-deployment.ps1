@@ -135,6 +135,28 @@ function Test-RailwayHealth {
     return 1
 }
 
+function Test-BackendLogin {
+    Write-Host ""
+    Write-ColorOutput "Checking Backend Auth with test user..." "Yellow"
+    $LOGIN_URL = "https://api.hashnhedge.com/auth/login"
+    $body = @{
+        username = "newusertest"
+        password = "password"
+    } | ConvertTo-Json
+
+    try {
+        $response = Invoke-RestMethod -Uri $LOGIN_URL -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10
+        if ($response.token) {
+            Write-ColorOutput "Login Successful (User: $($response.user.username))" "Green"
+            return 0
+        }
+    }
+    catch {
+        Write-ColorOutput "Login Failed: $($_.Exception.Message)" "Red"
+    }
+    return 1
+}
+
 function Test-LocalAgentHealth {
     Write-Host ""
     Write-ColorOutput "Checking Local Mining Agent health..." "Yellow"
@@ -183,6 +205,7 @@ function Test-Deployment($sha) {
 
         $ghStatus = Test-GitHubActions $sha
         $railwayStatus = Test-RailwayHealth
+        $loginStatus = Test-BackendLogin
         Test-LocalAgentHealth
 
         if ($ghStatus -eq 2) {
@@ -191,7 +214,7 @@ function Test-Deployment($sha) {
             return $false
         }
 
-        if ($ghStatus -eq 0 -and $railwayStatus -eq 0) {
+        if ($ghStatus -eq 0 -and $railwayStatus -eq 0 -and $loginStatus -eq 0) {
             Write-Host ""
             Write-ColorOutput "================================================" "Green"
             Write-ColorOutput "  ALL CHECKS PASSED!" "Green"

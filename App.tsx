@@ -22,6 +22,7 @@ import Docs from './views/Docs';
 import Forum from './views/Forum';
 import Diagnostics from './views/Diagnostics';
 import WalletSetupModal from './components/WalletSetupModal';
+import AgentPromptModal from './components/AgentPromptModal';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   }, []);
 
   const [isWalletSetupOpen, setIsWalletSetupOpen] = useState(false);
+  const [isAgentPromptOpen, setIsAgentPromptOpen] = useState(false);
 
   // Check Session
   useEffect(() => {
@@ -84,7 +86,19 @@ const App: React.FC = () => {
         } catch (e) { }
       };
 
+      // Check agent health and prompt if offline
+      const checkAgent = async () => {
+        try {
+          const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
+          const res = await fetch(`${agentUrl}/health`);
+          if (!res.ok) setIsAgentPromptOpen(true);
+        } catch (e) {
+          setIsAgentPromptOpen(true);
+        }
+      };
+
       checkWallets();
+      checkAgent();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
@@ -175,6 +189,11 @@ const App: React.FC = () => {
         isOpen={isWalletSetupOpen}
         onClose={() => setIsWalletSetupOpen(false)}
         onComplete={() => setIsWalletSetupOpen(false)}
+      />
+
+      <AgentPromptModal
+        isOpen={isAgentPromptOpen}
+        onClose={() => setIsAgentPromptOpen(false)}
       />
     </Layout>
   );
