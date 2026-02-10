@@ -718,19 +718,22 @@ const deriveAddressesFromMnemonic = async (mnemonic) => {
 
     // Helper for deterministic mock addresses
     const formatAsRVN = (privKey) => {
-        const hash = ethers.utils.sha256(privKey).substring(2, 34);
+        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 34);
         return 'R' + hash;
     };
     const formatAsXMR = (privKey) => {
-        const hash = ethers.utils.sha256(privKey).substring(2) + ethers.utils.sha256(privKey + '1').substring(2);
-        return '4' + hash.substring(0, 94);
+        const key = ethers.utils.hexZeroPad(privKey, 32);
+        const hash1 = ethers.utils.sha256(key).substring(2);
+        // Use hexConcat to safely append a byte
+        const hash2 = ethers.utils.sha256(ethers.utils.hexConcat([key, "0x01"])).substring(2);
+        return '4' + (hash1 + hash2).substring(0, 94);
     };
     const formatAsERG = (privKey) => {
-        const hash = ethers.utils.sha256(privKey).substring(2, 53);
+        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 53);
         return '9' + hash;
     };
     const formatAsKAS = (privKey) => {
-        const hash = ethers.utils.sha256(privKey).substring(2, 60);
+        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 60);
         return 'kaspa:q' + hash;
     };
 
