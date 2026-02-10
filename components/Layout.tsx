@@ -135,6 +135,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, chi
           <NavItem view="OVERCLOCK" icon={Layers} label="AI Tuner" badge="NEW" />
           <NavItem view="REFERRALS" icon={Users} label="Referrals" badge="$$$" />
           <NavItem view="UPGRADE" icon={Crown} label="Upgrade" badge="PRO" />
+          <NavItem view="DIAGNOSTICS" icon={Activity} label="System Diagnostics" />
         </nav>
 
         <div className="p-4 border-t border-white/5">

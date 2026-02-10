@@ -14,13 +14,14 @@ function Write-ColorOutput($message, $color = "White") {
     Write-Host $message -ForegroundColor $color
 }
 
-function Check-GitHubActions($sha) {
+function Test-GitHubActions($sha) {
     Write-ColorOutput "Checking GitHub Actions for commit $sha..." "Yellow"
 
     try {
         # Fetch runs for the specific commit
-        $runs = gh run list --commit $sha --json databaseId,status,conclusion,workflowName,displayTitle 2>$null | ConvertFrom-Json
-    } catch {
+        $runs = gh run list --commit $sha --json databaseId, status, conclusion, workflowName, displayTitle 2>$null | ConvertFrom-Json
+    }
+    catch {
         Write-ColorOutput "Failed to get workflow runs" "Red"
         return 1
     }
@@ -30,22 +31,22 @@ function Check-GitHubActions($sha) {
         return 1 # Wait for runs to start
     }
 
-    $allPassed = $true
     $anyInProgress = $false
     $anyFailed = $false
 
     Write-Host "Workflow Status Summary:"
     foreach ($run in $runs) {
-        $statusStr = $run.status
         $conclusionStr = if ($run.conclusion) { $run.conclusion } else { $run.status }
         
         $color = "White"
         if ($run.status -in @("in_progress", "queued", "waiting", "pending")) {
             $color = "Yellow"
             $anyInProgress = $true
-        } elseif ($run.conclusion -eq "success") {
+        }
+        elseif ($run.conclusion -eq "success") {
             $color = "Green"
-        } elseif ($run.conclusion -eq "failure" -or $run.conclusion -eq "cancelled") {
+        }
+        elseif ($run.conclusion -eq "failure" -or $run.conclusion -eq "cancelled") {
             $color = "Red"
             $anyFailed = $true
         }
@@ -66,24 +67,35 @@ function Check-GitHubActions($sha) {
     return 0
 }
 
-function Check-RailwayHealth {
+function Test-RailwayHealth {
     Write-Host ""
     Write-ColorOutput "Checking Railway services health..." "Yellow"
 
     $apiStatus = 0
     $appStatus = 0
+    $versionJson = ""
+
+    # Load local version for comparison
+    try {
+        $versionJson = Get-Content -Raw "version.json" | ConvertFrom-Json
+    }
+    catch {
+        Write-ColorOutput "Warning: Could not read local version.json" "Gray"
+    }
 
     try {
         $apiResponse = Invoke-WebRequest -Uri $API_URL -Method Get -UseBasicParsing -TimeoutSec 10 -ErrorAction SilentlyContinue
         if ($apiResponse) { $apiStatus = $apiResponse.StatusCode }
-    } catch {
+    }
+    catch {
         $apiStatus = 0
     }
 
     try {
         $appResponse = Invoke-WebRequest -Uri $APP_URL -Method Get -UseBasicParsing -TimeoutSec 10 -ErrorAction SilentlyContinue
         if ($appResponse) { $appStatus = $appResponse.StatusCode }
-    } catch {
+    }
+    catch {
         $appStatus = 0
     }
 
@@ -96,11 +108,26 @@ function Check-RailwayHealth {
     if ($apiStatus -eq 200 -and $appStatus -eq 200) {
         try {
             $healthData = Invoke-RestMethod -Uri $API_URL -Method Get -TimeoutSec 10 -ErrorAction SilentlyContinue
+            
+            # Database
             $dbStatus = $healthData.database
             Write-Host "  Database: " -NoNewline
             if ($dbStatus -eq "connected") { Write-ColorOutput "connected" "Green" } else { Write-ColorOutput $dbStatus "Yellow" }
-        } catch {
-            Write-Host "  Database: unknown"
+            
+            # Version Check
+            if ($versionJson) {
+                Write-Host "  Version Match: " -NoNewline
+                if ($healthData.version -eq $versionJson.version) {
+                    Write-ColorOutput "Yes ($($healthData.version))" "Green"
+                }
+                else {
+                    Write-ColorOutput "No (Local: $($versionJson.version), Remote: $($healthData.version))" "Yellow"
+                }
+            }
+        }
+        catch {
+            Write-Host "  Health Data: " -NoNewline
+            Write-ColorOutput "Failed to parse" "Red"
         }
         return 0
     }
@@ -108,7 +135,31 @@ function Check-RailwayHealth {
     return 1
 }
 
-function Verify-Deployment($sha) {
+function Test-LocalAgentHealth {
+    Write-Host ""
+    Write-ColorOutput "Checking Local Mining Agent health..." "Yellow"
+    $AGENT_URL = "http://localhost:4343/health"
+
+    try {
+        $agentHealth = Invoke-RestMethod -Uri $AGENT_URL -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
+        Write-Host "  Agent Status: " -NoNewline
+        if ($agentHealth.status -eq "ok") {
+            Write-ColorOutput "ONLINE (Version: $($agentHealth.platform_version))" "Green"
+            return 0
+        }
+        else {
+            Write-ColorOutput "ERROR" "Red"
+            return 1
+        }
+    }
+    catch {
+        Write-Host "  Agent Status: " -NoNewline
+        Write-ColorOutput "OFFLINE (Not reachable at $AGENT_URL)" "Gray"
+        return 1
+    }
+}
+
+function Test-Deployment($sha) {
     if (-not $sha) {
         $sha = git rev-parse HEAD
     }
@@ -130,8 +181,9 @@ function Verify-Deployment($sha) {
         Write-Host "Target Commit: $sha"
         Write-Host "================================================"
 
-        $ghStatus = Check-GitHubActions $sha
-        $railwayStatus = Check-RailwayHealth
+        $ghStatus = Test-GitHubActions $sha
+        $railwayStatus = Test-RailwayHealth
+        Test-LocalAgentHealth
 
         if ($ghStatus -eq 2) {
             Write-Host ""
@@ -166,9 +218,10 @@ if (-not $targetSha) {
     $targetSha = git rev-parse HEAD
 }
 
-$result = Verify-Deployment $targetSha
+$result = Test-Deployment $targetSha
 if ($result) {
     exit 0
-} else {
+}
+else {
     exit 1
 }

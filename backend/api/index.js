@@ -384,7 +384,23 @@ app.get(['/', '/health', '/healthck'], async (req, res) => {
     console.log(`[HEALTH] Request received from ${req.ip}`);
     try {
         await prisma.$queryRaw`SELECT 1`;
-        res.json({ status: 'ok', database: 'connected', service: 'HNH-API', version: '1.0.1' });
+
+        // Load version info
+        let version = 'unknown';
+        try {
+            const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, '../../version.json'), 'utf8'));
+            version = versionData.version;
+        } catch (e) {
+            console.warn('Failed to load version info', e);
+        }
+
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            service: 'HNH-API',
+            version: version,
+            api_version: '1.0.1'
+        });
     } catch (e) {
         res.status(500).json({ status: 'error', database: 'disconnected', error: e.message });
     }

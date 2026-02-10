@@ -174,7 +174,24 @@ try {
 } catch (e) { console.error(e); }
 
 const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+    try {
+        // Auto-backup before saving
+        if (fs.existsSync(DATA_FILE)) {
+            fs.copyFileSync(DATA_FILE, `${DATA_FILE}.bak`);
+        }
+
+        const dataToSave = {
+            totalShares,
+            feeShares,
+            wallets: config.wallets,
+            miningMode: config.mode,
+            currentCoin,
+            config: config
+        };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(dataToSave, null, 2));
+    } catch (e) {
+        addLog(`❌ Error saving stats: ${e.message}`);
+    }
 };
 
 // --- LOGGING ---
@@ -495,6 +512,61 @@ app.get('/meta', (req, res) => {
         currentCoin: currentCoin,
         config: config
     });
+});
+
+// --- DIAGNOSTICS & ROBUSTNESS ---
+
+app.get('/health', (req, res) => {
+    let version = 'unknown';
+    try {
+        const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, '../version.json'), 'utf8'));
+        version = versionData.version;
+    } catch (e) { }
+
+    res.json({
+        status: 'ok',
+        service: 'HNH-Agent',
+        platform_version: version,
+        miner_status: minerStatus,
+        uptime: process.uptime(),
+        platform: process.platform,
+        arch: process.arch
+    });
+});
+
+app.get('/test-miners', async (req, res) => {
+    const results = {};
+    for (const [coin, cfg] of Object.entries(COIN_MINERS)) {
+        const binPath = getMinerPath(coin);
+        const exists = fs.existsSync(binPath);
+        results[coin] = {
+            binary: cfg.binary,
+            path: binPath,
+            exists: exists,
+            status: exists ? 'READY' : 'MISSING'
+        };
+    }
+    res.json({ success: true, miners: results });
+});
+
+app.post('/rollback', (req, res) => {
+    const BAK_FILE = `${DATA_FILE}.bak`;
+    if (!fs.existsSync(BAK_FILE)) {
+        return res.status(404).json({ error: 'No backup found' });
+    }
+
+    try {
+        addLog('🔄 Rolling back configuration from backup...');
+        fs.copyFileSync(BAK_FILE, DATA_FILE);
+
+        addLog('⚠️ Restarting agent process to apply rollback...');
+        res.json({ success: true, message: 'Rollback initiated. Agent will restart.' });
+
+        // Short delay to allow response to send, then exit (assuming PM2 or similar will restart it)
+        setTimeout(() => process.exit(0), 1000);
+    } catch (e) {
+        res.status(500).json({ error: `Rollback failed: ${e.message}` });
+    }
 });
 
 app.listen(PORT, () => {

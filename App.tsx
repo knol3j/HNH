@@ -20,6 +20,8 @@ import Workers from './views/Workers';
 import Overclock from './views/Overclock';
 import Docs from './views/Docs';
 import Forum from './views/Forum';
+import Diagnostics from './views/Diagnostics';
+import WalletSetupModal from './components/WalletSetupModal';
 import { User } from './types';
 import { getCurrentUser, logoutUser } from './services/authService';
 
@@ -56,15 +58,36 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const [isWalletSetupOpen, setIsWalletSetupOpen] = useState(false);
+
   // Check Session
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
       setCurrentUser(user);
       if (currentView === 'LANDING') setCurrentView('DASHBOARD');
+
+      // Check if user needs wallet setup
+      const checkWallets = async () => {
+        const token = localStorage.getItem('hnh_token');
+        if (!token) return;
+        try {
+          const res = await fetch('https://api.hashnhedge.com/user/wallets', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const wallets = await res.json();
+            if (wallets.length === 0) {
+              setIsWalletSetupOpen(true);
+            }
+          }
+        } catch (e) { }
+      };
+
+      checkWallets();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   const handleLogout = () => {
     logoutUser();
@@ -144,6 +167,15 @@ const App: React.FC = () => {
       {currentView === 'FORUM' && (
         <Forum />
       )}
+      {currentView === 'DIAGNOSTICS' && (
+        <Diagnostics />
+      )}
+
+      <WalletSetupModal
+        isOpen={isWalletSetupOpen}
+        onClose={() => setIsWalletSetupOpen(false)}
+        onComplete={() => setIsWalletSetupOpen(false)}
+      />
     </Layout>
   );
 };

@@ -98,7 +98,8 @@ export type View =
   | 'WORKERS'
   | 'OVERCLOCK'
   | 'DOCS'
-  | 'FORUM';
+  | 'FORUM'
+  | 'DIAGNOSTICS';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';
