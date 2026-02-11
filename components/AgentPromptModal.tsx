@@ -26,25 +26,33 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                 </div>
 
                 <div className="mt-8 space-y-4">
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center gap-4 group hover:bg-white/10 transition-colors">
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl p-4 flex items-center gap-4 group hover:bg-white/10 transition-colors cursor-pointer"
+                    >
                         <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
                             <Play size={20} />
                         </div>
                         <div className="flex-1 text-left">
                             <h3 className="text-white font-bold text-sm">Already have it?</h3>
-                            <p className="text-xs text-muted">Run the <code>start_agent.bat</code> file on your machine.</p>
+                            <p className="text-xs text-muted">Run the <code>start_agent.bat</code> file, then click here to refresh.</p>
                         </div>
-                    </div>
+                    </button>
 
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-4 flex items-center gap-4 group hover:bg-white/10 transition-colors">
+                    <a
+                        href="https://github.com/knol3j/HNH/releases/latest"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-white/5 border border-white/5 rounded-xl p-4 flex items-center gap-4 group hover:bg-white/10 transition-colors cursor-pointer no-underline"
+                    >
                         <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
                             <Download size={20} />
                         </div>
                         <div className="flex-1 text-left">
                             <h3 className="text-white font-bold text-sm">New to HashNHedge?</h3>
-                            <p className="text-xs text-muted">Download the installer and follow the setup guide.</p>
+                            <p className="text-xs text-muted">Download the installer and follow our quick setup guide.</p>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex items-start gap-3 text-left">
@@ -61,11 +69,14 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                     >
                         Maybe Later
                     </button>
-                    <button
-                        className="flex-1 py-3 px-4 bg-primary hover:bg-primary-hover text-black font-bold rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                    <a
+                        href="https://docs.hashnhedge.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-3 px-4 bg-primary hover:bg-primary-hover text-black font-bold rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 no-underline"
                     >
                         Guide <ExternalLink size={16} />
-                    </button>
+                    </a>
                 </footer>
             </div>
         </div >
