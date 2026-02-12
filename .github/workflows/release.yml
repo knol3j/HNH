@@ -1,0 +1,64 @@
+name: Build & Publish Release
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Read version
+              id: version
+              shell: pwsh
+              run: |
+                  $v = (Get-Content version.json -Raw | ConvertFrom-Json).version
+                  echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+
+            - name: Build Agent Code Package
+              shell: pwsh
+              run: |
+                  $VERSION = "${{ steps.version.outputs.VERSION }}"
+                  $STAGING = "release\staging-agent"
+                  New-Item -ItemType Directory -Path $STAGING -Force | Out-Null
+
+                  # Core files
+                  $files = @("server.js","main.cjs","stratum-proxy.js","setup.cjs","package.json",".env.example","start_miner.bat","setup_miner_windows.ps1","setup_miner.sh","QUICKSTART.md")
+                  foreach ($f in $files) {
+                    $src = "agent\$f"
+                    if (Test-Path $src) { Copy-Item $src -Destination $STAGING }
+                  }
+
+                  # GUI and miners directories
+                  if (Test-Path "agent\gui") { Copy-Item -Recurse "agent\gui" -Destination "$STAGING\gui" }
+                  if (Test-Path "agent\miners") { Copy-Item -Recurse "agent\miners" -Destination "$STAGING\miners" }
+
+                  Compress-Archive -Path "$STAGING\*" -DestinationPath "release\HNH-AgentMiner-v$VERSION.zip" -Force
+                  Remove-Item -Recurse -Force $STAGING
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ github.ref_name }}
+                  name: "HNH Agent Miner ${{ github.ref_name }}"
+                  body: |
+                      ## HNH Agent Miner ${{ github.ref_name }}
+
+                      ### Quick Start
+                      1. Download `HNH-AgentMiner-v${{ steps.version.outputs.VERSION }}.zip`
+                      2. Extract to a folder
+                      3. Run `setup_miner_windows.ps1` (Windows) or `setup_miner.sh` (Linux)
+                      4. Double-click `start_miner.bat` to start mining
+
+                      See `QUICKSTART.md` inside the zip for full instructions.
+                  files: |
+                      release/*.zip
+                  draft: false
+                  prerelease: false
