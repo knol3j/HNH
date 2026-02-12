@@ -386,9 +386,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
                 <span>{getLevelProgress(userStats.xp, userStats.level).toFixed(0)}%</span>
               </div>
               <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
-                  style={{ width: `${getLevelProgress(userStats.xp, userStats.level)}%` }}
+                <DynamicDiv
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 xp-progress-bar"
+                  cssVars={{ '--xp-width': `${getLevelProgress(userStats.xp, userStats.level)}%` }}
                 />
               </div>
             </div>

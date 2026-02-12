@@ -40,3 +40,7 @@
     /* h-1 */
     transition: all 0.5s;
 }
+
+.xp-progress-bar {
+    width: var(--xp-width);
+}
