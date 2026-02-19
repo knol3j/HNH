@@ -24,7 +24,8 @@ import Diagnostics from './views/Diagnostics';
 import WalletSetupModal from './components/WalletSetupModal';
 import AgentPromptModal from './components/AgentPromptModal';
 import { User } from './types';
-import { getCurrentUser, logoutUser } from './services/authService';
+import { getCurrentUser, logoutUser, fetchCurrentUser, setCachedUser } from './services/authService';
+import { syncWithBackend as syncWallets } from './services/miningWalletService';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -69,10 +70,22 @@ const App: React.FC = () => {
       setCurrentUser(user);
       if (currentView === 'LANDING') setCurrentView('DASHBOARD');
 
-      // Check if user needs wallet setup
+      // Fetch real user data from backend (replaces placeholder from localStorage)
+      fetchCurrentUser().then((freshUser) => {
+        if (freshUser) {
+          setCurrentUser(freshUser);
+          setCachedUser(freshUser);
+        }
+      });
+
+      // Check if user needs wallet setup & sync existing wallets from backend
       const checkWallets = async () => {
         const token = localStorage.getItem('hnh_token');
         if (!token) return;
+
+        // Sync wallets from backend to localStorage
+        await syncWallets();
+
         try {
           const res = await fetch('https://api.hashnhedge.com/user/wallets', {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -130,7 +143,10 @@ const App: React.FC = () => {
     }
     return <Auth onLogin={(user) => {
       setCurrentUser(user);
+      setCachedUser(user);
       setCurrentView('DASHBOARD');
+      // Sync wallets from backend after login
+      syncWallets();
     }} />;
   }
 

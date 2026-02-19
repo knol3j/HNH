@@ -13,8 +13,14 @@
 ### Windows
 
 1. Extract this zip to a folder (e.g. `C:\HNH-Agent\`)
-2. Right-click `setup_miner_windows.ps1` → **Run with PowerShell**
+2. Open **PowerShell as Administrator**, navigate to the folder, and run:
+
+   ```
+   powershell -ExecutionPolicy Bypass -File .\setup_miner_windows.ps1
+   ```
+
    - This will download miner binaries, install Node dependencies, and prompt you for wallet addresses
+   > ⚠️ **Execution Policy Error?** If you see `UnauthorizedAccess`, the command above already handles it. Alternatively, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` once to permanently allow local scripts.
 3. Double-click `start_miner.bat` to start mining!
 
 ### Linux
@@ -62,6 +68,7 @@ Your config is saved to `data.json`. Edit it anytime and restart the miner.
 
 - **"Miner binary not found"** → Run the setup script, or manually place miners in `bin/`
 - **Windows Defender blocks files** → Add an exclusion for the agent folder
+- **"UnauthorizedAccess" / script not digitally signed** → Run with: `powershell -ExecutionPolicy Bypass -File .\setup_miner_windows.ps1`
 - **Port 4343 in use** → Another instance may be running. Kill it first.
 
 ## Support

@@ -25,6 +25,8 @@ export const registerUser = async (creds: UserCredentials): Promise<User | null>
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token); // Store JWT
+        localStorage.setItem('hnh_user', JSON.stringify(data.user)); // Persist user data
+        cachedUser = data.user;
         return data.user;
     } catch (e) {
         console.error("Register failed:", e);
@@ -53,6 +55,8 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
 
         const data = await res.json();
         localStorage.setItem('hnh_token', data.token);
+        localStorage.setItem('hnh_user', JSON.stringify(data.user)); // Persist user data
+        cachedUser = data.user;
         return data.user;
     } catch (e) {
         console.error("Login failed:", e);
@@ -62,6 +66,7 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
 
 export const logoutUser = () => {
     localStorage.removeItem('hnh_token');
+    localStorage.removeItem('hnh_user');
     cachedUser = null;
 };
 
@@ -72,12 +77,22 @@ export const getCurrentUser = (): User | null => {
     // Check for cached user from fetchCurrentUser
     if (cachedUser) return cachedUser;
 
-    // Check if token exists - if so, we're logged in but need to fetch user data
+    // Check if token exists - if so, we're logged in
     const token = localStorage.getItem('hnh_token');
     if (!token) return null;
 
-    // Return a minimal placeholder so consumers can read a session synchronously.
-    // Tests expect a minimal object when a token exists.
+    // Try to restore user data from localStorage
+    const storedUser = localStorage.getItem('hnh_user');
+    if (storedUser) {
+        try {
+            cachedUser = JSON.parse(storedUser);
+            return cachedUser;
+        } catch {
+            // Corrupted data, fall through to placeholder
+        }
+    }
+
+    // Fallback placeholder — fetchCurrentUser() will replace this with real data
     return {
         id: 'session',
         username: 'User',
@@ -92,6 +107,11 @@ export const getCurrentUser = (): User | null => {
 
 export const setCachedUser = (user: User | null) => {
     cachedUser = user;
+    if (user) {
+        localStorage.setItem('hnh_user', JSON.stringify(user));
+    } else {
+        localStorage.removeItem('hnh_user');
+    }
 };
 
 // Async version - fetches real user data from backend
@@ -109,6 +129,7 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
         if (res.ok) {
             const user = await res.json();
             cachedUser = user;
+            localStorage.setItem('hnh_user', JSON.stringify(user)); // Keep localStorage in sync
             return user;
         }
         // Token invalid, clear it

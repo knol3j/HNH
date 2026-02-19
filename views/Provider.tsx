@@ -329,11 +329,17 @@ const Provider: React.FC = () => {
                         </a>
                     </div>
                 </div>
-                <div className="mt-4 p-3 bg-black/40 rounded-lg border border-white/5 text-sm text-muted">
+                <div className="mt-4 p-3 bg-black/40 rounded-lg border border-white/5 text-sm text-muted space-y-2">
                     <p className="font-mono">
-                        <strong className="text-white">Windows:</strong> Right-click the downloaded file → "Run with PowerShell"
+                        <strong className="text-white">Windows:</strong> Open PowerShell as Administrator and run:
                     </p>
-                    <p className="font-mono mt-1">
+                    <code className="block bg-white/10 px-3 py-2 rounded font-mono text-xs text-gray-300 select-all">
+                        powershell -ExecutionPolicy Bypass -File .\setup_miner_windows.ps1
+                    </code>
+                    <p className="text-xs text-yellow-500/80 mt-1">
+                        ⚠️ If you get an "UnauthorizedAccess" error, this command bypasses the script execution policy for this run only.
+                    </p>
+                    <p className="font-mono mt-2">
                         <strong className="text-white">Linux/Mac:</strong> <code className="bg-white/10 px-1 rounded">chmod +x setup_miner.sh && ./setup_miner.sh</code>
                     </p>
                 </div>

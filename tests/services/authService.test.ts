@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { registerUser, loginUser, logoutUser, getCurrentUser, fetchCurrentUser, API_URL } from '../../services/authService';
+import { registerUser, loginUser, logoutUser, getCurrentUser, fetchCurrentUser, setCachedUser, API_URL } from '../../services/authService';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -15,6 +15,7 @@ describe('authService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    setCachedUser(null); // Reset in-memory cache between tests
   });
 
   describe('registerUser', () => {
@@ -39,6 +40,7 @@ describe('authService', () => {
       );
       expect(result).toEqual(mockUser);
       expect(localStorage.getItem('hnh_token')).toBe(mockToken);
+      expect(JSON.parse(localStorage.getItem('hnh_user')!)).toEqual(mockUser);
     });
 
     it('should throw error when username is taken', async () => {
@@ -91,6 +93,7 @@ describe('authService', () => {
       );
       expect(result).toEqual(mockUser);
       expect(localStorage.getItem('hnh_token')).toBe(mockToken);
+      expect(JSON.parse(localStorage.getItem('hnh_user')!)).toEqual(mockUser);
     });
 
     it('should throw error for invalid credentials', async () => {
@@ -121,6 +124,7 @@ describe('authService', () => {
       logoutUser();
 
       expect(localStorage.getItem('hnh_token')).toBeNull();
+      expect(localStorage.getItem('hnh_user')).toBeNull();
     });
   });
 
@@ -130,7 +134,17 @@ describe('authService', () => {
       expect(user).toBeNull();
     });
 
-    it('should return minimal user object when token exists', () => {
+    it('should return stored user from localStorage when token and user data exist', () => {
+      localStorage.setItem('hnh_token', 'some-token');
+      const storedUser = { id: '123', username: 'testuser', tier: 'free', role: 'USER' };
+      localStorage.setItem('hnh_user', JSON.stringify(storedUser));
+
+      const user = getCurrentUser();
+
+      expect(user).toEqual(storedUser);
+    });
+
+    it('should return placeholder when token exists but no user data', () => {
       localStorage.setItem('hnh_token', 'some-token');
 
       const user = getCurrentUser();

@@ -528,7 +528,7 @@ app.get('/user/profile', authenticateToken, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user.id },
-            include: { workers: true }
+            include: { workers: true, savedWallets: true }
         });
 
         // Calculate recent stats (mocking pool stats aggregation for now)
@@ -536,8 +536,11 @@ app.get('/user/profile', authenticateToken, async (req, res) => {
             where: { userId: req.user.id }
         });
 
+        // Exclude passwordHash from response
+        const { passwordHash, walletSeed, ...safeUser } = user;
+
         res.json({
-            ...user,
+            ...safeUser,
             totalShares: recentShares
         });
     } catch (e) {
