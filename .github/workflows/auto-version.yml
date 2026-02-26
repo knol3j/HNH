@@ -1,0 +1,91 @@
+name: Auto-Version Agent Miner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - '!agent/node_modules/**'
+      - '!agent/release/**'
+      - '!agent/bin/**'
+      - '!agent/bin_backup/**'
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    # Skip if the commit was made by this workflow (prevents infinite loop)
+    if: "!contains(github.event.head_commit.message, '[auto-version]')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for agent changes
+        id: changes
+        run: |
+          # Get changed files in the push
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'agent/' | grep -v 'node_modules/' | grep -v 'release/' | grep -v 'bin/' | grep -v 'bin_backup/' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No agent file changes detected."
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Agent files changed:"
+            echo "$CHANGED"
+          fi
+
+      - name: Bump agent version
+        if: steps.changes.outputs.has_changes == 'true'
+        id: bump
+        run: |
+          # Read current agentVersion from version.json
+          CURRENT=$(node -e "const v = JSON.parse(require('fs').readFileSync('version.json','utf8')); console.log(v.agentVersion || v.version)")
+          echo "Current version: $CURRENT"
+
+          # Parse semver and bump patch
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "New version: $NEW_VERSION"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # Update version.json
+          node -e "
+            const fs = require('fs');
+            const v = JSON.parse(fs.readFileSync('version.json','utf8'));
+            v.agentVersion = '$NEW_VERSION';
+            v.buildDate = new Date().toISOString().split('T')[0];
+            fs.writeFileSync('version.json', JSON.stringify(v, null, 4) + '\n');
+          "
+
+          # Sync agent/package.json version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('agent/package.json','utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('agent/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          echo "Updated version.json and agent/package.json to $NEW_VERSION"
+
+      - name: Commit and tag
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add version.json agent/package.json
+          git commit -m "chore: bump agent miner to v${{ steps.bump.outputs.NEW_VERSION }} [auto-version]"
+          git push
+
+          # Create tag to trigger release workflow
+          git tag "v${{ steps.bump.outputs.NEW_VERSION }}"
+          git push origin "v${{ steps.bump.outputs.NEW_VERSION }}"
+
+          echo "✅ Tagged v${{ steps.bump.outputs.NEW_VERSION }} — release workflow will publish automatically"

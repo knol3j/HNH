@@ -8,7 +8,12 @@ $ErrorActionPreference = "Stop"
 $VersionFile = Join-Path $PSScriptRoot "..\version.json"
 if (Test-Path $VersionFile) {
     $versionData = Get-Content $VersionFile -Raw | ConvertFrom-Json
-    $VERSION = $versionData.version
+    # Use agentVersion if available, otherwise fall back to version
+    if ($versionData.agentVersion) {
+        $VERSION = $versionData.agentVersion
+    } else {
+        $VERSION = $versionData.version
+    }
 }
 else {
     $VERSION = "1.0.0"

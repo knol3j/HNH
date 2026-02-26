@@ -19,7 +19,8 @@ jobs:
               id: version
               shell: pwsh
               run: |
-                  $v = (Get-Content version.json -Raw | ConvertFrom-Json).version
+                  $vd = Get-Content version.json -Raw | ConvertFrom-Json
+                  $v = if ($vd.agentVersion) { $vd.agentVersion } else { $vd.version }
                   echo "VERSION=$v" >> $env:GITHUB_OUTPUT
 
             - name: Build Agent Code Package
@@ -35,6 +36,9 @@ jobs:
                     $src = "agent\$f"
                     if (Test-Path $src) { Copy-Item $src -Destination $STAGING }
                   }
+
+                  # Copy version.json from repo root
+                  if (Test-Path "version.json") { Copy-Item "version.json" -Destination $STAGING }
 
                   # GUI and miners directories
                   if (Test-Path "agent\gui") { Copy-Item -Recurse "agent\gui" -Destination "$STAGING\gui" }
