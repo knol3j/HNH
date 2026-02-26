@@ -11,7 +11,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { syncDbToStore, restoreFromStoreToDb, encrypt, decrypt } from './persistentStore.js';
+import { encrypt, decrypt } from './persistentStore.js';
 import * as bip39 from 'bip39';
 import { ethers } from 'ethers';
 
@@ -39,9 +39,8 @@ try {
 const app = express();
 const prisma = new PrismaClient();
 
-// --- PERSISTENCE: Restore data on startup ---
-console.log('[PERSISTENCE] Checking for data to restore...');
-restoreFromStoreToDb(prisma).catch(e => console.error('[PERSISTENCE] Initial restore failed:', e));
+// --- PERSISTENCE: Managed by PostgreSQL ---
+console.log('[PERSISTENCE] Using persistent PostgreSQL database.');
 
 const PORT = process.env.PORT || 8080;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -479,8 +478,7 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req, re
         );
         console.log(`[REGISTER] Successfully registered user: ${username}`);
 
-        // --- PERSISTENCE: Backup after new user registration ---
-        syncDbToStore(prisma);
+        // --- PERSISTENCE: Automatically handled by DB ---
 
         res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
     } catch (e) {
@@ -662,8 +660,7 @@ app.post('/user/wallets', authenticateToken, validate(walletSchema), async (req,
             }
         });
 
-        // --- PERSISTENCE: Backup after wallet update ---
-        syncDbToStore(prisma);
+        // --- PERSISTENCE: Automatically handled by DB ---
 
         res.json(wallet);
     } catch (e) {

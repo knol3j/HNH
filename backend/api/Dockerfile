@@ -26,5 +26,5 @@ COPY version.json ./
 EXPOSE 8080
 
 # Run migrations and start server
-CMD npx prisma db push --accept-data-loss && node index.js
+CMD npx prisma migrate deploy && node index.js
 
