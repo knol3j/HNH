@@ -37,6 +37,9 @@ jobs:
                     if (Test-Path $src) { Copy-Item $src -Destination $STAGING }
                   }
 
+                  # Copy version.json from repo root
+                  if (Test-Path "version.json") { Copy-Item "version.json" -Destination $STAGING }
+
                   # GUI and miners directories
                   if (Test-Path "agent\gui") { Copy-Item -Recurse "agent\gui" -Destination "$STAGING\gui" }
                   if (Test-Path "agent\miners") { Copy-Item -Recurse "agent\miners" -Destination "$STAGING\miners" }
