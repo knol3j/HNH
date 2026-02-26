@@ -19,7 +19,8 @@ jobs:
               id: version
               shell: pwsh
               run: |
-                  $v = (Get-Content version.json -Raw | ConvertFrom-Json).version
+                  $vd = Get-Content version.json -Raw | ConvertFrom-Json
+                  $v = if ($vd.agentVersion) { $vd.agentVersion } else { $vd.version }
                   echo "VERSION=$v" >> $env:GITHUB_OUTPUT
 
             - name: Build Agent Code Package
