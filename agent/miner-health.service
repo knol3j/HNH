@@ -1,0 +1,29 @@
+[Unit]
+Description=HashNHedge Miner Health Monitor
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/HNH/agent
+ExecStart=/usr/bin/node health_monitor.js
+Restart=on-failure
+RestartSec=10
+
+# Environment
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hnh-miner
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/%i/HNH/agent
+
+[Install]
+WantedBy=multi-user.target
