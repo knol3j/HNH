@@ -25,6 +25,8 @@ dist-ssr
 *.db
 *.sqlite
 *.sqlite3
+# Explicit: dev database (SQLite)
+dev.db
 
 # Editor directories and files
 .vscode/*

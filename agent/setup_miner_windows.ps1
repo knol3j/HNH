@@ -40,8 +40,12 @@ if (!(Test-Path -Path $BIN_DIR)) {
 }
 
 $XMRIG_URL = "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-msvc-win64.zip"
+$XMRIG_HASH = "4cf4198354abfee7e502c85f38e62dbb90fec976e4df38d0ecbfd811937c1981"
 $ZIP_NAME = "xmrig.zip"
 $ZIP_PATH = Join-Path $BIN_DIR $ZIP_NAME
+
+Write-Host "=== HashNHedge Miner Setup ==="
+Write-Host ""
 
 if (Test-Path $ZIP_PATH) {
     Write-Host "Found existing $ZIP_NAME. Skipping download." -ForegroundColor Yellow
@@ -64,6 +68,24 @@ else {
         exit 1
     }
 }
+
+# SHA256 Verification
+Write-Host "Verifying SHA256 checksum..." -ForegroundColor Cyan
+$actualHash = (Get-FileHash -Path $ZIP_PATH -Algorithm SHA256).Hash
+
+if ($actualHash -ne $XMRIG_HASH) {
+    Write-Host "SHA256 verification FAILED!" -ForegroundColor Red
+    Write-Host "   Expected: $XMRIG_HASH" -ForegroundColor Red
+    Write-Host "   Got:      $actualHash" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "This could indicate a corrupted download or tampered binary." -ForegroundColor Yellow
+    Write-Host "Please check your network and try again." -ForegroundColor Yellow
+    Remove-Item -Path $ZIP_PATH -Force
+    pause
+    exit 1
+}
+Write-Host "Checksum verified" -ForegroundColor Green
+Write-Host ""
 
 Write-Host "Extracting..." -ForegroundColor Cyan
 Expand-Archive -Path $ZIP_PATH -DestinationPath $BIN_DIR -Force
