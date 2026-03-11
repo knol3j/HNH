@@ -41,6 +41,41 @@ tar -xzf "$BIN_DIR/$ARCHIVE_NAME" -C "$BIN_DIR" --strip-components=1
 # Cleanup
 rm "$BIN_DIR/$ARCHIVE_NAME"
 
+# T-Rex Release (GPU - RVN/ETC)
+TREX_URL="https://github.com/trexminer/T-Rex/releases/download/0.26.8/t-rex-0.26.8-linux.tar.gz"
+TREX_HASH="7e77064a48b4c8cb8d4797f30a41b53efbb8311fc14475b56a8e6879ad1c0569"
+TREX_ARCHIVE="trex.tar.gz"
+
+echo "Downloading T-Rex..."
+curl -sL -o "$BIN_DIR/$TREX_ARCHIVE" "$TREX_URL"
+echo "Verifying T-Rex SHA256 checksum..."
+ACTUAL_TREX_HASH=$(sha256sum "$BIN_DIR/$TREX_ARCHIVE" | awk '{print $1}')
+if [ "$ACTUAL_TREX_HASH" != "$TREX_HASH" ]; then
+    echo "❌ T-Rex SHA256 verification FAILED!"
+    rm -f "$BIN_DIR/$TREX_ARCHIVE"
+    exit 1
+fi
+echo "✅ T-Rex Checksum verified"
+tar -xzf "$BIN_DIR/$TREX_ARCHIVE" -C "$BIN_DIR" t-rex
+rm "$BIN_DIR/$TREX_ARCHIVE"
+
+# lolMiner Release (GPU - ERG/KAS)
+LOL_URL="https://github.com/Lolliedieb/lolMiner-releases/releases/download/1.76/lolMiner_v1.76_Lin64.tar.gz"
+LOL_HASH="8daaa0d1a2348514682e1060f445246ddbb521dc285ad4d25f419a5455950dcd"
+LOL_ARCHIVE="lolminer.tar.gz"
+
+echo "Downloading lolMiner..."
+curl -sL -o "$BIN_DIR/$LOL_ARCHIVE" "$LOL_URL"
+echo "Verifying lolMiner SHA256 checksum..."
+ACTUAL_LOL_HASH=$(sha256sum "$BIN_DIR/$LOL_ARCHIVE" | awk '{print $1}')
+if [ "$ACTUAL_LOL_HASH" != "$LOL_HASH" ]; then
+    echo "❌ lolMiner SHA256 verification FAILED!"
+    rm -f "$BIN_DIR/$LOL_ARCHIVE"
+    exit 1
+fi
+echo "✅ lolMiner Checksum verified"
+tar -xzf "$BIN_DIR/$LOL_ARCHIVE" -C "$BIN_DIR" --strip-components=1 "1.76/lolMiner"
+rm "$BIN_DIR/$LOL_ARCHIVE"
 
 # Install dependencies
 echo "Installing Agent dependencies..."

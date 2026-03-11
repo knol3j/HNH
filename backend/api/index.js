@@ -121,6 +121,14 @@ const agentSyncSchema = z.object({
     }).optional()
 });
 
+// Platform fee configuration (server-authoritative)
+const PLATFORM_FEE_TIERS = {
+    free: 0.02,      // 2%
+    pro: 0.01,       // 1%
+    enterprise: 0.005 // 0.5%
+};
+const PLATFORM_WALLET = process.env.PLATFORM_WALLET || 'Rqr113e2e3...'; // Platform owner wallet
+
 // Achievement definitions for seeding
 const ACHIEVEMENT_DEFINITIONS = [
     { code: 'first_share', name: 'First Blood', description: 'Submit your first valid share', icon: '🩸', category: 'milestone', threshold: 1, xpReward: 10 },
@@ -1142,6 +1150,18 @@ app.post('/agent/sync', authenticateToken, validate(agentSyncSchema), async (req
                 });
 
                 if (!existing) {
+                    // Get user's tier for fee calculation
+                    const user = await prisma.user.findUnique({
+                        where: { id: userId },
+                        select: { tier: true }
+                    });
+                    const userTier = user?.tier || 'free';
+                    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+                    
+                    // Calculate platform fee (server-authoritative)
+                    const platformFeeShares = Math.floor(session.acceptedShares * feeRate);
+                    const userNetShares = session.acceptedShares - platformFeeShares;
+
                     await prisma.miningSession.create({
                         data: {
                             userId,
@@ -1153,6 +1173,8 @@ app.post('/agent/sync', authenticateToken, validate(agentSyncSchema), async (req
                             totalShares: session.totalShares,
                             acceptedShares: session.acceptedShares,
                             rejectedShares: session.rejectedShares || 0,
+                            platformFeeShares,
+                            userNetShares,
                             avgHashrate: session.avgHashrate,
                             peakHashrate: session.peakHashrate || session.avgHashrate,
                             syncedAt: new Date()
@@ -1160,6 +1182,14 @@ app.post('/agent/sync', authenticateToken, validate(agentSyncSchema), async (req
                     });
 
                     totalNewShares += session.acceptedShares;
+
+                    // Track platform fees
+                    if (platformFeeShares > 0) {
+                        await prisma.userStats.update({
+                            where: { userId },
+                            data: { platformFeesPaid: { increment: platformFeeShares } }
+                        });
+                    }
 
                     // Calculate mining duration
                     if (session.endTime) {
@@ -1194,6 +1224,11 @@ app.post('/agent/sync', authenticateToken, validate(agentSyncSchema), async (req
             newAchievements: newAchievements.map(a => ({ code: a.code, name: a.name, xp: a.xpReward })),
             nextSyncIn: 60
         });
+
+        // Log fee collection for audit
+        if (totalNewShares > 0) {
+            console.log(`[FEES] User ${userId} synced ${totalNewShares} shares`);
+        }
     } catch (e) {
         console.error('[AGENT_SYNC] Error:', e);
         res.status(500).json({ error: e.message });

@@ -104,6 +104,45 @@ else {
 # Cleanup Zip
 Remove-Item -Path $ZIP_PATH -Force
 
+# --- T-REX MINER (GPU) ---
+$TREX_URL = "https://github.com/trexminer/T-Rex/releases/download/0.26.8/t-rex-0.26.8-win.zip"
+$TREX_HASH = "207bfa95050e2ac1f16ceecd5891b93eda7bada2730b4e7172283d72f5ad2309"
+$TREX_ZIP = Join-Path $BIN_DIR "trex.zip"
+
+Write-Host "Downloading T-Rex for Windows..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $TREX_URL -OutFile $TREX_ZIP
+$actualTrexHash = (Get-FileHash -Path $TREX_ZIP -Algorithm SHA256).Hash
+if ($actualTrexHash -ne $TREX_HASH) {
+    Write-Host "T-Rex SHA256 verification FAILED!" -ForegroundColor Red
+    Remove-Item -Path $TREX_ZIP -Force
+    exit 1
+}
+Write-Host "T-Rex Checksum verified" -ForegroundColor Green
+Expand-Archive -Path $TREX_ZIP -DestinationPath $BIN_DIR -Force
+Remove-Item -Path $TREX_ZIP -Force
+
+# --- LOLMINER (GPU) ---
+$LOL_URL = "https://github.com/Lolliedieb/lolMiner-releases/releases/download/1.76/lolMiner_v1.76_Win64.zip"
+$LOL_HASH = "2daf2ef818439c520a81182da2c8349fdac715ad3778e31aefed027015130edc"
+$LOL_ZIP = Join-Path $BIN_DIR "lolminer.zip"
+
+Write-Host "Downloading lolMiner for Windows..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $LOL_URL -OutFile $LOL_ZIP
+$actualLolHash = (Get-FileHash -Path $LOL_ZIP -Algorithm SHA256).Hash
+if ($actualLolHash -ne $LOL_HASH) {
+    Write-Host "lolMiner SHA256 verification FAILED!" -ForegroundColor Red
+    Remove-Item -Path $LOL_ZIP -Force
+    exit 1
+}
+Write-Host "lolMiner Checksum verified" -ForegroundColor Green
+Expand-Archive -Path $LOL_ZIP -DestinationPath $BIN_DIR -Force
+$lolDir = Join-Path $BIN_DIR "1.76"
+if (Test-Path $lolDir) {
+    Get-ChildItem -Path $lolDir -Recurse -Filter "lolMiner.exe" | ForEach-Object { Move-Item -Path $_.FullName -Destination $BIN_DIR -Force }
+    Remove-Item -Path $lolDir -Recurse -Force
+}
+Remove-Item -Path $LOL_ZIP -Force
+
 # --- CUDA PLUGIN ---
 # --- ANTIVIRUS WARNING ---
 Write-Host "NOTE: Mining software is often flagged by Antivirus/Windows Defender." -ForegroundColor Yellow

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -97,6 +97,8 @@ model MiningSession {
   totalShares    Int       @default(0)
   acceptedShares Int       @default(0)
   rejectedShares Int       @default(0)
+  platformFeeShares Int    @default(0)
+  userNetShares     Int    @default(0)
   avgHashrate    Float     @default(0)
   peakHashrate   Float     @default(0)
 
@@ -136,6 +138,7 @@ model UserStats {
   totalShares     Int       @default(0)
   totalMinedUsd   Float     @default(0)
   totalMiningTime Int       @default(0) // minutes
+  platformFeesPaid Int      @default(0) // new
 
   currentStreak   Int       @default(0)
   longestStreak   Int       @default(0)
