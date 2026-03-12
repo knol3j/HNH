@@ -1,0 +1,61 @@
+
+[35m[Region: us-west1][0m
+[35m=========================
+Using Detected Dockerfile
+=========================
+[0m
+context: 65pr-kFxy
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load metadata for docker.io/library/node:18-bullseye-slim
+[INFO] [auth] library/node:pull token for registry-1.docker.io
+[INFO] [auth] library/node:pull token for registry-1.docker.io
+[INFO] [internal] load metadata for docker.io/library/node:18-bullseye-slim
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [11/12] COPY posts.json ./
+[INFO] [10/12] COPY hardware_data.json ./
+[INFO] [ 9/12] COPY persistentStore.js ./
+[INFO] [ 8/12] COPY index.js ./
+[INFO] [ 7/12] RUN npx prisma generate
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [ 5/12] RUN npm ci
+[INFO] [ 4/12] COPY package.json package-lock.json ./
+[INFO] [internal] load build context
+[INFO] [ 3/12] WORKDIR /app
+[INFO] [ 2/12] RUN apt-get update -y && apt-get install -y openssl
+[INFO] [12/12] COPY version.json ./
+[INFO] [ 6/12] COPY schema.prisma ./
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [internal] load build context
+[INFO] [internal] load build context
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [internal] load build context
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+[INFO] [ 2/12] RUN apt-get update -y && apt-get install -y openssl
+[INFO] [ 3/12] WORKDIR /app
+[INFO] [ 4/12] COPY package.json package-lock.json ./
+[INFO] [ 5/12] RUN npm ci
+[INFO] [ 6/12] COPY schema.prisma ./
+[INFO] [ 7/12] RUN npx prisma generate
+[INFO] [ 8/12] COPY index.js ./
+[INFO] [ 9/12] COPY persistentStore.js ./
+[ERRO] [10/12] COPY hardware_data.json ./
+[INFO] [ 1/12] FROM docker.io/library/node:18-bullseye-slim@sha256:d69fb189fa7765636655db043a6a9e6be5ddf94bd1a8dc33fd0bcf4664606a9e
+Dockerfile:21
+-------------------
+19 |     COPY index.js ./
+20 |     COPY persistentStore.js ./
+21 | >>> COPY hardware_data.json ./
+22 |     COPY posts.json ./
+23 |     COPY version.json ./
+-------------------
+ERROR: failed to build: failed to solve: failed to compute cache key: failed to calculate checksum of ref rqvj1itnx0exgcm69ppmq9l07::ilm4rs56d7x7ubnxu3kp3aev4: "/hardware_data.json": not found
