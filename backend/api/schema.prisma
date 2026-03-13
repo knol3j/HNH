@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -138,7 +138,7 @@ model UserStats {
   totalShares     Int       @default(0)
   totalMinedUsd   Float     @default(0)
   totalMiningTime Int       @default(0) // minutes
-  platformFeesPaid Int      @default(0) // new
+  platformFeesPaid Int      @default(0)
 
   currentStreak   Int       @default(0)
   longestStreak   Int       @default(0)
@@ -178,4 +178,22 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@index([userId])
+}
+
+// Forum posts - persisted in PostgreSQL (not ephemeral file)
+model ForumPost {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  category  String
+  author    String   @default("Anonymous")
+  userId    String?
+  likes     Int      @default(0)
+  replies   Int      @default(0)
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([createdAt])
 }
