@@ -24,6 +24,6 @@ COPY version.json ./
 # Expose API port
 EXPOSE 8080
 
-# Run migrations and start server
-CMD npx prisma migrate deploy && node index.js
+# Sync the current PostgreSQL schema and start the server
+CMD npx prisma db push && node index.js
 
