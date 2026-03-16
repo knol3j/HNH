@@ -96,7 +96,6 @@ export const getCurrentUser = (): User | null => {
     return {
         id: 'session',
         username: 'User',
-        passwordHash: '',
         tier: 'free',
         role: 'USER',
         createdAt: 0,
@@ -176,4 +175,8 @@ export const updateUserTier = async (userId: string, tier: string): Promise<bool
         console.error('Failed to update tier:', e);
         return false;
     }
+};
+
+export const hasAuthToken = (): boolean => {
+    return !!localStorage.getItem('hnh_token');
 };

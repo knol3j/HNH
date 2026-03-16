@@ -82,6 +82,7 @@ export interface ModelTemplate {
 
 // Navigation types - Expanded for full feature set
 export type View =
+  | 'AUTH'
   | 'DASHBOARD'
   | 'WALLETS'
   | 'MARKETPLACE'
@@ -152,13 +153,16 @@ export type UserTier = 'free' | 'pro' | 'enterprise';
 export interface User {
   id: string;
   username: string;
-  passwordHash: string; // SHA-256
   createdAt: number;
   tier: UserTier;
   role: 'USER' | 'ADMIN'; // Added Admin Role
   referralCode: string;
   referredBy?: string; // referralCode of who invited this user
   referralBonus: number; // Accumulated bonus shares from referrals
+}
+
+export interface UserRecord extends User {
+  passwordHash: string;
 }
 
 export interface UserCredentials {

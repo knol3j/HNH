@@ -23,7 +23,6 @@ describe('Layout', () => {
   const mockUser: User = {
     id: '123',
     username: 'testuser',
-    passwordHash: 'hash',
     createdAt: Date.now(),
     tier: 'pro',
     role: 'USER',

@@ -1,0 +1,17 @@
+node_modules
+agent/node_modules
+backend/api/node_modules
+dist
+dist-build
+coverage
+.git
+.github
+.vscode
+.claude
+.qodo
+*.log
+.env
+.env.*
+agent/.env
+backend/api/.env
+npm-debug.log*

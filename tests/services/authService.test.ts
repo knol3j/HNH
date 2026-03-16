@@ -155,7 +155,6 @@ describe('authService', () => {
         tier: 'free',
         role: 'USER',
         createdAt: 0,
-        passwordHash: '',
         referralCode: '',
         referralBonus: 0,
       });

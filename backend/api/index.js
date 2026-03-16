@@ -34,12 +34,11 @@ if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET environment variable is required');
     process.exit(1);
 }
-if (!process.env.PLATFORM_WALLET) {
-    console.error('FATAL: PLATFORM_WALLET environment variable is required');
-    process.exit(1);
-}
 const JWT_SECRET = process.env.JWT_SECRET;
-const PLATFORM_WALLET = process.env.PLATFORM_WALLET;
+const PLATFORM_WALLET = process.env.PLATFORM_WALLET || null;
+if (!PLATFORM_WALLET) {
+    console.warn('[CONFIG] PLATFORM_WALLET is not set. Platform fee payout features are disabled until it is configured.');
+}
 
 // --- VALIDATION SCHEMAS ---
 const registerSchema = z.object({
@@ -1007,7 +1006,7 @@ prisma.$connect()
         app.listen(PORT, () => {
             console.log(`✅ Backend API running on port ${PORT}`);
             console.log(`   Environment: ${NODE_ENV}`);
-            console.log(`   Platform wallet: ${PLATFORM_WALLET.substring(0, 8)}...`);
+            console.log(`   Platform wallet: ${PLATFORM_WALLET ? `${PLATFORM_WALLET.substring(0, 8)}...` : 'NOT CONFIGURED'}`);
             console.log(`   HTTPS redirect: ${NODE_ENV === 'production' ? 'ENABLED' : 'DISABLED (dev)'}`);
         });
     })
