@@ -4,6 +4,12 @@ import { apiClient } from './apiClient';
 // Cache for user data
 let cachedUser: User | null = null;
 
+export const API_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
+
+export const setCachedUser = (user: User | null) => {
+    cachedUser = user;
+};
+
 export const registerUser = async (creds: UserCredentials): Promise<User | null> => {
     try {
         const data = await apiClient.post<{ token: string; user: User }>('/auth/register', creds);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View } from '../types';
+import { View, User } from '../types';
 import { 
   LayoutDashboard, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, 
   Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, 
@@ -12,10 +12,20 @@ interface LayoutProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   children: React.ReactNode;
+  user?: User;
+  onLogout?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ currentView, setCurrentView, children }) => {
-  const { user, logout } = useAuth();
+export const Layout: React.FC<LayoutProps> = ({ 
+  currentView, 
+  setCurrentView, 
+  children,
+  user: propsUser,
+  onLogout: propsLogout
+}) => {
+  const { user: authUser, logout: authLogout } = useAuth();
+  const user = propsUser || authUser;
+  const logout = propsLogout || authLogout;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   
   // SOL Wallet State

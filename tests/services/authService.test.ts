@@ -168,7 +168,15 @@ describe('authService', () => {
     });
 
     it('should fetch and return user profile when token exists', async () => {
-      const mockUser = { id: '123', username: 'testuser', tier: 'pro' };
+      const mockUser = { 
+        id: '123', 
+        username: 'testuser', 
+        tier: 'pro' as const,
+        role: 'USER' as const,
+        createdAt: Date.now(),
+        referralCode: 'REF123',
+        referralBonus: 0
+      };
       localStorage.setItem('hnh_token', 'valid-token');
 
       mockFetch.mockResolvedValueOnce({
