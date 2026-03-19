@@ -8,6 +8,8 @@
 
 import { MiningWallet, MiningCoin, WalletFormData, PoolConfig } from '../types';
 
+import { apiClient } from './apiClient';
+
 // Storage key for mining wallets
 const STORAGE_KEY = 'hnh_mining_wallets';
 
@@ -131,23 +133,15 @@ export const saveWallet = async (data: WalletFormData): Promise<{ success: boole
 
     // --- SYNC TO BACKEND ---
     const token = localStorage.getItem('hnh_token');
-    const API_URL = localStorage.getItem('hnh_api_url') || 'https://api.hashnhedge.com';
 
     if (token) {
         try {
-            await fetch(`${API_URL}/user/wallets`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    coin: wallet.coin,
-                    address: wallet.address,
-                    label: wallet.workerName, // Use workerName as label
-                    poolUrl: wallet.pool,
-                    isDefault: true
-                })
+            await apiClient.post('/user/wallets', {
+                coin: wallet.coin,
+                address: wallet.address,
+                label: wallet.workerName, // Use workerName as label
+                poolUrl: wallet.pool,
+                isDefault: true
             });
         } catch (e) {
             console.warn('[BACKEND] Failed to sync wallet to database', e);
@@ -165,46 +159,36 @@ export const saveWallet = async (data: WalletFormData): Promise<{ success: boole
  * Sync wallets from backend
  */
 export const syncWithBackend = async (): Promise<void> => {
-    const token = localStorage.getItem('hnh_token');
-    const API_URL = localStorage.getItem('hnh_api_url') || 'https://api.hashnhedge.com';
-
-    if (!token) return;
-
     try {
-        const res = await fetch(`${API_URL}/user/wallets`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const backendWallets = await apiClient.get<any[]>('/user/wallets');
+        
+        if (Array.isArray(backendWallets)) {
+            const localWallets = getMiningWallets();
+            const now = Date.now();
 
-        if (res.ok) {
-            const backendWallets = await res.json();
-            if (Array.isArray(backendWallets)) {
-                const localWallets = getMiningWallets();
-                const now = Date.now();
+            backendWallets.forEach(bw => {
+                const existingIndex = localWallets.findIndex(lw => lw.coin === bw.coin);
+                const wallet: MiningWallet = {
+                    id: existingIndex >= 0 ? localWallets[existingIndex].id : `wallet_sync_${bw.id}`,
+                    coin: bw.coin as MiningCoin,
+                    address: bw.address,
+                    pool: bw.poolUrl || getPoolSuggestion(bw.coin as MiningCoin),
+                    workerName: bw.label || 'HNH_Worker',
+                    createdAt: now,
+                    updatedAt: now,
+                    isValid: true,
+                    lastValidated: now
+                };
 
-                backendWallets.forEach(bw => {
-                    const existingIndex = localWallets.findIndex(lw => lw.coin === bw.coin);
-                    const wallet: MiningWallet = {
-                        id: existingIndex >= 0 ? localWallets[existingIndex].id : `wallet_sync_${bw.id}`,
-                        coin: bw.coin as MiningCoin,
-                        address: bw.address,
-                        pool: bw.poolUrl || getPoolSuggestion(bw.coin as MiningCoin),
-                        workerName: bw.label || 'HNH_Worker',
-                        createdAt: now,
-                        updatedAt: now,
-                        isValid: true,
-                        lastValidated: now
-                    };
+                if (existingIndex >= 0) {
+                    localWallets[existingIndex] = wallet;
+                } else {
+                    localWallets.push(wallet);
+                }
+            });
 
-                    if (existingIndex >= 0) {
-                        localWallets[existingIndex] = wallet;
-                    } else {
-                        localWallets.push(wallet);
-                    }
-                });
-
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(localWallets));
-                window.dispatchEvent(new Event('wallets-updated'));
-            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localWallets));
+            window.dispatchEvent(new Event('wallets-updated'));
         }
     } catch (e) {
         console.error('[BACKEND] Failed to sync from database', e);
