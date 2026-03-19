@@ -1,27 +1,13 @@
-/**
- * Network Service
- *
- * Fetches real compute nodes and network stats from the backend API.
- * Replaces the mock data with live data from registered providers.
- */
-
 import { ComputeNode, NetworkStats, ProviderStats, ModelTemplate } from '../types';
-import { API_URL } from './authService';
+import { apiClient } from './apiClient';
 
 /**
  * Fetch available compute nodes from the network
  */
 export const fetchComputeNodes = async (): Promise<ComputeNode[]> => {
     try {
-        const res = await fetch(`${API_URL}/network/nodes`);
-        if (!res.ok) {
-            console.warn('Failed to fetch nodes, returning empty array');
-            return [];
-        }
-        const nodes = await res.json();
-        return nodes;
+        return await apiClient.get<ComputeNode[]>('/network/nodes');
     } catch (e) {
-        console.error('Error fetching compute nodes:', e);
         return [];
     }
 };
@@ -31,20 +17,8 @@ export const fetchComputeNodes = async (): Promise<ComputeNode[]> => {
  */
 export const fetchNetworkStats = async (): Promise<NetworkStats> => {
     try {
-        const res = await fetch(`${API_URL}/network/stats`);
-        if (!res.ok) {
-            // Return zeros when API unavailable - shows honest "no data" state
-            return {
-                activeNodes: 0,
-                totalTflops: 0,
-                jobsRunning: 0,
-                networkUtilization: 0,
-                avgPricePerFLOP: 0
-            };
-        }
-        return await res.json();
+        return await apiClient.get<NetworkStats>('/network/stats');
     } catch (e) {
-        console.error('Error fetching network stats:', e);
         return {
             activeNodes: 0,
             totalTflops: 0,
@@ -59,33 +33,9 @@ export const fetchNetworkStats = async (): Promise<NetworkStats> => {
  * Fetch provider-specific stats (for logged in providers)
  */
 export const fetchProviderStats = async (): Promise<ProviderStats> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) {
-        return {
-            earnings24h: 0,
-            totalEarnings: 0,
-            reputationScore: 0,
-            uptime: 0,
-            activeJobs: 0
-        };
-    }
-
     try {
-        const res = await fetch(`${API_URL}/provider/stats`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) {
-            return {
-                earnings24h: 0,
-                totalEarnings: 0,
-                reputationScore: 100,
-                uptime: 0,
-                activeJobs: 0
-            };
-        }
-        return await res.json();
+        return await apiClient.get<ProviderStats>('/provider/stats');
     } catch (e) {
-        console.error('Error fetching provider stats:', e);
         return {
             earnings24h: 0,
             totalEarnings: 0,
@@ -100,29 +50,15 @@ export const fetchProviderStats = async (): Promise<ProviderStats> => {
  * Register a new compute node to the network
  */
 export const registerNode = async (nodeData: Partial<ComputeNode>): Promise<ComputeNode | null> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) return null;
-
     try {
-        const res = await fetch(`${API_URL}/network/nodes`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(nodeData)
-        });
-        if (!res.ok) return null;
-        return await res.json();
+        return await apiClient.post<ComputeNode>('/network/nodes', nodeData);
     } catch (e) {
-        console.error('Error registering node:', e);
         return null;
     }
 };
 
 /**
  * Deployment templates - these are static configurations, not fake data
- * They represent predefined job configurations users can select
  */
 export const DEPLOYMENT_TEMPLATES: ModelTemplate[] = [
     {
@@ -156,12 +92,9 @@ export const DEPLOYMENT_TEMPLATES: ModelTemplate[] = [
  */
 export const fetchUserCount = async (): Promise<number> => {
     try {
-        const res = await fetch(`${API_URL}/stats/users`);
-        if (!res.ok) return 0;
-        const data = await res.json();
+        const data = await apiClient.get<{ count: number }>('/stats/users');
         return data.count || 0;
     } catch (e) {
-        console.error('Error fetching user count:', e);
         return 0;
     }
 };

@@ -1,4 +1,4 @@
-import { API_URL } from './authService';
+import { apiClient } from './apiClient';
 
 // Types for achievements
 export interface Achievement {
@@ -26,16 +26,11 @@ export const getUserAchievements = async (): Promise<UserAchievementsResponse | 
     if (!token) return null;
 
     try {
-        const res = await fetch(`${API_URL}/user/achievements`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            return await res.json();
-        }
+        return await apiClient.get<UserAchievementsResponse>('/user/achievements');
     } catch (e) {
         console.error('Failed to fetch achievements:', e);
+        return null;
     }
-    return null;
 };
 
 // Get achievement progress (for progress-based achievements)

@@ -587,6 +587,48 @@ app.delete('/user/wallets/:id', authenticateToken, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- TRANSACTIONS ---
+app.post('/user/transactions', authenticateToken, async (req, res) => {
+    const { type, amount, token, toAddress, txHash, status, metadata } = req.body;
+    try {
+        const transaction = await prisma.transaction.create({
+            data: {
+                userId: req.user.id,
+                type,
+                amount: parseFloat(amount),
+                token: token || 'SOL',
+                toAddress,
+                txHash,
+                status: status || 'COMPLETED',
+                metadata
+            }
+        });
+        res.json(transaction);
+    } catch (e) {
+        console.error('[TRANSACTION_LOG] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/user/transactions', authenticateToken, async (req, res) => {
+    const { type, limit = 50, offset = 0 } = req.query;
+    try {
+        const where = { userId: req.user.id };
+        if (type) where.type = type;
+
+        const transactions = await prisma.transaction.findMany({
+            where,
+            orderBy: { timestamp: 'desc' },
+            take: parseInt(limit),
+            skip: parseInt(offset)
+        });
+        res.json(transactions);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
 // --- WALLET SEED MANAGEMENT ---
 const deriveAddressesFromMnemonic = async (mnemonic) => {
     const seed = await bip39.mnemonicToSeed(mnemonic);

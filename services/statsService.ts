@@ -1,4 +1,4 @@
-import { API_URL } from './authService';
+import { apiClient } from './apiClient';
 
 // Types for stats
 export interface UserStats {
@@ -51,89 +51,65 @@ export interface LeaderboardEntry {
     rankTitle: string;
 }
 
-// Get user's lifetime stats
+/**
+ * Get user's lifetime stats
+ */
 export const getUserStats = async (): Promise<{ stats: UserStats; history: StatsSnapshot[]; activeSessions: number } | null> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) return null;
-
     try {
-        const res = await fetch(`${API_URL}/user/stats`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            return await res.json();
-        }
+        return await apiClient.get<any>('/user/stats');
     } catch (e) {
-        console.error('Failed to fetch user stats:', e);
+        return null;
     }
-    return null;
 };
 
-// Get stats history for charts
+/**
+ * Get stats history for charts
+ */
 export const getStatsHistory = async (period: 'hourly' | 'daily' = 'daily', days: number = 30): Promise<StatsSnapshot[]> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) return [];
-
     try {
-        const res = await fetch(`${API_URL}/user/stats/history?period=${period}&days=${days}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            return await res.json();
-        }
+        return await apiClient.get<StatsSnapshot[]>('/user/stats/history', { period, days });
     } catch (e) {
-        console.error('Failed to fetch stats history:', e);
+        return [];
     }
-    return [];
 };
 
-// Get mining sessions
+/**
+ * Get mining sessions
+ */
 export const getMiningSessions = async (limit: number = 50): Promise<MiningSession[]> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) return [];
-
     try {
-        const res = await fetch(`${API_URL}/user/sessions?limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            return await res.json();
-        }
+        return await apiClient.get<MiningSession[]>('/user/sessions', { limit });
     } catch (e) {
-        console.error('Failed to fetch mining sessions:', e);
+        return [];
     }
-    return [];
 };
 
-// Get leaderboard
+/**
+ * Get leaderboard
+ */
 export const getLeaderboard = async (
     metric: 'totalShares' | 'totalMinedUsd' | 'longestStreak' | 'level' | 'xp' = 'totalShares',
     limit: number = 100
 ): Promise<{ leaderboard: LeaderboardEntry[]; userRank: number | null; metric: string }> => {
-    const token = localStorage.getItem('hnh_token');
-    if (!token) return { leaderboard: [], userRank: null, metric };
-
     try {
-        const res = await fetch(`${API_URL}/leaderboard?metric=${metric}&limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-            return await res.json();
-        }
+        return await apiClient.get<any>('/leaderboard', { metric, limit });
     } catch (e) {
-        console.error('Failed to fetch leaderboard:', e);
+        return { leaderboard: [], userRank: null, metric };
     }
-    return { leaderboard: [], userRank: null, metric };
 };
 
-// Calculate XP needed for next level
+/**
+ * Calculate XP needed for next level
+ */
 export const getXpForNextLevel = (currentLevel: number): number => {
     const levels = [0, 50, 150, 350, 650, 1000, 1500, 2500, 4000, 6000];
     if (currentLevel >= levels.length) return Infinity;
     return levels[currentLevel];
 };
 
-// Get current level progress
+/**
+ * Get current level progress
+ */
 export const getLevelProgress = (xp: number, level: number): number => {
     const levels = [0, 50, 150, 350, 650, 1000, 1500, 2500, 4000, 6000];
     if (level >= levels.length) return 100;
@@ -143,7 +119,9 @@ export const getLevelProgress = (xp: number, level: number): number => {
     return Math.min(100, Math.max(0, progress));
 };
 
-// Format mining time
+/**
+ * Format mining time
+ */
 export const formatMiningTime = (minutes: number): string => {
     if (minutes < 60) return `${minutes}m`;
     if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;

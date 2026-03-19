@@ -17,9 +17,12 @@ import {
     Eye,
     EyeOff,
     Layout,
-    Zap
+    Zap,
+    ExternalLink,
+    Send
 } from 'lucide-react';
-import { MiningWallet, MiningCoin } from '../types';
+import { MiningWallet, MiningCoin, View } from '../types';
+import { getWalletState, connectPhantomWallet } from '../services/walletService';
 import {
     getMiningWallets,
     saveWallet,
@@ -44,7 +47,8 @@ import {
     importSeedToBackend
 } from '../services/unifiedWalletService';
 
-const Wallets: React.FC = () => {
+const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurrentView }) => {
+    const [solState, setSolState] = useState(getWalletState());
     const [wallets, setWallets] = useState<MiningWallet[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [editingWallet, setEditingWallet] = useState<MiningWallet | null>(null);
@@ -71,9 +75,19 @@ const Wallets: React.FC = () => {
     useEffect(() => {
         loadData();
 
-        // Subscribe to wallet changes
+        // Subscribe to mining wallet changes
         const unsubscribe = onWalletsChanged(loadData);
-        return unsubscribe;
+
+        // Subscribe to SOL wallet changes
+        const handleSolUpdate = () => {
+            setSolState(getWalletState());
+        };
+        window.addEventListener('wallet-updated', handleSolUpdate);
+
+        return () => {
+            unsubscribe();
+            window.removeEventListener('wallet-updated', handleSolUpdate);
+        };
     }, []);
 
     const loadData = async () => {
@@ -408,6 +422,54 @@ const Wallets: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {/* Solana Quick Status */}
+            <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-md">
+                <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                        <WalletIcon className="text-white" size={28} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-white mb-1">Integrated Solana Wallet</h2>
+                        <div className="flex items-center gap-3">
+                            {solState.connectedWallet ? (
+                                <>
+                                    <span className="text-emerald-400 text-sm font-mono">{solState.connectedWallet.slice(0, 4)}...{solState.connectedWallet.slice(-4)}</span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Connected</span>
+                                </>
+                            ) : (
+                                <span className="text-muted text-sm italic">Not connected</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    {solState.connectedWallet ? (
+                        <div className="flex flex-col items-end mr-4">
+                            <span className="text-xs text-muted uppercase font-bold tracking-tighter">Current Balance</span>
+                            <span className="text-2xl font-mono font-bold text-white">{solState.solBalance.toFixed(4)} SOL</span>
+                        </div>
+                    ) : null}
+                    
+                    {solState.connectedWallet ? (
+                        <button 
+                            onClick={() => setCurrentView?.('DEX')}
+                            className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all border border-white/10"
+                        >
+                            <Send size={18} /> Withdraw
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={connectPhantomWallet}
+                            className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
+                        >
+                            Connect Phantom
+                        </button>
+                    )}
+                </div>
+            </div>
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -611,17 +673,17 @@ const Wallets: React.FC = () => {
                             return (
                                 <div
                                     key={coin}
-                                    className={`bg-surface/50 border rounded-2xl p-5 transition-all hover:border-white/20 ${wallet ? 'border-primary/30' : 'border-white/5 opacity-80'
-                                        }`}
+                                    className={`bg-surface/50 border rounded-2xl p-5 transition-all hover:border-white/20 ${wallet ? 'border-primary/30' : 'border-white/5 opacity-80'}`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold bg-gradient-to-br ${coinSym === 'XMR' ? 'from-orange-500 to-orange-700' :
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold bg-gradient-to-br text-white ${
+                                                coinSym === 'XMR' ? 'from-orange-500 to-orange-700' :
                                                 coinSym === 'RVN' ? 'from-blue-500 to-blue-700' :
-                                                    coinSym === 'ETC' ? 'from-green-500 to-green-700' :
-                                                        coinSym === 'ERG' ? 'from-purple-500 to-purple-700' :
-                                                            'from-pink-500 to-pink-700'
-                                                } text-white`}>
+                                                coinSym === 'ETC' ? 'from-green-500 to-green-700' :
+                                                coinSym === 'ERG' ? 'from-purple-500 to-purple-700' :
+                                                'from-pink-500 to-pink-700'
+                                            }`}>
                                                 {coinSym === 'XMR' ? 'X' : coinSym.substring(0, 1)}
                                             </div>
                                             <div>

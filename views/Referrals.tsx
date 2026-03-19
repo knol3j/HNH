@@ -13,7 +13,7 @@ const Referrals: React.FC = () => {
             const currentUser = getCurrentUser();
             setUser(currentUser);
             if (currentUser) {
-                const referralData = await getReferrals(currentUser.referralCode);
+                const referralData = await getReferrals();
                 setReferrals(referralData);
             }
         };

@@ -2,8 +2,9 @@
  * Profitability Service
  *
  * Fetches real-time coin prices from CoinGecko and calculates mining profitability.
- * Used for auto-profit switching feature.
  */
+
+import { apiClient } from './apiClient';
 
 export interface CoinProfitability {
     symbol: string;
@@ -16,7 +17,6 @@ export interface CoinProfitability {
     profitabilityScore: number;
 }
 
-// Blockchain parameters - these are static protocol values
 const COIN_PARAMS: Record<string, { algorithm: string; blockReward: number; networkHashrate: number }> = {
     XMR: { algorithm: 'RandomX', blockReward: 0.6, networkHashrate: 2.5e9 },
     RVN: { algorithm: 'KawPow', blockReward: 2500, networkHashrate: 5e12 },
@@ -47,14 +47,7 @@ const FALLBACK_PRICES: Record<string, number> = {
 export const fetchCoinPrices = async (): Promise<Record<string, number>> => {
     try {
         const ids = Object.values(COINGECKO_IDS).join(',');
-        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
-
-        if (!res.ok) {
-            console.error('CoinGecko API error:', res.status);
-            return FALLBACK_PRICES;
-        }
-
-        const data = await res.json();
+        const data: any = await apiClient.get(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
 
         const prices: Record<string, number> = {};
         for (const [symbol, geckoId] of Object.entries(COINGECKO_IDS)) {
@@ -70,55 +63,44 @@ export const fetchCoinPrices = async (): Promise<Record<string, number>> => {
 
 /**
  * Calculate profitability score for each coin
- * Higher score = more profitable to mine
  */
 export const calculateProfitability = async (hashrateHs: number = 1000): Promise<CoinProfitability[]> => {
-    const prices = await fetchCoinPrices();
+    try {
+        const prices = await fetchCoinPrices();
+        const results: CoinProfitability[] = Object.keys(COIN_PARAMS).map(symbol => {
+            const params = COIN_PARAMS[symbol];
+            const price = prices[symbol] || 0;
 
-    // Defensive check even though fetchCoinPrices now returns fallback
-    if (!prices) return [];
+            const blocksPerDay = 720; 
+            const yourShare = hashrateHs / params.networkHashrate;
+            const dailyCoins = yourShare * blocksPerDay * params.blockReward;
+            const dailyUsd = dailyCoins * price;
 
-    const results: CoinProfitability[] = Object.keys(COIN_PARAMS).map(symbol => {
-        const params = COIN_PARAMS[symbol];
-        const price = prices[symbol] || 0;
+            const profitabilityScore = Math.min(100, dailyUsd * 100);
 
-        // Calculate expected daily earnings
-        // Formula: (your_hashrate / network_hashrate) * blocks_per_day * block_reward * price
-        const blocksPerDay = 720; // ~2 minute block time average
-        const yourShare = hashrateHs / params.networkHashrate;
-        const dailyCoins = yourShare * blocksPerDay * params.blockReward;
-        const dailyUsd = dailyCoins * price;
+            return {
+                symbol,
+                name: symbol,
+                price,
+                algorithm: params.algorithm,
+                networkDifficulty: params.networkHashrate,
+                blockReward: params.blockReward,
+                estimatedDailyUsd: dailyUsd,
+                profitabilityScore
+            };
+        });
 
-        // Score is simply the daily USD earnings scaled
-        const profitabilityScore = Math.min(100, dailyUsd * 100);
-
-        return {
-            symbol,
-            name: symbol,
-            price,
-            algorithm: params.algorithm,
-            networkDifficulty: params.networkHashrate,
-            blockReward: params.blockReward,
-            estimatedDailyUsd: dailyUsd,
-            profitabilityScore
-        };
-    });
-
-    // Sort by profitability (highest first)
-    return results.sort((a, b) => b.profitabilityScore - a.profitabilityScore);
+        return results.sort((a, b) => b.profitabilityScore - a.profitabilityScore);
+    } catch (e) {
+        return [];
+    }
 };
 
-/**
- * Get the most profitable coin to mine right now
- */
 export const getMostProfitableCoin = async (): Promise<CoinProfitability | null> => {
     const rankings = await calculateProfitability();
     return rankings.length > 0 ? rankings[0] : null;
 };
 
-/**
- * Check if we should switch coins based on profitability threshold
- */
 export const shouldSwitchCoin = async (currentCoin: string, thresholdPercent: number = 10): Promise<string | null> => {
     const rankings = await calculateProfitability();
     const current = rankings.find(c => c.symbol === currentCoin);

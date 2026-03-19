@@ -78,8 +78,15 @@ model Transaction {
   user      User     @relation(fields: [userId], references: [id])
 
   amount    Float
-  type      String   // MINING_PAYOUT, REFERRAL_BONUS, WITHDRAWAL
+  type      String   // MINING_PAYOUT, REFERRAL_BONUS, WITHDRAWAL, SWAP
+  token     String   @default("SOL")
+  toAddress String?
+  txHash    String?
+  status    String   @default("COMPLETED") // PENDING, COMPLETED, FAILED
+  metadata  String?  // JSON string for extra swap details
   timestamp DateTime @default(now())
+
+  @@index([userId, timestamp])
 }
 
 // Mining session tracking for stats
