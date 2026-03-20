@@ -196,7 +196,7 @@ app.use(express.json({ limit: '10mb' }));
 // Rate Limiting
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 20,
     message: { error: 'Too many authentication attempts, please try again later' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -977,6 +977,33 @@ app.get('/stats/users', generalLimiter, async (req, res) => {
         const count = await prisma.user.count();
         res.json({ count });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- NETWORK STATS ---
+app.get('/network/stats', generalLimiter, async (req, res) => {
+    try {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeNodes = await prisma.worker.count({
+            where: { lastSeen: { gte: fiveMinAgo } }
+        });
+        const totalHashrate = await prisma.worker.aggregate({
+            where: { lastSeen: { gte: fiveMinAgo } },
+            _sum: { hashrate: true }
+        });
+        const jobsRunning = await prisma.miningSession.count({
+            where: { endTime: null }
+        });
+        
+        res.json({
+            activeNodes,
+            totalTflops: (totalHashrate._sum.hashrate || 0) / 1000,
+            jobsRunning,
+            networkUtilization: activeNodes > 0 ? Math.min(Math.round((jobsRunning / (activeNodes * 5)) * 100), 100) : 0,
+            avgPricePerFLOP: 0.0042
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- LEADERBOARD ---

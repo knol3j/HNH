@@ -1,44 +1,46 @@
-
 import React, { useState } from 'react';
-import { UserCredentials } from '../types';
-import { loginUser, registerUser } from '../services/authService';
-import { Lock, User, Key, ArrowRight } from 'lucide-react';
+import { UserCredentials, User } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { Lock, User as UserIcon, Key, ArrowRight } from 'lucide-react';
 
 interface AuthProps {
-    onLogin: (user: any) => void;
+    onLogin: (user: User) => void;
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+    const { login, register } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const [creds, setCreds] = useState<UserCredentials>({ username: '', password: '' });
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
+        setError(null);
+        setLoading(true);
 
-        if (!username || !password) {
+        if (!creds.username || !creds.password) {
             setError('Please fill in all fields');
+            setLoading(false);
             return;
         }
 
-        const creds: UserCredentials = { username, password };
-
         try {
             if (isLogin) {
-                const user = await loginUser(creds);
+                const user = await login(creds);
                 if (user) {
                     onLogin(user);
                 }
             } else {
-                const user = await registerUser(creds);
+                const user = await register(creds);
                 if (user) {
                     onLogin(user);
                 }
             }
         } catch (e: any) {
-            setError(e.message || (isLogin ? 'Invalid credentials' : 'Registration failed'));
+            setError(e.message || 'Authentication failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -61,11 +63,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <div>
                         <label className="block text-xs font-bold uppercase text-muted mb-1">Username</label>
                         <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
+                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
                             <input
                                 type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={creds.username}
+                                onChange={(e) => setCreds(prev => ({ ...prev, username: e.target.value }))}
                                 className="w-full bg-black/40 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-primary transition-colors"
                                 placeholder="Enter username"
                             />
@@ -78,8 +80,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
                             <input
                                 type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                value={creds.password}
+                                onChange={(e) => setCreds(prev => ({ ...prev, password: e.target.value }))}
                                 className="w-full bg-black/40 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white focus:outline-none focus:border-primary transition-colors"
                                 placeholder="••••••••"
                             />
