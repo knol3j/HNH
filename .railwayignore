@@ -1,2 +1,15 @@
+node_modules/
+dist/
+.git/
 android/
 ios/
+.next/
+.venv/
+env/
+.env
+backend/api/node_modules/
+backend/api/migrations/
+backend/api/dist/
+backend/api/.venv/
+backend/api/env/
+backend/api/.env

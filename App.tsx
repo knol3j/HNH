@@ -35,6 +35,13 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = React.useState<any>('LANDING');
   const { stats, aiAnalysis } = useNetworkStats();
   const { isAgentOffline, isWalletSetupRequired } = useAgentStatus(user);
+  const [showAgentPrompt, setShowAgentPrompt] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isAgentOffline) {
+      setShowAgentPrompt(true);
+    }
+  }, [isAgentOffline]);
 
   React.useEffect(() => {
     if (isAuthenticated && currentView === 'LANDING') {
@@ -86,8 +93,8 @@ const AppContent: React.FC = () => {
         onComplete={() => {}}
       />
       <AgentPromptModal
-        isOpen={isAgentOffline}
-        onClose={() => {}}
+        isOpen={showAgentPrompt}
+        onClose={() => setShowAgentPrompt(false)}
       />
     </Layout>
   );
