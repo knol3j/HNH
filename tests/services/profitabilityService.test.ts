@@ -38,7 +38,10 @@ describe('profitabilityService', () => {
       const prices = await fetchCoinPrices();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('api.coingecko.com')
+        expect.stringContaining('api.coingecko.com'),
+        expect.objectContaining({
+          method: 'GET',
+        })
       );
       expect(prices).toEqual({
         XMR: 160,

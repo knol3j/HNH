@@ -189,7 +189,7 @@ describe('authService', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         `${API_URL}/user/profile`,
         expect.objectContaining({
-          headers: { 'Authorization': 'Bearer valid-token' },
+          headers: expect.objectContaining({ 'Authorization': 'Bearer valid-token' }),
         })
       );
       expect(user).toEqual(mockUser);

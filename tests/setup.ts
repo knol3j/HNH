@@ -43,6 +43,12 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+// jsdom does not implement popup navigation APIs.
+Object.defineProperty(window, 'open', {
+  value: vi.fn(),
+  writable: true,
+});
+
 // Mock fetch
 global.fetch = vi.fn();
 

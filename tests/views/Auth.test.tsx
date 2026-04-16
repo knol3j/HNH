@@ -8,11 +8,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Auth from '../../views/Auth';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock auth service
 vi.mock('../../services/authService', () => ({
   loginUser: vi.fn(),
   registerUser: vi.fn(),
+  getCurrentUser: vi.fn(() => null),
+  fetchCurrentUser: vi.fn(async () => null),
+  logoutUser: vi.fn(),
   API_URL: 'http://localhost:8080',
 }));
 
@@ -20,6 +24,12 @@ import { loginUser, registerUser } from '../../services/authService';
 
 describe('Auth View', () => {
   const mockOnLogin = vi.fn();
+  const renderAuth = () =>
+    render(
+      <AuthProvider>
+        <Auth onLogin={mockOnLogin} />
+      </AuthProvider>
+    );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -27,7 +37,7 @@ describe('Auth View', () => {
 
   describe('Rendering', () => {
     it('should render login form by default', () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       expect(screen.getByText('Welcome Back')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter username')).toBeInTheDocument();
@@ -36,7 +46,7 @@ describe('Auth View', () => {
     });
 
     it('should switch to registration form when link is clicked', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       fireEvent.click(screen.getByText(/don't have an account/i));
 
@@ -45,7 +55,7 @@ describe('Auth View', () => {
     });
 
     it('should switch back to login form', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       // Switch to register
       fireEvent.click(screen.getByText(/don't have an account/i));
@@ -59,7 +69,7 @@ describe('Auth View', () => {
 
   describe('Form Validation', () => {
     it('should show error when fields are empty', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
@@ -69,7 +79,7 @@ describe('Auth View', () => {
     });
 
     it('should show error when only username is filled', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'testuser');
@@ -81,7 +91,7 @@ describe('Auth View', () => {
     });
 
     it('should show error when only password is filled', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
@@ -98,7 +108,7 @@ describe('Auth View', () => {
       const mockUser = { id: '123', username: 'testuser', tier: 'free' };
       (loginUser as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockUser);
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'testuser');
@@ -119,7 +129,7 @@ describe('Auth View', () => {
         new Error('Invalid password')
       );
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'testuser');
@@ -135,7 +145,7 @@ describe('Auth View', () => {
     it('should not call onLogin when loginUser returns null', async () => {
       (loginUser as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'testuser');
@@ -154,7 +164,7 @@ describe('Auth View', () => {
       const mockUser = { id: '456', username: 'newuser', tier: 'free' };
       (registerUser as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockUser);
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       // Switch to register mode
@@ -178,7 +188,7 @@ describe('Auth View', () => {
         new Error('Username taken')
       );
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       // Switch to register mode
@@ -197,7 +207,7 @@ describe('Auth View', () => {
 
   describe('Error Handling', () => {
     it('should clear error when switching between login and register', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       // Trigger an error
       fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
@@ -216,7 +226,7 @@ describe('Auth View', () => {
     it('should show fallback error message on login failure without message', async () => {
       (loginUser as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error());
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'testuser');
@@ -224,14 +234,14 @@ describe('Auth View', () => {
       fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+        expect(screen.getByText('Authentication failed')).toBeInTheDocument();
       });
     });
 
     it('should show fallback error message on registration failure without message', async () => {
       (registerUser as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error());
 
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       fireEvent.click(screen.getByText(/don't have an account/i));
@@ -241,14 +251,14 @@ describe('Auth View', () => {
       fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('Registration failed')).toBeInTheDocument();
+        expect(screen.getByText('Authentication failed')).toBeInTheDocument();
       });
     });
   });
 
   describe('Form Inputs', () => {
     it('should update username on input', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       const usernameInput = screen.getByPlaceholderText('Enter username');
@@ -258,7 +268,7 @@ describe('Auth View', () => {
     });
 
     it('should update password on input', async () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
       const user = userEvent.setup();
 
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -268,7 +278,7 @@ describe('Auth View', () => {
     });
 
     it('should have password input type as password', () => {
-      render(<Auth onLogin={mockOnLogin} />);
+      renderAuth();
 
       const passwordInput = screen.getByPlaceholderText('••••••••');
       expect(passwordInput).toHaveAttribute('type', 'password');

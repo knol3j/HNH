@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  root: __dirname,
   base: './',
   server: {
     port: 3000,
@@ -42,7 +43,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: [path.resolve(__dirname, 'tests/setup.ts')],
     include: ['tests/**/*.{test,spec}.{js,ts,tsx}', 'services/**/*.{test,spec}.{js,ts,tsx}'],
     coverage: {
       provider: 'v8',
