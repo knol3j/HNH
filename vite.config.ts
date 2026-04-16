@@ -24,7 +24,20 @@ export default defineConfig({
   },
   build: {
     minify: 'esbuild',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor';
+          }
+          if (id.includes('recharts')) return 'recharts';
+          if (id.includes('ethers')) return 'ethers';
+          if (id.includes('@google/genai')) return 'genai';
+        }
+      }
+    }
   },
   test: {
     globals: true,
