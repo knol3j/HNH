@@ -203,10 +203,8 @@ const WalletSetupModal: React.FC<WalletSetupModalProps> = ({ isOpen, onClose, on
                     </button>
                     <button
                         onClick={() => {
-                            if (missingCoins.length === 0 || confirm(`You haven't set up addresses for: ${missingCoins.join(', ')}. Proceed anyway?`)) {
-                                onComplete();
-                                onClose();
-                            }
+                            onComplete();
+                            onClose();
                         }}
                         className="px-8 py-2.5 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-all shadow-lg"
                     >

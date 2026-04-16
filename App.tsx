@@ -36,6 +36,7 @@ const AppContent: React.FC = () => {
   const { stats, aiAnalysis } = useNetworkStats();
   const { isAgentOffline, isWalletSetupRequired } = useAgentStatus(user);
   const [showAgentPrompt, setShowAgentPrompt] = React.useState(false);
+  const [dismissWalletSetup, setDismissWalletSetup] = React.useState(false);
 
   React.useEffect(() => {
     if (isAgentOffline) {
@@ -88,9 +89,9 @@ const AppContent: React.FC = () => {
       </Suspense>
 
       <WalletSetupModal
-        isOpen={isWalletSetupRequired}
-        onClose={() => {}} // Mandatory setup if missing? 
-        onComplete={() => {}}
+        isOpen={isWalletSetupRequired && !dismissWalletSetup}
+        onClose={() => setDismissWalletSetup(true)}
+        onComplete={() => setDismissWalletSetup(true)}
       />
       <AgentPromptModal
         isOpen={showAgentPrompt}
