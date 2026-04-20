@@ -40,6 +40,25 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
     }
 };
 
+export const loginWithSocial = async (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string): Promise<User | null> => {
+    try {
+        const data = await apiClient.post<{ token: string; user: User }>('/auth/social', {
+            socialType: type,
+            socialToken: token,
+            referralCode
+        });
+        
+        localStorage.setItem('hnh_token', data.token);
+        localStorage.setItem('hnh_user', JSON.stringify(data.user));
+        cachedUser = data.user;
+        
+        return data.user;
+    } catch (e) {
+        console.error(`[AUTH] ${type} login failed:`, e);
+        throw e;
+    }
+};
+
 export const logoutUser = () => {
     localStorage.removeItem('hnh_token');
     localStorage.removeItem('hnh_user');

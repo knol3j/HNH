@@ -106,7 +106,11 @@ export const syncDbToStore = async (prisma) => {
         const dataToSave = {
             users: users.map(u => ({
                 username: u.username,
+                email: u.email,
                 passwordHash: u.passwordHash,
+                googleId: u.googleId,
+                facebookId: u.facebookId,
+                appleId: u.appleId,
                 tier: u.tier,
                 role: u.role,
                 referralCode: u.referralCode,
@@ -154,7 +158,11 @@ export const restoreFromStoreToDb = async (prisma) => {
             const user = await prisma.user.upsert({
                 where: { username: u.username },
                 update: {
+                    email: u.email,
                     passwordHash: u.passwordHash,
+                    googleId: u.googleId,
+                    facebookId: u.facebookId,
+                    appleId: u.appleId,
                     tier: u.tier,
                     role: u.role,
                     referralCode: u.referralCode,
@@ -163,7 +171,11 @@ export const restoreFromStoreToDb = async (prisma) => {
                 },
                 create: {
                     username: u.username,
+                    email: u.email,
                     passwordHash: u.passwordHash,
+                    googleId: u.googleId,
+                    facebookId: u.facebookId,
+                    appleId: u.appleId,
                     tier: u.tier,
                     role: u.role,
                     referralCode: u.referralCode,

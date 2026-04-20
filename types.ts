@@ -153,22 +153,30 @@ export type UserTier = 'free' | 'pro' | 'enterprise';
 export interface User {
   id: string;
   username: string;
+  email?: string;
   createdAt: number;
   tier: UserTier;
   role: 'USER' | 'ADMIN'; // Added Admin Role
   referralCode: string;
   referredBy?: string; // referralCode of who invited this user
   referralBonus: number; // Accumulated bonus shares from referrals
+  googleId?: string;
+  githubId?: string;
+  facebookId?: string;
+  appleId?: string;
 }
 
 export interface UserRecord extends User {
-  passwordHash: string;
+  passwordHash?: string;
 }
 
 export interface UserCredentials {
-  username: string;
-  password: string; // Plaintext (before hashing)
+  username?: string;
+  password?: string; // Plaintext (before hashing)
+  email?: string;
   referralCode?: string; // Optional: code to apply on signup
+  socialType?: 'google' | 'facebook' | 'apple';
+  socialToken?: string;
 }
 
 declare global {

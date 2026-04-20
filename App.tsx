@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import Auth from './views/Auth';
 import Landing from './views/Landing';
 import WalletSetupModal from './components/WalletSetupModal';
@@ -31,7 +32,7 @@ const LoadingFallback = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, logout, loginWithSocial } = useAuth();
   const [currentView, setCurrentView] = React.useState<any>('LANDING');
   const { stats, aiAnalysis } = useNetworkStats();
   const { isAgentOffline, isWalletSetupRequired } = useAgentStatus(user);
@@ -49,6 +50,25 @@ const AppContent: React.FC = () => {
       setCurrentView('DASHBOARD');
     }
   }, [isAuthenticated, currentView]);
+
+  React.useEffect(() => {
+    const processGithubCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code && window.location.pathname.includes('/auth/github/callback')) {
+        try {
+          await loginWithSocial('github', code);
+          window.history.replaceState({}, document.title, "/");
+          setCurrentView('DASHBOARD');
+        } catch (e) {
+          console.error('Github callback failed:', e);
+          window.history.replaceState({}, document.title, "/");
+          setCurrentView('AUTH');
+        }
+      }
+    };
+    processGithubCallback();
+  }, [loginWithSocial]);
 
   if (loading) return <LoadingFallback />;
 
@@ -102,9 +122,11 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <AuthProvider>
-    <AppContent />
-  </AuthProvider>
+  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  </GoogleOAuthProvider>
 );
 
 export default App;

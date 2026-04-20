@@ -6,6 +6,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (creds: any) => Promise<User | null>;
+    loginWithSocial: (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string) => Promise<User | null>;
     register: (creds: any) => Promise<User | null>;
     logout: () => void;
     refreshUser: () => Promise<void>;
@@ -51,6 +52,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return loggedInUser;
     };
 
+    const loginWithSocial = async (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string) => {
+        const loggedInUser = await authService.loginWithSocial(type, token, referralCode);
+        setUser(loggedInUser);
+        return loggedInUser;
+    };
+
     const register = async (creds: any) => {
         const registeredUser = await authService.registerUser(creds);
         setUser(registeredUser);
@@ -72,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             user, 
             loading, 
             login, 
+            loginWithSocial,
             register, 
             logout, 
             refreshUser,
