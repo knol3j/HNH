@@ -121,12 +121,24 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => (
-  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+const App: React.FC = () => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const content = (
     <AuthProvider>
       <AppContent />
     </AuthProvider>
-  </GoogleOAuthProvider>
-);
+  );
+
+  if (googleClientId) {
+    return (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        {content}
+      </GoogleOAuthProvider>
+    );
+  }
+
+  return content;
+};
 
 export default App;
