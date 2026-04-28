@@ -27,7 +27,7 @@ const Forum: React.FC = () => {
     // Fetch Real Threads
     const fetchThreads = async () => {
         try {
-            const backendUrl = 'https://hashnhedge-app.up.railway.app';
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
             const res = await fetch(`${backendUrl}/api/public/forum`);
             if (res.ok) {
                 const data = await res.json();
@@ -45,7 +45,7 @@ const Forum: React.FC = () => {
     const handleCreate = async () => {
         if (!newThreadData.title || !newThreadData.content) return;
         try {
-            const backendUrl = 'https://hashnhedge-app.up.railway.app';
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
             await fetch(`${backendUrl}/api/public/forum`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -73,7 +73,7 @@ const Security: React.FC = () => {
       setLogs([`[${new Date().toLocaleTimeString()}] Auditing Token: ${tokenAddr}...`]);
       setIsRunning(true);
       try {
-        const backendUrl = 'https://hashnhedge-app.up.railway.app';
+        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
         const res = await fetch(`${backendUrl}/api/public/audit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

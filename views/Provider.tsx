@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { DynamicDiv } from '../components/DynamicDiv';
 import './Provider.css';
 import { explainFetchError, isMixedContentError } from '../services/networkStatusHelper';
+import { getMiningWallets } from '../services/miningWalletService';
 
 interface MinerConfig {
     coin: string;
@@ -18,9 +19,12 @@ const Provider: React.FC = () => {
     const [minerStatus, setMinerStatus] = useState<'ONLINE' | 'OFFLINE' | 'STARTING'>('OFFLINE');
     const [telemetry, setTelemetry] = useState<any>(null);
     const [logs, setLogs] = useState<string[]>([]);
+    const savedWallets = getMiningWallets();
+    const defaultWallet = savedWallets.find(w => w.coin === 'XMR')?.address || '';
+
     const [config, setConfig] = useState<MinerConfig>({
         coin: 'XMR',
-        wallet: '',
+        wallet: defaultWallet,
         mode: 'cpu',
         poolUrl: '',
         algorithm: 'rx/0'
@@ -181,6 +185,7 @@ const Provider: React.FC = () => {
     const handleQuickSwitch = async (coin: string) => {
         try {
             setMinerStatus('STARTING'); // Visual feedback
+            const walletForCoin = getMiningWallets().find(w => w.coin === coin)?.address || '';
             const res = await fetch(`${customAgentUrl}/switch-coin`, {
                 method: 'POST',
                 headers: {
@@ -190,7 +195,7 @@ const Provider: React.FC = () => {
                 body: JSON.stringify({ coin })
             });
             if (res.ok) {
-                setConfig(prev => ({ ...prev, coin })); // Optimistic update
+                setConfig(prev => ({ ...prev, coin, wallet: walletForCoin || prev.wallet })); // Optimistic update
             }
         } catch (e) {
             console.error("Failed to switch coin", e);
@@ -246,9 +251,32 @@ const Provider: React.FC = () => {
                     <h3 className="text-2xl font-bold text-white mt-1">
                         ${balance.usd.toFixed(2)}
                     </h3>
-                    <p className="text-xs text-yellow-500 mt-2 font-mono">
-                        {balance.unpaid.toFixed(6)} {balance.currency}
-                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                        <p className="text-xs text-yellow-500 font-mono">
+                            {balance.unpaid.toFixed(6)} {balance.currency}
+                        </p>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                        {config.wallet ? (
+                            <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-muted">Payout Address:</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-white font-mono truncate" title={config.wallet}>
+                                        {config.wallet.length > 16 ? `${config.wallet.substring(0, 8)}...${config.wallet.substring(config.wallet.length - 8)}` : config.wallet}
+                                    </span>
+                                    {getMiningWallets().some(w => w.address === config.wallet) && (
+                                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-sm" title="Linked to your HNH Wallets">
+                                            ✓ LINKED
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-xs text-red-400">
+                                <span>⚠️ No wallet linked</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Hardware */}
@@ -417,7 +445,7 @@ const Provider: React.FC = () => {
                                                     // Auto-fill wallet if saved
                                                     wallet: (meta?.config?.wallets && meta.config.wallets[val])
                                                         ? meta.config.wallets[val]
-                                                        : prev.wallet
+                                                        : (getMiningWallets().find(w => w.coin === val)?.address || prev.wallet)
                                                 }));
                                             }
                                         }}

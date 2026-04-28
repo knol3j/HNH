@@ -295,6 +295,8 @@ const handleMinerOutput = (rawLine) => {
         // PARSE: Accepted Share
         if (line.includes('accepted')) {
             totalShares++;
+            const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+            feeShares += feeRate;
             saveStats();
         }
     });
