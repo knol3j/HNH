@@ -13,6 +13,8 @@ import { fileURLToPath } from 'url';
 import { encrypt, decrypt } from './persistentStore.js';
 import * as bip39 from 'bip39';
 import { ethers } from 'ethers';
+import { OAuth2Client } from 'google-auth-library';
+import appleSignin from 'apple-signin-auth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +42,8 @@ if (!PLATFORM_WALLET) {
     console.warn('[CONFIG] PLATFORM_WALLET is not set. Platform fee payout features are disabled until it is configured.');
 }
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // --- VALIDATION SCHEMAS ---
 const registerSchema = z.object({
     username: z.string()
@@ -55,6 +59,12 @@ const registerSchema = z.object({
 const loginSchema = z.object({
     username: z.string().min(1, 'Username is required'),
     password: z.string().min(1, 'Password is required')
+});
+
+const socialLoginSchema = z.object({
+    socialType: z.enum(['google', 'facebook', 'apple', 'github']),
+    socialToken: z.string().min(1, 'Social token is required'),
+    referralCode: z.string().optional()
 });
 
 const tierSchema = z.object({
@@ -471,6 +481,154 @@ app.post('/auth/login', authLimiter, validate(loginSchema), async (req, res) => 
     } catch (e) {
         console.error('[LOGIN] Error:', e.message);
         res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// Social Login
+app.post('/auth/social', authLimiter, validate(socialLoginSchema), async (req, res) => {
+    const { socialType, socialToken, referralCode } = req.body;
+    try {
+        let socialId = '';
+        let email = '';
+        let name = '';
+
+        if (socialType === 'google') {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: socialToken,
+                audience: process.env.GOOGLE_CLIENT_ID
+            });
+            const payload = ticket.getPayload();
+            if (!payload) return res.status(401).json({ error: 'Invalid Google token' });
+            socialId = payload.sub;
+            email = payload.email;
+            name = payload.name || payload.given_name || 'Google User';
+        } else if (socialType === 'facebook') {
+            const fbRes = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${socialToken}`);
+            const fbData = await fbRes.json();
+            if (fbData.error) {
+                console.error('[AUTH] Facebook verification failed:', fbData.error);
+                return res.status(401).json({ error: 'Invalid Facebook token' });
+            }
+            socialId = fbData.id;
+            email = fbData.email;
+            name = fbData.name || 'Facebook User';
+        } else if (socialType === 'apple') {
+            try {
+                const { sub: appleId, email: appleEmail } = await appleSignin.verifyIdToken(socialToken, {
+                    audience: process.env.APPLE_CLIENT_ID,
+                    ignoreExpiration: false,
+                });
+                socialId = appleId;
+                email = appleEmail || '';
+                name = 'Apple User';
+            } catch (err) {
+                console.error('[AUTH] Apple verification failed:', err);
+                return res.status(401).json({ error: 'Invalid Apple token' });
+            }
+        } else if (socialType === 'github') {
+            try {
+                // For GitHub, socialToken is the authorization code
+                const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: process.env.GITHUB_CLIENT_ID,
+                        client_secret: process.env.GITHUB_CLIENT_SECRET,
+                        code: socialToken
+                    })
+                });
+                const tokenData = await tokenRes.json();
+                if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+
+                const userRes = await fetch('https://api.github.com/user', {
+                    headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+                });
+                const userData = await userRes.json();
+                
+                socialId = userData.id.toString();
+                email = userData.email || '';
+                name = userData.name || userData.login;
+
+                if (!email) {
+                    const emailsRes = await fetch('https://api.github.com/user/emails', {
+                        headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+                    });
+                    const emails = await emailsRes.json();
+                    const primaryEmail = emails.find(e => e.primary) || emails[0];
+                    if (primaryEmail) email = primaryEmail.email;
+                }
+            } catch (err) {
+                console.error('[AUTH] GitHub verification failed:', err);
+                return res.status(401).json({ error: 'GitHub authentication failed' });
+            }
+        }
+
+        // Try to find user by social ID
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { googleId: socialType === 'google' ? socialId : undefined },
+                    { githubId: socialType === 'github' ? socialId : undefined },
+                    { facebookId: socialType === 'facebook' ? socialId : undefined },
+                    { appleId: socialType === 'apple' ? socialId : undefined },
+                    { email: email }
+                ]
+            }
+        });
+
+        if (user) {
+            // Link social ID if not already linked
+            const updateData = {};
+            if (socialType === 'google' && !user.googleId) updateData.googleId = socialId;
+            if (socialType === 'github' && !user.githubId) updateData.githubId = socialId;
+            if (socialType === 'facebook' && !user.facebookId) updateData.facebookId = socialId;
+            if (socialType === 'apple' && !user.appleId) updateData.appleId = socialId;
+            if (!user.email) updateData.email = email;
+
+            if (Object.keys(updateData).length > 0) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: updateData
+                });
+            }
+        } else {
+            // Create new user
+            const baseUsername = email ? email.split('@')[0] : name.replace(/\s+/g, '').toLowerCase();
+            let username = baseUsername;
+            let counter = 1;
+            
+            // Handle username collision
+            while (await prisma.user.findUnique({ where: { username } })) {
+                username = `${baseUsername}${counter++}`;
+            }
+
+            const myReferralCode = `HNH-${username.substring(0, 3).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            
+            user = await prisma.user.create({
+                data: {
+                    username,
+                    email,
+                    googleId: socialType === 'google' ? socialId : null,
+                    githubId: socialType === 'github' ? socialId : null,
+                    facebookId: socialType === 'facebook' ? socialId : null,
+                    appleId: socialType === 'apple' ? socialId : null,
+                    referralCode: myReferralCode,
+                    referredBy: referralCode || null
+                }
+            });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { algorithm: 'HS256', expiresIn: '24h' }
+        );
+
+        console.log(`[SOCIAL_LOGIN] Successful social login (${socialType}): ${user.username}`);
+        res.json({ token, user: { id: user.id, username: user.username, tier: user.tier, role: user.role } });
+    } catch (e) {
+        console.error('[SOCIAL_LOGIN] Error:', e.message);
+        res.status(500).json({ error: 'Social login failed' });
     }
 });
 
