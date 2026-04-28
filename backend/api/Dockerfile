@@ -1,4 +1,4 @@
-FROM node:18-bullseye-slim
+FROM node:20-bullseye-slim
 
 # Install OpenSSL for Prisma
 RUN apt-get update -y && apt-get install -y openssl
@@ -18,6 +18,7 @@ RUN npx prisma generate
 # Copy API server files
 COPY index.js ./
 COPY persistentStore.js ./
+COPY hardware_data.json ./
 COPY posts.json ./
 COPY version.json ./
 

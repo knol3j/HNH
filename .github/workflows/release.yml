@@ -19,8 +19,7 @@ jobs:
               id: version
               shell: pwsh
               run: |
-                  $vd = Get-Content version.json -Raw | ConvertFrom-Json
-                  $v = if ($vd.agentVersion) { $vd.agentVersion } else { $vd.version }
+                  $v = "${{ github.ref_name }}" -replace '^v', ''
                   echo "VERSION=$v" >> $env:GITHUB_OUTPUT
 
             - name: Build Agent Code Package
@@ -43,6 +42,22 @@ jobs:
                   # GUI and miners directories
                   if (Test-Path "agent\gui") { Copy-Item -Recurse "agent\gui" -Destination "$STAGING\gui" }
                   if (Test-Path "agent\miners") { Copy-Item -Recurse "agent\miners" -Destination "$STAGING\miners" }
+
+                  # Ensure release metadata matches the git tag without rewriting main
+                  $versionPath = Join-Path $STAGING "version.json"
+                  if (Test-Path $versionPath) {
+                    $versionData = Get-Content $versionPath -Raw | ConvertFrom-Json
+                    $versionData.agentVersion = $VERSION
+                    $versionData.buildDate = (Get-Date).ToString("yyyy-MM-dd")
+                    $versionData | ConvertTo-Json -Depth 10 | Set-Content $versionPath
+                  }
+
+                  $packagePath = Join-Path $STAGING "package.json"
+                  if (Test-Path $packagePath) {
+                    $packageData = Get-Content $packagePath -Raw | ConvertFrom-Json
+                    $packageData.version = $VERSION
+                    $packageData | ConvertTo-Json -Depth 10 | Set-Content $packagePath
+                  }
 
                   Compress-Archive -Path "$STAGING\*" -DestinationPath "release\HNH-AgentMiner-v$VERSION.zip" -Force
                   Remove-Item -Recurse -Force $STAGING
