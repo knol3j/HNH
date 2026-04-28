@@ -105,12 +105,7 @@ export class KasMiner extends BaseMiner {
     }
 
     killOrphans() {
-        if (process.platform === 'win32') {
-            try {
-                const { spawnSync } = require('child_process');
-                spawnSync('taskkill', ['/IM', 'lolMiner.exe', '/F'], { stdio: 'ignore' });
-            } catch (e) {}
-        }
+        this.killOrphanedProcesses(['lolMiner.exe']);
     }
 
     start() {

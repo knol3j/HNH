@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { getReportedGpuUtil, getReportedMinerStatus } from './status.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +35,7 @@ const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
     // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
     // Also skip /meta for GUI initialization
-    if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta')) return next();
+    if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta' || req.path === '/auto-switch')) return next();
 
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -64,10 +65,10 @@ const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
 // --- CONSTANTS ---
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
+    XMR: 'stratum+tcp://gulf.moneroocean.stream:10128',
     RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
     ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
-    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
+    ERG: 'stratum+tcp://erg.2miners.com:8888', // GPU
     KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
 };
 
@@ -84,6 +85,7 @@ let config = {
         KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek'
     },
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
+    password: 'x',
     algorithm: 'kawpow',
     mode: 'cpu' // cpu or gpu
 };
@@ -94,6 +96,7 @@ let recentLogs = [];
 let totalShares = 0;
 let feeShares = 0;
 let userTier = 'free';
+let latestMinerApiStats = null;
 let telemetry = {
     hashrate: 0,
     temp: 0,
@@ -112,6 +115,7 @@ try {
         // Load Config from setup script
         if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
         if (data.miningMode) config.mode = data.miningMode;
+        if (data.password) config.password = data.password;
 
         // SMART DEFAULTS: switch coin based on mode
         if (config.mode === 'gpu') {
@@ -122,6 +126,13 @@ try {
             currentCoin = 'XMR';
             config.poolUrl = COIN_POOLS.XMR;
             config.algorithm = 'rx/0';
+        }
+
+        if (data.currentCoin && COIN_POOLS[data.currentCoin]) {
+            currentCoin = data.currentCoin;
+        }
+        if (data.poolUrl) {
+            config.poolUrl = data.poolUrl;
         }
 
         // Set initial wallet if available
@@ -135,7 +146,17 @@ try {
 } catch (e) { console.error(e); }
 
 const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify({
+            totalShares,
+            feeShares,
+            wallets: config.wallets,
+            miningMode: config.mode,
+            currentCoin,
+            poolUrl: config.poolUrl,
+            password: config.password
+        }, null, 4));
+    } catch (e) { }
 };
 
 // --- LOGGING ---
@@ -201,23 +222,28 @@ const startMiner = () => {
     minerStatus = 'STARTING';
 
     try {
-        minerProcess = spawn(MINER_BIN, args);
+        latestMinerApiStats = null;
+        const spawnedMiner = spawn(MINER_BIN, args);
+        minerProcess = spawnedMiner;
 
-        minerProcess.stdout.on('data', (data) => {
+        spawnedMiner.stdout.on('data', (data) => {
             const line = data.toString().trim();
             handleMinerOutput(line);
         });
 
-        minerProcess.stderr.on('data', (data) => {
+        spawnedMiner.stderr.on('data', (data) => {
             console.error(`[XMRIG ERR] ${data}`);
             addLog(`ERR: ${data.toString().trim()}`);
         });
 
-        minerProcess.on('close', (code) => {
+        spawnedMiner.on('close', (code) => {
             addLog(`⚠️ Miner exitted with code ${code}`);
-            minerStatus = 'OFFLINE';
-            telemetry.hashrate = 0;
-            minerProcess = null;
+            if (minerProcess === spawnedMiner) {
+                minerStatus = 'OFFLINE';
+                latestMinerApiStats = null;
+                telemetry.hashrate = 0;
+                minerProcess = null;
+            }
         });
 
         minerStatus = 'MINING';
@@ -256,6 +282,7 @@ const fetchXmrigStats = () => {
         res.on('end', () => {
             try {
                 const stats = JSON.parse(data);
+                latestMinerApiStats = stats;
 
                 // Hashrate (Highest of all threads)
                 telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
@@ -315,10 +342,15 @@ app.get('/telemetry', (req, res) => {
     const grossShares = totalShares;
     const feeDeducted = feeShares;
     const netShares = grossShares - feeDeducted;
+    const reportedStatus = getReportedMinerStatus({
+        minerStatus,
+        hasMinerProcess: Boolean(minerProcess),
+        minerApiStats: latestMinerApiStats
+    });
 
     res.json({
         gpu_temp: telemetry.temp,
-        gpu_util: minerStatus === 'MINING' ? 100 : 0,
+        gpu_util: getReportedGpuUtil({ reportedStatus, hashrate: telemetry.hashrate }),
         fan_speed: telemetry.fan,
         power_draw: telemetry.power,
         vram_used: 0, // Need external tool for this usually
@@ -328,15 +360,15 @@ app.get('/telemetry', (req, res) => {
         fee_deducted: feeDeducted,
         fee_rate: feeRate * 100, // As percentage
         user_tier: userTier,
-        active_job: minerStatus === 'MINING' ? {
+        active_job: minerProcess ? {
             id: 'xmrig-job',
             title: `Mining ${config.algorithm || 'RandomX'}`,
-            status: 'RUNNING',
+            status: reportedStatus === 'MINING' ? 'RUNNING' : 'STARTING',
             progress: 0
         } : null,
         wallet: config.wallet,
         platform_wallet: PLATFORM_WALLET,
-        status: minerStatus,
+        status: reportedStatus,
         logs: recentLogs
     });
 });
@@ -357,12 +389,17 @@ app.post('/config', (req, res) => {
         config.poolUrl = poolUrl;
         changed = true;
     }
+    if (password && password !== config.password) {
+        config.password = password;
+        changed = true;
+    }
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
         userTier = tier;
         addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);
     }
 
     if (changed) {
+        saveStats();
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
@@ -423,6 +460,7 @@ app.post('/switch-coin', (req, res) => {
     }
 
     addLog(`💱 Switching to ${coin}...`);
+    saveStats();
     startMiner();
 
     res.json({ success: true, coin });

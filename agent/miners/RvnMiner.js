@@ -108,14 +108,7 @@ export class RvnMiner extends BaseMiner {
      * Kill orphaned T-Rex processes
      */
     killOrphans() {
-        if (process.platform === 'win32') {
-            try {
-                const { spawnSync } = require('child_process');
-                spawnSync('taskkill', ['/IM', 't-rex.exe', '/F'], { stdio: 'ignore' });
-            } catch (e) {
-                // Ignore
-            }
-        }
+        this.killOrphanedProcesses(['t-rex.exe']);
     }
 
     start() {

@@ -22,7 +22,7 @@ export const COIN_CONFIG = {
         binary: 'xmrig',
         scriptWin: 'start_xmr_cpu.bat',
         scriptLinux: 'start_xmr_cpu.sh',
-        defaultPool: 'stratum+ssl://pool.supportxmr.com:443',
+        defaultPool: 'stratum+tcp://gulf.moneroocean.stream:10128',
         description: 'CPU-only mining with XMRig'
     },
     RVN: {
@@ -51,12 +51,12 @@ export const COIN_CONFIG = {
         name: 'Ergo',
         algorithm: 'Autolykos2',
         type: 'gpu',
-        miner: 'lolMiner',
-        binary: 'lolMiner',
+        miner: 'T-Rex',
+        binary: 't-rex',
         scriptWin: 'start_erg_gpu.bat',
         scriptLinux: 'start_erg_gpu.sh',
-        defaultPool: 'stratum+tcp://de.ergo.herominers.com:11800',
-        description: 'GPU mining with lolMiner (AMD/NVIDIA)'
+        defaultPool: 'stratum+tcp://erg.2miners.com:8888',
+        description: 'GPU mining with T-Rex (NVIDIA optimized)'
     },
     KAS: {
         name: 'Kaspa',

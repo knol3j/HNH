@@ -5,6 +5,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { getReportedGpuUtil, getReportedMinerStatus } from '../status.js';
 
 describe('Agent Server', () => {
   beforeEach(() => {
@@ -105,6 +106,56 @@ describe('Agent Server', () => {
 
       expect(minerStatus).toBe('OFFLINE');
       expect(telemetry.hashrate).toBe(0);
+    });
+
+    it('should report STARTING until the miner API shows a connection', () => {
+      const reportedStatus = getReportedMinerStatus({
+        minerStatus: 'MINING',
+        hasMinerProcess: true,
+        minerApiStats: {
+          connection: { pool: '', ip: null, uptime_ms: 0 },
+          hashrate: { total: [0] }
+        }
+      });
+
+      expect(reportedStatus).toBe('STARTING');
+    });
+
+    it('should report MINING after the miner API shows a connection', () => {
+      const reportedStatus = getReportedMinerStatus({
+        minerStatus: 'MINING',
+        hasMinerProcess: true,
+        minerApiStats: {
+          connection: { pool: 'xmr.2miners.com:2222', ip: '127.0.0.1', uptime_ms: 5000 },
+          hashrate: { total: [1250000] }
+        }
+      });
+
+      expect(reportedStatus).toBe('MINING');
+    });
+
+    it('should only report gpu utilization when the miner is actually hashing', () => {
+      expect(getReportedGpuUtil({ reportedStatus: 'STARTING', hashrate: 0 })).toBe(0);
+      expect(getReportedGpuUtil({ reportedStatus: 'MINING', hashrate: 1250000 })).toBe(100);
+    });
+
+    it('should ignore stale close events from an older miner process after restart', () => {
+      const oldMiner = { pid: 1 };
+      const newMiner = { pid: 2 };
+      let minerProcess = newMiner;
+      let minerStatus = 'MINING';
+
+      const handleClose = (closingMiner) => {
+        if (minerProcess === closingMiner) {
+          minerStatus = 'OFFLINE';
+          minerProcess = null;
+        }
+      };
+
+      handleClose(oldMiner);
+
+      expect(minerProcess).toBe(newMiner);
+      expect(minerStatus).toBe('MINING');
     });
   });
 
