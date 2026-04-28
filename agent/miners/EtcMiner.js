@@ -97,12 +97,7 @@ export class EtcMiner extends BaseMiner {
     }
 
     killOrphans() {
-        if (process.platform === 'win32') {
-            try {
-                const { spawnSync } = require('child_process');
-                spawnSync('taskkill', ['/IM', 't-rex.exe', '/F'], { stdio: 'ignore' });
-            } catch (e) {}
-        }
+        this.killOrphanedProcesses(['t-rex.exe']);
     }
 
     start() {

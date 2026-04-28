@@ -10,6 +10,10 @@ import userEvent from '@testing-library/user-event';
 import Auth from '../../views/Auth';
 import { AuthProvider } from '../../context/AuthContext';
 
+vi.mock('@react-oauth/google', () => ({
+  useGoogleLogin: vi.fn(() => vi.fn()),
+}));
+
 // Mock auth service
 vi.mock('../../services/authService', () => ({
   loginUser: vi.fn(),
@@ -48,9 +52,9 @@ describe('Auth View', () => {
     it('should switch to registration form when link is clicked', async () => {
       renderAuth();
 
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
 
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Create Account');
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Join the Network');
       expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
     });
 
@@ -58,11 +62,11 @@ describe('Auth View', () => {
       renderAuth();
 
       // Switch to register
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
       expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
 
       // Switch back to login
-      fireEvent.click(screen.getByText(/already have an account/i));
+      fireEvent.click(screen.getByText(/sign in here/i));
       expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Welcome Back');
     });
   });
@@ -168,7 +172,7 @@ describe('Auth View', () => {
       const user = userEvent.setup();
 
       // Switch to register mode
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'newuser');
       await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
@@ -192,7 +196,7 @@ describe('Auth View', () => {
       const user = userEvent.setup();
 
       // Switch to register mode
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'existinguser');
       await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
@@ -216,7 +220,7 @@ describe('Auth View', () => {
       });
 
       // Switch modes - the form should clear the error on next submission attempt
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
 
       // The error message may still be visible until form is submitted again
       // This tests the form mode switching - check for the Create Account button
@@ -244,7 +248,7 @@ describe('Auth View', () => {
       renderAuth();
       const user = userEvent.setup();
 
-      fireEvent.click(screen.getByText(/don't have an account/i));
+      fireEvent.click(screen.getByText(/create an account/i));
 
       await user.type(screen.getByPlaceholderText('Enter username'), 'newuser');
       await user.type(screen.getByPlaceholderText('••••••••'), 'password123');

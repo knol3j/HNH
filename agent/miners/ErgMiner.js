@@ -1,6 +1,6 @@
 /**
- * ErgMiner - lolMiner wrapper for Ergo (ERG) mining
- * Algorithm: Autolykos2 (GPU)
+ * ErgMiner - T-Rex wrapper for Ergo (ERG) mining
+ * Algorithm: Autolykos2 (GPU - NVIDIA optimized)
  */
 
 import { BaseMiner } from './BaseMiner.js';
@@ -10,72 +10,62 @@ export class ErgMiner extends BaseMiner {
         super({
             coin: 'ERG',
             algorithm: 'autolykos2',
-            minerName: 'lolMiner',
-            binaryName: 'lolMiner',
+            minerName: 'T-Rex',
+            binaryName: 't-rex',
             apiPort: 4069,
             ...config
         });
     }
 
     /**
-     * Build lolMiner command line arguments for Autolykos2
+     * Build T-Rex command line arguments for Autolykos2
      */
     buildArgs() {
-        // lolMiner format: --pool stratum+tcp://host:port --user wallet
         let poolUrl = this.poolUrl;
         if (!poolUrl.includes('://')) {
             poolUrl = `stratum+tcp://${poolUrl}`;
         }
 
         const args = [
-            '--algo', 'AUTOLYKOS2',
-            '--pool', poolUrl,
-            '--user', this.wallet,
-            '--pass', this.password,
-            '--apiport', this.apiPort.toString(),
-            '--apihost', '127.0.0.1'
+            '-a', 'autolykos2',
+            '-o', poolUrl,
+            '-u', this.wallet,
+            '-p', this.password,
+            '--api-bind-http', `127.0.0.1:${this.apiPort}`,
+            '--no-watchdog'
         ];
 
-        // Worker name
         if (this.workerId) {
-            args.push('--worker', this.workerId);
+            args.push('-w', this.workerId);
         }
 
         return args;
     }
 
     /**
-     * Parse lolMiner output
+     * Parse T-Rex output
      */
     parseOutput(line) {
         this.addLog(line);
 
-        // lolMiner share accepted
-        if (line.includes('Share accepted') || line.includes('Accepted')) {
+        if (line.includes('OK') && line.includes('share')) {
             this.stats.acceptedShares++;
             this.stats.totalShares++;
         }
 
-        // lolMiner share rejected
-        if (line.includes('Share rejected') || line.includes('Rejected')) {
+        if (line.includes('REJECTED') || line.includes('rejected')) {
             this.stats.rejectedShares++;
             this.stats.totalShares++;
         }
 
-        // Parse hashrate
-        const hrMatch = line.match(/Total\s+([\d.]+)\s*(MH|GH|KH)\/s/i);
+        const hrMatch = line.match(/([\d.]+)\s*MH\/s/i);
         if (hrMatch) {
-            let hashrate = parseFloat(hrMatch[1]);
-            const unit = hrMatch[2].toUpperCase();
-            if (unit === 'GH') hashrate *= 1000000000;
-            else if (unit === 'MH') hashrate *= 1000000;
-            else if (unit === 'KH') hashrate *= 1000;
-            this.telemetry.hashrate = hashrate;
+            this.telemetry.hashrate = parseFloat(hrMatch[1]) * 1000000;
         }
     }
 
     /**
-     * Fetch telemetry from lolMiner HTTP API
+     * Fetch telemetry from T-Rex HTTP API
      */
     async fetchTelemetry() {
         if (this.status !== 'MINING') return;
@@ -83,24 +73,22 @@ export class ErgMiner extends BaseMiner {
         try {
             const data = await this.httpGet(this.apiPort, '/summary');
 
-            // lolMiner API format
-            if (data.Session?.Performance_Summary) {
-                this.telemetry.hashrate = data.Session.Performance_Summary * 1000000; // MH/s to H/s
+            if (data.hashrate) {
+                this.telemetry.hashrate = data.hashrate;
             }
 
-            if (data.Session?.Accepted) {
-                this.stats.acceptedShares = data.Session.Accepted;
+            if (data.accepted_count !== undefined) {
+                this.stats.acceptedShares = data.accepted_count;
             }
-            if (data.Session?.Rejected) {
-                this.stats.rejectedShares = data.Session.Rejected;
+            if (data.rejected_count !== undefined) {
+                this.stats.rejectedShares = data.rejected_count;
             }
 
-            // GPU stats
-            if (data.GPUs && data.GPUs.length > 0) {
-                const gpu = data.GPUs[0];
-                this.telemetry.temp = gpu.Temp_Sensor || 0;
-                this.telemetry.power = gpu.Power || 0;
-                this.telemetry.fan = gpu.Fan || 0;
+            if (data.gpus && data.gpus.length > 0) {
+                const gpu = data.gpus[0];
+                this.telemetry.temp = gpu.temperature || 0;
+                this.telemetry.power = gpu.power || 0;
+                this.telemetry.fan = gpu.fan_speed || 0;
             }
 
         } catch (e) {
@@ -109,12 +97,7 @@ export class ErgMiner extends BaseMiner {
     }
 
     killOrphans() {
-        if (process.platform === 'win32') {
-            try {
-                const { spawnSync } = require('child_process');
-                spawnSync('taskkill', ['/IM', 'lolMiner.exe', '/F'], { stdio: 'ignore' });
-            } catch (e) {}
-        }
+        this.killOrphanedProcesses(['t-rex.exe']);
     }
 
     start() {

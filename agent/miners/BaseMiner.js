@@ -3,7 +3,7 @@
  * Each coin-specific miner extends this class
  */
 
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import http from 'http';
@@ -192,7 +192,7 @@ export class BaseMiner {
         if (this.process) {
             try {
                 if (process.platform === 'win32') {
-                    spawn('taskkill', ['/PID', this.process.pid.toString(), '/F', '/T']);
+                    spawnSync('taskkill', ['/PID', this.process.pid.toString(), '/F', '/T'], { stdio: 'ignore' });
                 } else {
                     this.process.kill('SIGKILL');
                 }
@@ -240,16 +240,32 @@ export class BaseMiner {
     }
 
     /**
+     * Best-effort Windows orphan cleanup by image name.
+     */
+    killOrphanedProcesses(imageNames = []) {
+        if (process.platform !== 'win32') return;
+
+        for (const imageName of imageNames) {
+            try {
+                spawnSync('taskkill', ['/IM', imageName, '/F'], { stdio: 'ignore' });
+            } catch (e) {
+                // Ignore cleanup errors.
+            }
+        }
+    }
+
+    /**
      * Helper to make HTTP request to miner API
      */
-    httpGet(port, path, useHttps = false) {
+    httpGet(port, path, useHttps = false, extraOptions = {}) {
         return new Promise((resolve, reject) => {
             const options = {
                 hostname: '127.0.0.1',
                 port: port,
                 path: path,
                 method: 'GET',
-                timeout: 5000
+                timeout: 5000,
+                ...extraOptions
             };
 
             const client = useHttps ? https : http;

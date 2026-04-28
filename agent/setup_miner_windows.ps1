@@ -90,12 +90,17 @@ Write-Host ""
 Write-Host "Extracting..." -ForegroundColor Cyan
 Expand-Archive -Path $ZIP_PATH -DestinationPath $BIN_DIR -Force
 
-# Locate the extracted xmrig.exe and move it to bin root if nested
+# Locate the extracted XMRig directory and flatten all files into bin root.
+# XMRig bundles WinRing0x64.sys for MSR tweaks on Windows, so we must preserve it.
 $extractedExe = Get-ChildItem -Path $BIN_DIR -Recurse -Filter "xmrig.exe" | Select-Object -First 1
 if ($extractedExe) {
-    Move-Item -Path $extractedExe.FullName -Destination $BIN_DIR -Force
-    # Cleanup extra folders
-    Get-ChildItem -Path $BIN_DIR -Directory | Remove-Item -Recurse -Force
+    $xmrigRoot = Split-Path $extractedExe.FullName -Parent
+    if ($xmrigRoot -ne $BIN_DIR) {
+        Get-ChildItem -Path $xmrigRoot -File | ForEach-Object {
+            Move-Item -Path $_.FullName -Destination $BIN_DIR -Force
+        }
+        Remove-Item -Path $xmrigRoot -Recurse -Force
+    }
 }
 else {
     Write-Error "Could not find xmrig.exe after extraction"

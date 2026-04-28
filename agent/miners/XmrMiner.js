@@ -88,7 +88,11 @@ export class XmrMiner extends BaseMiner {
         if (this.status !== 'MINING') return;
 
         try {
-            const data = await this.httpGet(this.apiPort, '/2/summary');
+            const data = await this.httpGet(this.apiPort, '/2/summary', false, {
+                headers: {
+                    Authorization: `Bearer ${this.apiToken}`
+                }
+            });
 
             // Hashrate
             if (data.hashrate?.total?.[0]) {
@@ -115,14 +119,7 @@ export class XmrMiner extends BaseMiner {
      * Kill any orphaned XMRig processes (Windows specific cleanup)
      */
     killOrphans() {
-        if (process.platform === 'win32') {
-            try {
-                const { spawnSync } = require('child_process');
-                spawnSync('taskkill', ['/IM', 'xmrig.exe', '/F'], { stdio: 'ignore' });
-            } catch (e) {
-                // Ignore errors
-            }
-        }
+        this.killOrphanedProcesses(['xmrig.exe']);
     }
 
     start() {
