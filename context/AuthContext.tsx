@@ -6,7 +6,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (creds: any) => Promise<User | null>;
-    loginWithSocial: (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string) => Promise<User | null>;
+    loginWithSocial: (type: 'google' | 'facebook' | 'apple' | 'github', token: string, referralCode?: string) => Promise<User | null>;
     register: (creds: any) => Promise<User | null>;
     logout: () => void;
     refreshUser: () => Promise<void>;

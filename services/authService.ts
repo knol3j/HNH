@@ -40,7 +40,7 @@ export const loginUser = async (creds: UserCredentials): Promise<User | null> =>
     }
 };
 
-export const loginWithSocial = async (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string): Promise<User | null> => {
+export const loginWithSocial = async (type: 'google' | 'facebook' | 'apple' | 'github', token: string, referralCode?: string): Promise<User | null> => {
     try {
         const data = await apiClient.post<{ token: string; user: User }>('/auth/social', {
             socialType: type,

@@ -60,14 +60,45 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         onError: () => setError('Google login failed')
     });
 
+    const onGoogleClick = () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        if (!clientId || clientId === 'your_google_client_id') {
+            setError('Google Login is not configured. Please set VITE_GOOGLE_CLIENT_ID.');
+            return;
+        }
+        handleGoogleLogin();
+    };
+
     const handleGithubLogin = () => {
         const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-        if (!clientId) {
-            setError('GitHub Client ID not configured');
+        if (!clientId || clientId === 'your_github_client_id') {
+            setError('GitHub Login is not configured. Please set VITE_GITHUB_CLIENT_ID.');
             return;
         }
         const redirectUri = `${window.location.origin}/auth/github/callback`;
         window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
+    };
+
+    const handleFacebookClick = () => {
+        const clientId = import.meta.env.VITE_FACEBOOK_CLIENT_ID;
+        if (!clientId || clientId === 'your_facebook_client_id') {
+            setError('Facebook Login is not configured. Please set VITE_FACEBOOK_CLIENT_ID.');
+            return;
+        }
+        // Redirect to Facebook OAuth
+        const redirectUri = `${window.location.origin}/auth/facebook/callback`;
+        window.location.href = `https://www.facebook.com/v12.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=email,public_profile`;
+    };
+
+    const handleAppleClick = () => {
+        const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
+        if (!clientId || clientId === 'your_apple_client_id') {
+            setError('Apple Login is not configured. Please set VITE_APPLE_CLIENT_ID.');
+            return;
+        }
+        // Redirect to Apple OAuth
+        const redirectUri = `${window.location.origin}/auth/apple/callback`;
+        window.location.href = `https://appleid.apple.com/auth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code id_token&scope=name email&response_mode=form_post`;
     };
 
     const { loginWithSocial } = useAuth();
@@ -147,7 +178,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
                     <div className="grid grid-cols-4 gap-4">
                         <button
-                            onClick={() => handleGoogleLogin()}
+                            onClick={() => onGoogleClick()}
                             className="flex items-center justify-center py-4 px-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-primary/30 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] transition-all group"
                             title="Continue with Google"
                         >
@@ -166,7 +197,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             <Github className="w-6 h-6 group-hover:scale-110 transition-transform" />
                         </button>
                         <button
-                            onClick={() => setError('Facebook login coming soon')}
+                            onClick={() => handleFacebookClick()}
                             className="flex items-center justify-center py-4 px-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-primary/30 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] transition-all group"
                             title="Continue with Facebook"
                         >
@@ -175,7 +206,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             </svg>
                         </button>
                         <button
-                            onClick={() => setError('Apple login coming soon')}
+                            onClick={() => handleAppleClick()}
                             className="flex items-center justify-center py-4 px-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 hover:border-primary/30 hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] transition-all group"
                             title="Continue with Apple"
                         >
