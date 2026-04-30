@@ -149,7 +149,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-4 relative overflow-hidden">
             {/* Background Decorative Elements */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full animate-pulse"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full animate-pulse [animation-delay:1s]"></div>
             
             <div className="w-full max-w-md bg-surface/80 border border-white/5 rounded-3xl p-10 backdrop-blur-xl shadow-2xl relative z-10">
                 <div className="text-center mb-10">
