@@ -5,6 +5,7 @@ import { DynamicDiv } from '../components/DynamicDiv';
 import './Provider.css';
 import { explainFetchError, isMixedContentError } from '../services/networkStatusHelper';
 import { getMiningWallets } from '../services/miningWalletService';
+import { API_BASE_URL } from '../services/apiClient';
 
 interface MinerConfig {
     coin: string;
@@ -580,7 +581,7 @@ const Provider: React.FC = () => {
                                     const token = localStorage.getItem('hnh_token');
                                     if (token) {
                                         try {
-                                            await fetch('https://api.hashnhedge.com/user/miner-config', {
+                                            await fetch(`${API_BASE_URL}/user/miner-config`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Content-Type': 'application/json',

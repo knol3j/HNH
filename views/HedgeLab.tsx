@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Zap, Activity, Info, Search, Server } from 'lucide-react';
+import { API_BASE_URL } from '../services/apiClient';
 
 interface HardwareItem {
   id: string;
@@ -23,8 +24,7 @@ const HardwareDatabase: React.FC = () => {
   useEffect(() => {
     const fetchHardware = async () => {
       try {
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-        const res = await fetch(`${backendUrl}/api/public/hardware`);
+        const res = await fetch(`${API_BASE_URL}/api/public/hardware`);
         if (res.ok) {
           const data = await res.json();
           setHardware(data);

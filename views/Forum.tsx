@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MessageSquare, Search, ThumbsUp, MessageCircle, Share2, Plus, Flag, User, Clock, Trash2, Pin } from 'lucide-react';
 import { DynamicDiv } from '../components/DynamicDiv';
 import { getCurrentUser } from '../services/authService';
+import { API_BASE_URL } from '../services/apiClient';
 
 interface Thread {
     id: string;
@@ -27,8 +28,7 @@ const Forum: React.FC = () => {
     // Fetch Real Threads
     const fetchThreads = async () => {
         try {
-            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-            const res = await fetch(`${backendUrl}/api/public/forum`);
+            const res = await fetch(`${API_BASE_URL}/api/public/forum`);
             if (res.ok) {
                 const data = await res.json();
                 setThreads(data);
@@ -45,8 +45,7 @@ const Forum: React.FC = () => {
     const handleCreate = async () => {
         if (!newThreadData.title || !newThreadData.content) return;
         try {
-            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-            await fetch(`${backendUrl}/api/public/forum`, {
+            await fetch(`${API_BASE_URL}/api/public/forum`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

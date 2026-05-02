@@ -493,15 +493,33 @@ app.post('/auth/social', authLimiter, validate(socialLoginSchema), async (req, r
         let name = '';
 
         if (socialType === 'google') {
-            const ticket = await googleClient.verifyIdToken({
-                idToken: socialToken,
-                audience: process.env.GOOGLE_CLIENT_ID
-            });
-            const payload = ticket.getPayload();
-            if (!payload) return res.status(401).json({ error: 'Invalid Google token' });
-            socialId = payload.sub;
-            email = payload.email;
-            name = payload.name || payload.given_name || 'Google User';
+            try {
+                const ticket = await googleClient.verifyIdToken({
+                    idToken: socialToken,
+                    audience: process.env.GOOGLE_CLIENT_ID
+                });
+                const payload = ticket.getPayload();
+                if (!payload?.sub) throw new Error('Invalid Google ID token payload');
+                socialId = payload.sub;
+                email = payload.email || '';
+                name = payload.name || payload.given_name || 'Google User';
+            } catch (idTokenErr) {
+                try {
+                    const googleProfileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: { 'Authorization': `Bearer ${socialToken}` }
+                    });
+                    const googleProfile = await googleProfileRes.json();
+                    if (!googleProfileRes.ok || googleProfile.error || !googleProfile.sub) {
+                        throw new Error(googleProfile.error_description || googleProfile.error || 'Invalid Google access token');
+                    }
+                    socialId = googleProfile.sub;
+                    email = googleProfile.email || '';
+                    name = googleProfile.name || googleProfile.given_name || 'Google User';
+                } catch (accessTokenErr) {
+                    console.error('[AUTH] Google verification failed:', { idTokenErr, accessTokenErr });
+                    return res.status(401).json({ error: 'Invalid Google token' });
+                }
+            }
         } else if (socialType === 'facebook') {
             const fbRes = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${socialToken}`);
             const fbData = await fbRes.json();

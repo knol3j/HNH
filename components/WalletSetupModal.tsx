@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Plus, Trash2, Cpu, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCcw, X, Key } from 'lucide-react';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
 
 interface UserWallet {
     id: string;
@@ -27,7 +28,7 @@ const WalletSetupModal: React.FC<WalletSetupModalProps> = ({ isOpen, onClose, on
     const fetchWallets = async () => {
         try {
             const token = localStorage.getItem('hnh_token');
-            const res = await fetch('https://api.hashnhedge.com/user/wallets', {
+            const res = await fetch(`${API_BASE_URL}/user/wallets`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -48,7 +49,7 @@ const WalletSetupModal: React.FC<WalletSetupModalProps> = ({ isOpen, onClose, on
         setError(null);
         try {
             const token = localStorage.getItem('hnh_token');
-            const res = await fetch('https://api.hashnhedge.com/user/wallets', {
+            const res = await fetch(`${API_BASE_URL}/user/wallets`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ const WalletSetupModal: React.FC<WalletSetupModalProps> = ({ isOpen, onClose, on
         setError(null);
         try {
             const token = localStorage.getItem('hnh_token');
-            const res = await fetch('https://api.hashnhedge.com/user/wallet/generate-seed', {
+            const res = await fetch(`${API_BASE_URL}/user/wallet/generate-seed`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, Download, Play, AlertCircle, X, ExternalLink } from 'lucide-react';
+import { Server, Download, Play, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface AgentPromptModalProps {
     isOpen: boolean;
@@ -21,7 +21,7 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                 <div className="space-y-4 text-center">
                     <h2 className="text-2xl font-bold text-white">Local Agent Not Detected</h2>
                     <p className="text-muted text-sm px-4">
-                        To start mining or providing compute power, you need to run the **HashNHedge Mining Agent** on your machine.
+                        To start mining or providing compute power, install and run the HashNHedge Mining Agent on this machine.
                     </p>
                 </div>
 
@@ -34,8 +34,8 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                             <Play size={20} />
                         </div>
                         <div className="flex-1 text-left">
-                            <h3 className="text-white font-bold text-sm">Already have it?</h3>
-                            <p className="text-xs text-muted">Run the <code>start_agent.bat</code> file, then click here to refresh.</p>
+                            <h3 className="text-white font-bold text-sm">Already installed?</h3>
+                            <p className="text-xs text-muted">Run <code>start_miner.bat</code> or <code>node server.js</code>, then click here to refresh.</p>
                         </div>
                     </button>
 
@@ -49,8 +49,8 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                             <Download size={20} />
                         </div>
                         <div className="flex-1 text-left">
-                            <h3 className="text-white font-bold text-sm">New to HashNHedge?</h3>
-                            <p className="text-xs text-muted">Download the installer and follow our quick setup guide.</p>
+                            <h3 className="text-white font-bold text-sm">First-time setup</h3>
+                            <p className="text-xs text-muted">Download the agent release, run <code>setup_miner_windows.ps1</code>, then launch <code>start_miner.bat</code>.</p>
                         </div>
                     </a>
                 </div>

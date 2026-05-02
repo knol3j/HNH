@@ -85,7 +85,10 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; ./setup_miner_windows.ps1`}
                                     </pre>
                                 </li>
                                 <li>
-                                    <strong className="text-white">Start Earning:</strong> The agent will automatically benchmark your hardware and start the most profitable workload.
+                                    <strong className="text-white">Start the Agent:</strong> Launch <code>start_miner.bat</code> or run <code>node server.js</code> from the agent folder.
+                                </li>
+                                <li>
+                                    <strong className="text-white">Start Earning:</strong> Once the agent is running on port <code>4343</code>, the dashboard will detect it and begin showing telemetry.
                                 </li>
                             </ol>
                         </div>

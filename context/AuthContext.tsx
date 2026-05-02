@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return loggedInUser;
     };
 
-    const loginWithSocial = async (type: 'google' | 'facebook' | 'apple', token: string, referralCode?: string) => {
+    const loginWithSocial = async (type: 'google' | 'facebook' | 'apple' | 'github', token: string, referralCode?: string) => {
         const loggedInUser = await authService.loginWithSocial(type, token, referralCode);
         setUser(loggedInUser);
         return loggedInUser;

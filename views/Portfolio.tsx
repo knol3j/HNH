@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, RefreshCw, ExternalLink } from 'lucide-react';
+import { API_BASE_URL } from '../services/apiClient';
 
 interface CoinPrice {
   usd: number;
@@ -18,8 +19,7 @@ const MinersMarket: React.FC = () => {
   const fetchPrices = async () => {
     setLoading(true);
     try {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-      const res = await fetch(`${backendUrl}/api/public/prices`);
+      const res = await fetch(`${API_BASE_URL}/api/public/prices`);
       if (res.ok) {
         const data = await res.json();
         setPrices(data);

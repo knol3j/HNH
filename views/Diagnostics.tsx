@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, ShieldCheck, Database, Server, RefreshCcw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { API_BASE_URL } from '../services/apiClient';
 
 interface HealthStatus {
     status: string;
@@ -26,7 +27,7 @@ const Diagnostics: React.FC = () => {
         setError(null);
         try {
             // Check Backend
-            const bRes = await fetch('https://api.hashnhedge.com/health');
+            const bRes = await fetch(`${API_BASE_URL}/health`);
             if (bRes.ok) {
                 setBackendHealth(await bRes.json());
             }
@@ -39,8 +40,9 @@ const Diagnostics: React.FC = () => {
             }
 
             // Test Miners
+            const agentSecret = localStorage.getItem('hnh_agent_secret') || localStorage.getItem('agent_secret') || 'HNH_LOCAL_AGENT_SECRET';
             const tRes = await fetch(`${aUrl}/test-miners`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('hnh_agent_secret') || 'HNH_LOCAL_AGENT_SECRET'}` }
+                headers: { 'Authorization': `Bearer ${agentSecret}` }
             });
             if (tRes.ok) {
                 setMinerTests(await tRes.json());

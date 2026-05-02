@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Terminal, Lock, Wifi, Key, FileCode, Play, Square, AlertTriangle, WifiOff } from 'lucide-react';
+import { API_BASE_URL } from '../services/apiClient';
 
 const Security: React.FC = () => {
   const [mode, setMode] = useState<'WPA2' | 'NTLM' | 'MD5' | 'AUDIT'>('WPA2');
@@ -73,8 +74,7 @@ const Security: React.FC = () => {
       setLogs([`[${new Date().toLocaleTimeString()}] Auditing Token: ${tokenAddr}...`]);
       setIsRunning(true);
       try {
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-        const res = await fetch(`${backendUrl}/api/public/audit`, {
+        const res = await fetch(`${API_BASE_URL}/api/public/audit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenAddress: tokenAddr })

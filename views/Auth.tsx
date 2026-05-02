@@ -42,7 +42,7 @@ const SocialLogins: React.FC<{ onLogin: (user: User) => void, setError: (err: st
             return;
         }
         const redirectUri = `${window.location.origin}/auth/github/callback`;
-        window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
+        window.location.href = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('user:email')}`;
     };
 
     const handleFacebookClick = () => {
@@ -52,7 +52,7 @@ const SocialLogins: React.FC<{ onLogin: (user: User) => void, setError: (err: st
             return;
         }
         const redirectUri = `${window.location.origin}/auth/facebook/callback`;
-        window.location.href = `https://www.facebook.com/v12.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=email,public_profile`;
+        window.location.href = `https://www.facebook.com/v12.0/dialog/oauth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent('email,public_profile')}`;
     };
 
     const handleAppleClick = () => {
@@ -61,8 +61,12 @@ const SocialLogins: React.FC<{ onLogin: (user: User) => void, setError: (err: st
             setError('Apple Login is not configured. Please set VITE_APPLE_CLIENT_ID.');
             return;
         }
+        const nonce = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        sessionStorage.setItem('hnh_apple_oauth_nonce', nonce);
         const redirectUri = `${window.location.origin}/auth/apple/callback`;
-        window.location.href = `https://appleid.apple.com/auth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code id_token&scope=name email&response_mode=form_post`;
+        window.location.href = `https://appleid.apple.com/auth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=id_token&scope=${encodeURIComponent('name email')}&response_mode=fragment&nonce=${encodeURIComponent(nonce)}`;
     };
 
     return (

@@ -52,22 +52,58 @@ const AppContent: React.FC = () => {
   }, [isAuthenticated, currentView]);
 
   React.useEffect(() => {
-    const processGithubCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      if (code && window.location.pathname.includes('/auth/github/callback')) {
-        try {
-          await loginWithSocial('github', code);
-          window.history.replaceState({}, document.title, "/");
-          setCurrentView('DASHBOARD');
-        } catch (e) {
-          console.error('Github callback failed:', e);
-          window.history.replaceState({}, document.title, "/");
-          setCurrentView('AUTH');
-        }
+    const processSocialCallback = async () => {
+      const pathname = window.location.pathname;
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash);
+      const resetToRoot = () => window.history.replaceState({}, document.title, "/");
+
+      let socialType: 'github' | 'facebook' | 'apple' | null = null;
+      let authToken: string | null = null;
+      let authError: string | null = null;
+
+      if (pathname.includes('/auth/github/callback')) {
+        socialType = 'github';
+        authToken = searchParams.get('code');
+        authError = searchParams.get('error');
+      } else if (pathname.includes('/auth/facebook/callback')) {
+        socialType = 'facebook';
+        authToken = hashParams.get('access_token') || searchParams.get('access_token');
+        authError = hashParams.get('error_description') || hashParams.get('error') || searchParams.get('error');
+      } else if (pathname.includes('/auth/apple/callback')) {
+        socialType = 'apple';
+        authToken = hashParams.get('id_token') || searchParams.get('id_token');
+        authError = hashParams.get('error') || searchParams.get('error');
+      } else {
+        return;
+      }
+
+      if (authError) {
+        console.error(`${socialType} callback error:`, authError);
+        resetToRoot();
+        setCurrentView('AUTH');
+        return;
+      }
+
+      if (!authToken) {
+        console.error(`${socialType} callback missing token/code`);
+        resetToRoot();
+        setCurrentView('AUTH');
+        return;
+      }
+
+      try {
+        await loginWithSocial(socialType, authToken);
+        resetToRoot();
+        setCurrentView('DASHBOARD');
+      } catch (e) {
+        console.error(`${socialType} callback failed:`, e);
+        resetToRoot();
+        setCurrentView('AUTH');
       }
     };
-    processGithubCallback();
+
+    processSocialCallback();
   }, [loginWithSocial]);
 
   if (loading) return <LoadingFallback />;

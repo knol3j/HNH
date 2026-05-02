@@ -5,7 +5,7 @@
  * for all backend service calls.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number>;
@@ -23,7 +23,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   const { headers, ...rest } = fetchOptions;
   
   // 1. Construct URL with query params
-  let url = endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
+  let url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, val]) => searchParams.append(key, String(val)));

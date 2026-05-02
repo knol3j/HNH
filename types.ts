@@ -175,7 +175,7 @@ export interface UserCredentials {
   password?: string; // Plaintext (before hashing)
   email?: string;
   referralCode?: string; // Optional: code to apply on signup
-  socialType?: 'google' | 'facebook' | 'apple';
+  socialType?: 'google' | 'facebook' | 'apple' | 'github';
   socialToken?: string;
 }
 
