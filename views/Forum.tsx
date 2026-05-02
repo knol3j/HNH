@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { MessageSquare, Search, ThumbsUp, MessageCircle, Share2, Plus, Flag, User, Clock, Trash2, Pin } from 'lucide-react';
-import { DynamicDiv } from '../components/DynamicDiv';
 import { getCurrentUser } from '../services/authService';
 import { API_BASE_URL } from '../services/apiClient';
 

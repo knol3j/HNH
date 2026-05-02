@@ -652,8 +652,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, aiAnalysis }) => {
           </button>
         </div>
       </div>
-    </div >
-  );
+        </div>
+    );
 };
 
 export default Dashboard;

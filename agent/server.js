@@ -12,7 +12,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://app.hashnhedge.com',
+    'https://hashnhedge.com',
+    'https://app-production-374e.up.railway.app',
+    'https://app-production-564e.up.railway.app'
+];
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -85,7 +92,8 @@ let config = {
     },
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
     algorithm: 'kawpow',
-    mode: 'cpu' // cpu or gpu
+    mode: 'cpu', // cpu or gpu
+    password: '' // Pool password (rarely used)
 };
 
 let minerProcess = null;
@@ -112,6 +120,9 @@ try {
         // Load Config from setup script
         if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
         if (data.miningMode) config.mode = data.miningMode;
+        if (data.password !== undefined) config.password = data.password;
+        if (data.poolUrl) config.poolUrl = data.poolUrl;
+        if (data.algorithm) config.algorithm = data.algorithm;
 
         // SMART DEFAULTS: switch coin based on mode
         if (config.mode === 'gpu') {
@@ -135,7 +146,17 @@ try {
 } catch (e) { console.error(e); }
 
 const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
+    try { 
+        fs.writeFileSync(DATA_FILE, JSON.stringify({ 
+            totalShares, 
+            feeShares,
+            wallets: config.wallets,
+            miningMode: config.mode,
+            password: config.password,
+            poolUrl: config.poolUrl,
+            algorithm: config.algorithm
+        })); 
+    } catch (e) { }
 };
 
 // --- LOGGING ---
@@ -342,21 +363,50 @@ app.get('/telemetry', (req, res) => {
 });
 
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password, tier } = req.body;
+    const { wallet, poolUrl, password, tier, coin, mode, algorithm } = req.body;
     let changed = false;
 
-    if (wallet && wallet !== config.wallet) {
-        config.wallet = wallet;
-        // PERSISTENCE: Save to specific coin slot
-        if (currentCoin) {
-            config.wallets[currentCoin] = wallet;
+    // Handle coin switch (updates poolUrl and wallet from defaults)
+    if (coin && COIN_POOLS[coin]) {
+        currentCoin = coin;
+        config.poolUrl = poolUrl || COIN_POOLS[coin];
+        config.algorithm = algorithm || (coin === 'XMR' || coin === 'ZEPH' ? 'rx/0' :
+                                          coin === 'RVN' ? 'kawpow' :
+                                          coin === 'ETC' ? 'etchash' :
+                                          coin === 'KAS' ? 'heavyhash' : algorithm);
+        if (wallet) {
+            config.wallet = wallet;
+            config.wallets[coin] = wallet;
+        } else if (config.wallets[coin]) {
+            config.wallet = config.wallets[coin];
         }
         changed = true;
+    } else {
+        // Individual field updates
+        if (wallet && wallet !== config.wallet) {
+            config.wallet = wallet;
+            if (currentCoin) config.wallets[currentCoin] = wallet;
+            changed = true;
+        }
+        if (poolUrl && poolUrl !== config.poolUrl) {
+            config.poolUrl = poolUrl;
+            changed = true;
+        }
+        if (algorithm && algorithm !== config.algorithm) {
+            config.algorithm = algorithm;
+            changed = true;
+        }
+        if (mode && mode !== config.mode) {
+            config.mode = mode;
+            changed = true;
+        }
     }
-    if (poolUrl && poolUrl !== config.poolUrl) {
-        config.poolUrl = poolUrl;
+
+    if (password !== undefined && password !== config.password) {
+        config.password = password;
         changed = true;
     }
+
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
         userTier = tier;
         addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);
@@ -366,7 +416,7 @@ app.post('/config', (req, res) => {
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
-    res.json({ success: true });
+    res.json({ success: true, config, currentCoin });
 });
 
 // --- AUTO-SWITCH ---
@@ -437,9 +487,81 @@ app.get('/meta', (req, res) => {
     res.json({
         coins: Object.keys(COIN_POOLS),
         pools: COIN_POOLS,
+        wallets: config.wallets,
         wallet: config.wallet,
         currentCoin: currentCoin,
         config: config
+    });
+});
+
+// --- MINER CONTROL ENDPOINTS ---
+
+app.post('/start-miner', (req, res) => {
+    startMiner();
+    res.json({ success: true, status: minerStatus });
+});
+
+app.post('/stop-miner', (req, res) => {
+    killMiner();
+    minerStatus = 'OFFLINE';
+    res.json({ success: true, status: minerStatus });
+});
+
+// Jobs endpoint for Dashboard
+app.get('/jobs', (req, res) => {
+    const jobs = minerStatus === 'MINING' ? [{
+        id: 'xmrig-job',
+        title: `Mining ${config.algorithm || 'RandomX'} - ${currentCoin}`,
+        status: 'RUNNING',
+        progress: 0,
+        startTime: new Date().toISOString()
+    }] : [];
+    res.json(jobs);
+});
+
+// Wallet bulk update endpoint
+app.post('/wallet/bulk', (req, res) => {
+    const { wallets } = req.body;
+    if (!wallets || typeof wallets !== 'object') {
+        return res.status(400).json({ error: 'Invalid wallets payload' });
+    }
+    
+    // Update wallets config
+    config.wallets = { ...config.wallets, ...wallets };
+    
+    // If current coin wallet is provided, update active wallet too
+    if (wallets[currentCoin]) {
+        config.wallet = wallets[currentCoin];
+    }
+    
+    addLog(`💾 Wallets bulk-updated (${Object.keys(wallets).length} coins)`);
+    res.json({ success: true, wallets: config.wallets });
+});
+
+// --- HASHCAT / SECURITY ENDPOINTS (STUB) ---
+// These are placeholders pending full hashcat integration
+
+app.post('/hashcat/start', (req, res) => {
+    // For now, just acknowledge receipt
+    // In a full implementation, this would launch hashcat process
+    addLog('🔒 Hashcat job received (not yet implemented)');
+    res.json({ success: true, message: 'Job queued (stub)' });
+});
+
+app.post('/hashcat/stop', (req, res) => {
+    addLog('🛑 Hashcat stop requested (stub)');
+    res.json({ success: true, message: 'Stopped (stub)' });
+});
+
+app.get('/hashcat/status', (req, res) => {
+    // Return stub status
+    res.json({
+        status: 'idle',
+        hashrate: 0,
+        temp: 0,
+        recovered: 0,
+        total: 0,
+        logs: ['Hashcat module not yet integrated.']
     });
 });
 

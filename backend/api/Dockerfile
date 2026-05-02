@@ -18,9 +18,9 @@ RUN npx prisma generate
 # Copy API server files
 COPY index.js ./
 COPY persistentStore.js ./
-COPY hardware_data.json ./
-COPY posts.json ./
-COPY version.json ./
+COPY hardware_data.json* ./
+COPY posts.json* ./
+COPY version.json* ./
 
 # Expose API port
 EXPOSE 8080

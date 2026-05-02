@@ -97,7 +97,9 @@ const Analytics: React.FC = () => {
         );
     }
 
-    const efficiency = stats.power > 0 ? (stats.power / stats.hashrate * 1000).toFixed(2) : '0';
+    const efficiency = stats.power > 0 && stats.hashrate > 0 
+        ? (stats.power / stats.hashrate * 1000).toFixed(2) 
+        : '0';
 
     return (
         <div className="space-y-6">

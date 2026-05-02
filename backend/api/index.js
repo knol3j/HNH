@@ -1182,6 +1182,57 @@ app.get('/network/stats', generalLimiter, async (req, res) => {
     }
 });
 
+// --- NETWORK NODES (Compute Providers) ---
+app.get('/network/nodes', async (req, res) => {
+    try {
+        // Active nodes = workers seen in last 5 minutes
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeWorkers = await prisma.worker.findMany({
+            where: { lastSeen: { gte: fiveMinAgo } },
+            include: { user: { select: { username: true, tier: true } } }
+        });
+
+        const nodes = activeWorkers.map(worker => ({
+            id: worker.id,
+            name: worker.name,
+            type: 'GPU', // Could infer from hardware DB or agent metadata
+            status: 'ONLINE',
+            hashrate: worker.hashrate,
+            region: 'US', // Could be derived from IP or user pref later
+            uptime: 99.9,
+            provider: worker.user.username,
+            tier: worker.user.tier,
+            isVerified: true
+        }));
+
+        res.json(nodes);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PROVIDER STATS ---
+app.get('/provider/stats', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const stats = await prisma.userStats.findUnique({ where: { userId } });
+        const sessions = await prisma.miningSession.count({ where: { userId } });
+        const shares = await prisma.share.count({ where: { userId } });
+
+        res.json({
+            earnings24h: stats?.totalMinedUsd || 0,
+            totalEarnings: stats?.totalMinedUsd || 0,
+            reputationScore: 100, // Could compute from uptime/acceptance rate
+            uptime: stats ? Math.min((stats.totalMiningTime / (30 * 24 * 60)) * 100, 100) : 0, // rough
+            activeJobs: 0, // No cloud jobs in current MVP
+            totalSessions: sessions,
+            totalShares: shares
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- LEADERBOARD ---
 app.get('/leaderboard', authenticateToken, async (req, res) => {
     try {

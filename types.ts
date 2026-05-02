@@ -58,17 +58,53 @@ export interface HardwareMonitor {
 }
 
 export interface HardwareTelemetry {
-  gpu_temp: number;
-  gpu_util: number;
-  fan_speed: number;
-  power_draw: number;
-  vram_used: number;
-  hashrate: number;
-  logs?: string[];
-  verified_shares?: number;
-  coin?: string;
-  wallet?: string;
-}
+   gpu_temp: number;
+   gpu_util: number;
+   fan_speed: number;
+   power_draw: number;
+   vram_used: number;
+   hashrate: number;
+   logs?: string[];
+   verified_shares?: number;
+   coin?: string;
+   wallet?: string;
+ }
+
+ export interface AgentTelemetry {
+   hashrate: number;
+   gpu_temp: number;
+   power_draw: number;
+   fan_speed: number;
+   gpu_util: number;
+   status: 'MINING' | 'OFFLINE' | 'STARTING' | 'ERROR';
+   wallet?: string;
+   platform_wallet?: string;
+   verified_shares?: number;
+   gross_shares?: number;
+   fee_deducted?: number;
+   fee_rate?: number;
+   user_tier?: string;
+   active_job?: { id: string; title: string; status: string; progress: number };
+   logs?: string[];
+   vram_used?: number;
+   algo?: string;
+ }
+
+ export interface MiningJob {
+   id: string;
+   title: string;
+   status: string;
+   progress: number;
+   startTime: string;
+ }
+
+ export interface OverclockProfile {
+   id: string;
+   name: string;
+   hashrateBoost: string;
+   powerDraw: string;
+   risk: 'Low' | 'Medium' | 'High';
+ }
 
 // New: Preconfigured Deployment Templates
 export interface ModelTemplate {

@@ -17,7 +17,9 @@ export const useAgentStatus = (user: User | null) => {
             }
 
             try {
-                const res = await fetch(`${agentUrl}/health`, { signal: AbortSignal.timeout(3000) });
+                const res = await fetch(`${agentUrl}/meta`, { 
+                    signal: AbortSignal.timeout(3000) 
+                });
                 setIsAgentOffline(!res.ok);
             } catch (e) {
                 setIsAgentOffline(true);

@@ -79,7 +79,7 @@ const AgentPromptModal: React.FC<AgentPromptModalProps> = ({ isOpen, onClose }) 
                     </a>
                 </footer>
             </div>
-        </div >
+        </div>
     );
 };
 
