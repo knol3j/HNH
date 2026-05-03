@@ -18,6 +18,7 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or local file:// requests)
         if (!origin || origin === 'null' || origin.startsWith('file://')) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
+            console.error(`[CORS] Blocked origin: ${origin}`);
             return callback(new Error('CORS not allowed'), false);
         }
         return callback(null, true);
@@ -152,8 +153,8 @@ const startMiner = () => {
         killMiner();
     }
 
-    // Pass the full pool URL including protocol (e.g. stratum+tcp://) to XMRig
-    const targetUrl = config.poolUrl;
+    // Pass the clean pool URL to XMRig
+    const targetUrl = config.poolUrl.replace('stratum+tcp://', '').replace('stratum+ssl://', '');
 
     addLog(`🚀 Launching XMRig...`);
     addLog(`   Pool: ${targetUrl}`);
@@ -161,11 +162,13 @@ const startMiner = () => {
     addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
     // XMRig Args
+    const cleanWallet = (config.wallet || 'UNKNOWN_WALLET').split(' ')[0]; // Remove any UI spaces or parenthesis
+
     // XMRig Args
     const args = [
         '-o', targetUrl,
-        '-u', config.wallet,
-        '-p', config.password,
+        '-u', cleanWallet,
+        '-p', config.password || 'x',
         '--no-color',
         '--api-worker-id', 'AntigravityAgent',
         '--http-host', '127.0.0.1', // SECURITY: Bind to localhost only
