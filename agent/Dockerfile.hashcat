@@ -1,0 +1,28 @@
+# Use a minimal base with hashcat supported
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libssl-dev \
+    libz-dev \
+    pkg-config \
+    curl \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install hashcat from official GitHub releases
+ARG HASHCAT_VERSION=v6.2.6
+RUN wget https://hashcat.net/files/hashcat-${HASHCAT_VERSION}.tar.gz && \
+    tar xzf hashcat-${HASHCAT_VERSION}.tar.gz && \
+    cd hashcat-${HASHCAT_VERSION} && \
+    make -j $(nproc) && \
+    cp hashcat /usr/local/bin/ && \
+    cd .. && rm -rf hashcat-${HASHCAT_VERSION} hashcat-${HASHCAT_VERSION}.tar.gz
+
+# Create working directory
+WORKDIR /hashcat
+
+# Default command (can be overridden)
+CMD ["hashcat", "--help"]

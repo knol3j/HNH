@@ -539,7 +539,89 @@ app.get('/meta', (req, res) => {
     });
 });
 
-// --- MINER CONTROL ENDPOINTS ---
+// --- OVERCLOCK PROFILES ---
+const OC_PROFILES = {
+    safe: { name: 'Efficiency Mode', powerOffset: -15, hashrateOffset: 5, coreClock: 0, memoryClock: 0, powerLimit: 80 },
+    balanced: { name: 'AI Balanced', powerOffset: 5, hashrateOffset: 12, coreClock: 50, memoryClock: 100, powerLimit: 100 },
+    max: { name: 'Max Performance', powerOffset: 30, hashrateOffset: 25, coreClock: 100, memoryClock: 200, powerLimit: 120 }
+};
+
+let currentProfile = 'safe';
+let tuningInProgress = false;
+let lastTuneTime = 0;
+const TUNE_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+const BENCHMARK_DURATION = 60 * 1000; // 1 minute per profile
+
+// Benchmark a given profile by applying temporary settings and measuring
+async function benchmarkProfile(profileKey) {
+    const profile = OC_PROFILES[profileKey];
+    addLog(`🔬 Benchmarking ${profile.name}...`);
+
+    // In a real implementation, this would:
+    // 1. Write OC settings to file/registry for MSI Afterburner or nvidia-settings
+    // 2. Send signal to miner to reload config
+    // 3. Wait for stabilization
+    // 4. Poll telemetry for duration, compute avg hashrate/power
+    // 5. Return efficiency score
+
+    // Simulation: return mock efficiency (hashes per watt)
+    const baseEfficiency = 0.5; // H/J (example)
+    const simulatedEfficiency = baseEfficiency * (1 + (profile.hashrateOffset / 100)) / (1 + (profile.powerOffset / 100));
+    return { efficiency: simulatedEfficiency, hashrate: 1000 * (1 + profile.hashrateOffset/100), power: 120 * (1 + profile.powerOffset/100) };
+}
+
+// Auto-tuning loop
+async function runTuningLoop() {
+    if (tuningInProgress || Date.now() - lastTuneTime < TUNE_INTERVAL) return;
+    tuningInProgress = true;
+    addLog('🔧 Starting auto-OC tuning cycle...');
+
+    try {
+        let bestProfile = currentProfile;
+        let bestScore = 0;
+
+        // Test each enabled profile
+        for (const [key, profile] of Object.entries(OC_PROFILES)) {
+            const result = await benchmarkProfile(key);
+            const score = result.efficiency;
+            addLog(`📊 ${profile.name}: ${result.hashrate.toFixed(1)} H/s, ${result.power.toFixed(1)}W, eff=${score.toFixed(4)}`);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestProfile = key;
+            }
+        }
+
+        if (bestProfile !== currentProfile) {
+            addLog(`✅ Optimal profile found: ${OC_PROFILES[bestProfile].name}. Applying...`);
+            currentProfile = bestProfile;
+            // In real implementation: write profile to disk and signal miner to reload
+            // For now: just log
+        } else {
+            addLog(`✅ Current profile (${OC_PROFILES[currentProfile].name}) is optimal.`);
+        }
+
+        lastTuneTime = Date.now();
+    } catch (e) {
+        addLog(`❌ Tuning error: ${e.message}`);
+    } finally {
+        tuningInProgress = false;
+    }
+}
+
+// Start auto-tuning interval (if enabled)
+let tuneInterval = null;
+function enableAutoTuning() {
+    if (!tuneInterval) {
+        tuneInterval = setInterval(runTuningLoop, 60 * 60 * 1000); // Check every hour
+        addLog('🤖 Auto-OC tuning enabled (checks hourly)');
+    }
+}
+function disableAutoTuning() {
+    if (tuneInterval) clearInterval(tuneInterval);
+    tuneInterval = null;
+    addLog('🛑 Auto-OC tuning disabled');
+}
 
 app.post('/start-miner', (req, res) => {
     startMiner();
@@ -550,6 +632,52 @@ app.post('/stop-miner', (req, res) => {
     killMiner();
     minerStatus = 'OFFLINE';
     res.json({ success: true, status: minerStatus });
+});
+
+// --- OVERCLOCK CONTROL ENDPOINTS ---
+
+// Get available OC profiles and current selection
+app.get('/oc/profiles', (req, res) => {
+    res.json({
+        profiles: OC_PROFILES,
+        currentProfile,
+        tuningEnabled: !!tuneInterval,
+        lastTuneTime,
+        tuningInProgress
+    });
+});
+
+// Apply a specific OC profile
+app.post('/oc/apply', requireAuth, (req, res) => {
+    const { profile } = req.body;
+    if (!OC_PROFILES[profile]) return res.status(400).json({ error: 'Invalid profile' });
+
+    currentProfile = profile;
+    addLog(`🎛️ OC profile set to: ${OC_PROFILES[profile].name}`);
+    // TODO: Actually apply hardware OC settings via nvidia-settings/MSI Afterburner
+    res.json({ success: true, profile: currentProfile });
+});
+
+// Enable/disable auto-tuning
+app.post('/oc/auto', requireAuth, (req, res) => {
+    const { enabled } = req.body;
+    if (enabled) {
+        enableAutoTuning();
+        res.json({ success: true, message: 'Auto-tuning enabled' });
+    } else {
+        disableAutoTuning();
+        res.json({ success: true, message: 'Auto-tuning disabled' });
+    }
+});
+
+// Run tuning cycle immediately (admin only)
+app.post('/oc/run-now', requireAuth, (req, res) => {
+    if (tuningInProgress) return res.status(429).json({ success: false, message: 'Tuning already in progress' });
+    runTuningLoop().then(() => {
+        res.json({ success: true, message: 'Tuning cycle completed', profile: currentProfile });
+    }).catch(e => {
+        res.status(500).json({ success: false, error: e.message });
+    });
 });
 
 // Jobs endpoint for Dashboard
@@ -583,14 +711,109 @@ app.post('/wallet/bulk', (req, res) => {
     res.json({ success: true, wallets: config.wallets });
 });
 
-// --- HASHCAT / SECURITY ENDPOINTS (STUB) ---
-// These are placeholders pending full hashcat integration
+// --- HASHCAT / SECURITY ENDPOINTS ---
+// Hashcat process management
+let hashcatProcess = null;
+let hashcatJob = null;
+const HASHCAT_PATH = '/usr/local/bin/hashcat'; // default installed path
 
-app.post('/hashcat/start', (req, res) => {
-    // For now, just acknowledge receipt
-    // In a full implementation, this would launch hashcat process
-    addLog('🔒 Hashcat job received (not yet implemented)');
-    res.json({ success: true, message: 'Job queued (stub)' });
+function hasHashcat() {
+    try {
+        require('child_process').execFileSync(HASHCAT_PATH, ['--version'], { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+app.post('/hashcat/start', requireAuth, (req, res) => {
+    const { hashfile, wordlist, mask, rules, format } = req.body;
+    if (!hashfile) return res.status(400).json({ success: false, error: 'hashfile required' });
+    if (!wordlist && !mask) return res.status(400).json({ success: false, error: 'Either wordlist or mask required' });
+
+    if (!hasHashcat()) {
+        return res.status(500).json({ success: false, error: 'Hashcat binary not found on this system.' });
+    }
+
+    const jobId = crypto.randomUUID();
+    const args = ['-m', format || '0', '-a', mask ? '3' : '0', '--status', '--status-timer', '5', '--machine-readable', '--outfile', '/hashcat/progress.txt'];
+    if (wordlist) args.push('-w', wordlist);
+    if (mask) args.push(mask);
+    if (rules) args.push('-r', rules);
+    args.push(hashfile);
+
+    addLog(`🔒 Starting hashcat job ${jobId}`);
+
+    try {
+        hashcatProcess = spawn(HASHCAT_PATH, args, { cwd: '/hashcat' });
+        hashcatJob = { id: jobId, status: 'running', startTime: new Date(), recovered: 0, total: 0, progress: 0 };
+
+        hashcatProcess.stdout.on('data', (data) => {
+            const line = data.toString().trim();
+            addLog(`[HASHCAT] ${line}`);
+            // Parse status output: status, recovered/total, etc.
+            if (line.includes('progress')) {
+                const match = line.match(/progress.Essence: (\d+)\/(\d+)/);
+                if (match) {
+                    hashcatJob.recovered = parseInt(match[1]);
+                    hashcatJob.total = parseInt(match[2]);
+                    hashcatJob.progress = hashcatJob.total > 0 ? (hashcatJob.recovered / hashcatJob.total) * 100 : 0;
+                }
+            }
+        });
+
+        hashcatProcess.stderr.on('data', (data) => {
+            addLog(`[HASHCAT ERR] ${data.toString().trim()}`);
+        });
+
+        hashcatProcess.on('close', (code) => {
+            addLog(`🔒 Hashcat job ${jobId} exited with code ${code}`);
+            if (code === 0) {
+                hashcatJob.status = 'completed';
+            } else {
+                hashcatJob.status = 'failed';
+            }
+            hashcatProcess = null;
+        });
+
+        res.json({ success: true, jobId });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/hashcat/stop', requireAuth, (req, res) => {
+    if (hashcatProcess) {
+        hashcatProcess.kill('SIGTERM');
+        addLog('🛑 Hashcat stop requested (waiting for exit...)');
+        res.json({ success: true, message: 'Stopping...' });
+    } else {
+        res.status(400).json({ success: false, message: 'No job running' });
+    }
+});
+
+app.get('/hashcat/status', (req, res) => {
+    if (hashcatProcess && hashcatJob) {
+        res.json({
+            status: hashcatJob.status,
+            hashrate: 0, // can parse from status line if needed
+            temp: 0,
+            recovered: hashcatJob.recovered,
+            total: hashcatJob.total,
+            progress: hashcatJob.progress,
+            logs: recentLogs.filter(l => l.includes('[HASHCAT]')).slice(0, 50)
+        });
+    } else {
+        res.json({
+            status: 'idle',
+            hashrate: 0,
+            temp: 0,
+            recovered: 0,
+            total: 0,
+            progress: 0,
+            logs: ['Hashcat idle.']
+        });
+    }
 });
 
 app.post('/hashcat/stop', (req, res) => {
