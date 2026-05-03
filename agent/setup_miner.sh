@@ -8,8 +8,8 @@ BIN_DIR="$(dirname "$0")/bin"
 mkdir -p "$BIN_DIR"
 
 # XMRig Release (Linux Static x64)
-XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-linux-static-x64.tar.gz"
-XMRIG_HASH="c5dc12dbb9bb51ea8acf93d6349d5bc7fe5ee11b68d6371c1bbb098e21d0f685"
+XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.22.1/xmrig-6.22.1-linux-static-x64.tar.gz"
+XMRIG_HASH="df7d249d768b5bf71b6b4399cd1061713c74c5c1fbc98c5ed9dcb4e4323b4b96"
 ARCHIVE_NAME="xmrig.tar.gz"
 
 echo "=== HashNHedge Miner Setup ==="

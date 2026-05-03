@@ -39,8 +39,8 @@ if (!(Test-Path -Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR | Out-Null
 }
 
-$XMRIG_URL = "https://github.com/xmrig/xmrig/releases/download/v6.21.0/xmrig-6.21.0-msvc-win64.zip"
-$XMRIG_HASH = "4cf4198354abfee7e502c85f38e62dbb90fec976e4df38d0ecbfd811937c1981"
+$XMRIG_URL = "https://github.com/xmrig/xmrig/releases/download/v6.22.1/xmrig-6.22.1-msvc-win64.zip"
+$XMRIG_HASH = "1d8060ce86b65e0eb489ead196660ba8064f711beca612551d40e94a46d8e628"
 $ZIP_NAME = "xmrig.zip"
 $ZIP_PATH = Join-Path $BIN_DIR $ZIP_NAME
 
