@@ -1,43 +1,22 @@
 
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- ENVIRONMENT VALIDATION ---
-const requiredEnv = ['AGENT_SECRET', 'PORT'];
-const missingEnv = requiredEnv.filter(k => !process.env[k]);
-if (missingEnv.length > 0) {
-    console.error(`❌ Missing required environment variables: ${missingEnv.join(', ')}`);
-}
-const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
-if (AGENT_SECRET === 'HNH_LOCAL_AGENT_SECRET') {
-    console.warn('⚠️  Using default AGENT_SECRET. Set AGENT_SECRET env var for production security.');
-}
-
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://app.hashnhedge.com',
-    'https://hashnhedge.com',
-    'https://app-production-374e.up.railway.app',
-    'https://app-production-564e.up.railway.app'
-];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
+        // Allow requests with no origin (like mobile apps or local file:// requests)
+        if (!origin || origin === 'null' || origin.startsWith('file://')) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
             return callback(new Error('CORS not allowed'), false);
         }
@@ -46,44 +25,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Rate Limiting
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/telemetry', apiLimiter);
-app.use('/config', apiLimiter);
-app.use('/start-miner', apiLimiter);
-app.use('/stop-miner', apiLimiter);
-app.use('/wallet/bulk', apiLimiter);
-app.use('/switch-coin', apiLimiter);
-app.use('/agent/update-check', apiLimiter);
-app.use('/agent/update-now', apiLimiter);
-
-const execLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 10,
-    message: 'Command execution rate limit exceeded.'
-});
-app.use('/execute', execLimiter);
-
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https:"],
-        },
-    }
-}));
-
 // GUI: Serve Static Files (Public)
 const GUI_PATH = path.join(__dirname, 'gui');
 app.use(express.static(GUI_PATH));
 
 // SECURITY: Auth Middleware
+const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
     // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
     // Also skip /meta for GUI initialization
@@ -138,8 +85,7 @@ let config = {
     },
     poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
     algorithm: 'kawpow',
-    mode: 'cpu', // cpu or gpu
-    password: '' // Pool password (rarely used)
+    mode: 'cpu' // cpu or gpu
 };
 
 let minerProcess = null;
@@ -166,9 +112,6 @@ try {
         // Load Config from setup script
         if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
         if (data.miningMode) config.mode = data.miningMode;
-        if (data.password !== undefined) config.password = data.password;
-        if (data.poolUrl) config.poolUrl = data.poolUrl;
-        if (data.algorithm) config.algorithm = data.algorithm;
 
         // SMART DEFAULTS: switch coin based on mode
         if (config.mode === 'gpu') {
@@ -192,17 +135,7 @@ try {
 } catch (e) { console.error(e); }
 
 const saveStats = () => {
-    try { 
-        fs.writeFileSync(DATA_FILE, JSON.stringify({ 
-            totalShares, 
-            feeShares,
-            wallets: config.wallets,
-            miningMode: config.mode,
-            password: config.password,
-            poolUrl: config.poolUrl,
-            algorithm: config.algorithm
-        })); 
-    } catch (e) { }
+    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
 };
 
 // --- LOGGING ---
@@ -211,8 +144,6 @@ const addLog = (msg) => {
     console.log(`[AGENT] ${msg}`);
     recentLogs.unshift(`[${timestamp}] ${msg}`);
     if (recentLogs.length > 50) recentLogs.pop();
-    // Emit logs via socket
-    io.emit('log', recentLogs[0]);
 };
 
 // --- MINER MANAGER ---
@@ -221,18 +152,18 @@ const startMiner = () => {
         killMiner();
     }
 
-    // Clean URL
-    const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
+    // Pass the full pool URL including protocol (e.g. stratum+tcp://) to XMRig
+    const targetUrl = config.poolUrl;
 
     addLog(`🚀 Launching XMRig...`);
-    addLog(`   Pool: ${cleanUrl}`);
+    addLog(`   Pool: ${targetUrl}`);
     const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
     addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
     // XMRig Args
     // XMRig Args
     const args = [
-        '-o', cleanUrl,
+        '-o', targetUrl,
         '-u', config.wallet,
         '-p', config.password,
         '--no-color',
@@ -325,18 +256,23 @@ const fetchXmrigStats = () => {
         res.on('end', () => {
             try {
                 const stats = JSON.parse(data);
+
+                // Hashrate (Highest of all threads)
                 telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
+
+                // Hardware Stats (GPU/CPU)
+                // XMRig puts sensors in different places depending on backend
                 const health = stats.health || [];
                 if (health.length > 0) {
+                    // Average temp/power if multiple devices
                     const avgTemp = health.reduce((acc, h) => acc + (h.temp || 0), 0) / health.length;
                     const totalPower = health.reduce((acc, h) => acc + (h.power || 0), 0);
                     const avgFan = health.reduce((acc, h) => acc + (h.fan || 0), 0) / health.length;
+
                     telemetry.temp = avgTemp;
                     telemetry.power = totalPower;
                     telemetry.fan = avgFan;
                 }
-                // Emit telemetry update to connected sockets
-                emitTelemetry();
             } catch (e) { }
         });
     });
@@ -385,12 +321,12 @@ app.get('/telemetry', (req, res) => {
         gpu_util: minerStatus === 'MINING' ? 100 : 0,
         fan_speed: telemetry.fan,
         power_draw: telemetry.power,
-        vram_used: 0,
+        vram_used: 0, // Need external tool for this usually
         hashrate: telemetry.hashrate / 1000000,
-        verified_shares: netShares,
+        verified_shares: netShares, // Net after fee
         gross_shares: grossShares,
         fee_deducted: feeDeducted,
-        fee_rate: feeRate * 100,
+        fee_rate: feeRate * 100, // As percentage
         user_tier: userTier,
         active_job: minerStatus === 'MINING' ? {
             id: 'xmrig-job',
@@ -401,57 +337,26 @@ app.get('/telemetry', (req, res) => {
         wallet: config.wallet,
         platform_wallet: PLATFORM_WALLET,
         status: minerStatus,
-        logs: recentLogs,
-        coin: currentCoin,
-        mode: config.mode
+        logs: recentLogs
     });
 });
 
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password, tier, coin, mode, algorithm } = req.body;
+    const { wallet, poolUrl, password, tier } = req.body;
     let changed = false;
 
-    // Handle coin switch (updates poolUrl and wallet from defaults)
-    if (coin && COIN_POOLS[coin]) {
-        currentCoin = coin;
-        config.poolUrl = poolUrl || COIN_POOLS[coin];
-        config.algorithm = algorithm || (coin === 'XMR' || coin === 'ZEPH' ? 'rx/0' :
-                                          coin === 'RVN' ? 'kawpow' :
-                                          coin === 'ETC' ? 'etchash' :
-                                          coin === 'KAS' ? 'heavyhash' : algorithm);
-        if (wallet) {
-            config.wallet = wallet;
-            config.wallets[coin] = wallet;
-        } else if (config.wallets[coin]) {
-            config.wallet = config.wallets[coin];
+    if (wallet && wallet !== config.wallet) {
+        config.wallet = wallet;
+        // PERSISTENCE: Save to specific coin slot
+        if (currentCoin) {
+            config.wallets[currentCoin] = wallet;
         }
         changed = true;
-    } else {
-        // Individual field updates
-        if (wallet && wallet !== config.wallet) {
-            config.wallet = wallet;
-            if (currentCoin) config.wallets[currentCoin] = wallet;
-            changed = true;
-        }
-        if (poolUrl && poolUrl !== config.poolUrl) {
-            config.poolUrl = poolUrl;
-            changed = true;
-        }
-        if (algorithm && algorithm !== config.algorithm) {
-            config.algorithm = algorithm;
-            changed = true;
-        }
-        if (mode && mode !== config.mode) {
-            config.mode = mode;
-            changed = true;
-        }
     }
-
-    if (password !== undefined && password !== config.password) {
-        config.password = password;
+    if (poolUrl && poolUrl !== config.poolUrl) {
+        config.poolUrl = poolUrl;
         changed = true;
     }
-
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
         userTier = tier;
         addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);
@@ -461,7 +366,7 @@ app.post('/config', (req, res) => {
         addLog('🔄 Restarting miner with new config...');
         startMiner();
     }
-    res.json({ success: true, config, currentCoin });
+    res.json({ success: true });
 });
 
 // --- AUTO-SWITCH ---
@@ -532,423 +437,12 @@ app.get('/meta', (req, res) => {
     res.json({
         coins: Object.keys(COIN_POOLS),
         pools: COIN_POOLS,
-        wallets: config.wallets,
         wallet: config.wallet,
         currentCoin: currentCoin,
         config: config
     });
 });
 
-// --- OVERCLOCK PROFILES ---
-const OC_PROFILES = {
-    safe: { name: 'Efficiency Mode', powerOffset: -15, hashrateOffset: 5, coreClock: 0, memoryClock: 0, powerLimit: 80 },
-    balanced: { name: 'AI Balanced', powerOffset: 5, hashrateOffset: 12, coreClock: 50, memoryClock: 100, powerLimit: 100 },
-    max: { name: 'Max Performance', powerOffset: 30, hashrateOffset: 25, coreClock: 100, memoryClock: 200, powerLimit: 120 }
-};
-
-let currentProfile = 'safe';
-let tuningInProgress = false;
-let lastTuneTime = 0;
-const TUNE_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
-const BENCHMARK_DURATION = 60 * 1000; // 1 minute per profile
-
-// Benchmark a given profile by applying temporary settings and measuring
-async function benchmarkProfile(profileKey) {
-    const profile = OC_PROFILES[profileKey];
-    addLog(`🔬 Benchmarking ${profile.name}...`);
-
-    // In a real implementation, this would:
-    // 1. Write OC settings to file/registry for MSI Afterburner or nvidia-settings
-    // 2. Send signal to miner to reload config
-    // 3. Wait for stabilization
-    // 4. Poll telemetry for duration, compute avg hashrate/power
-    // 5. Return efficiency score
-
-    // Simulation: return mock efficiency (hashes per watt)
-    const baseEfficiency = 0.5; // H/J (example)
-    const simulatedEfficiency = baseEfficiency * (1 + (profile.hashrateOffset / 100)) / (1 + (profile.powerOffset / 100));
-    return { efficiency: simulatedEfficiency, hashrate: 1000 * (1 + profile.hashrateOffset/100), power: 120 * (1 + profile.powerOffset/100) };
-}
-
-// Auto-tuning loop
-async function runTuningLoop() {
-    if (tuningInProgress || Date.now() - lastTuneTime < TUNE_INTERVAL) return;
-    tuningInProgress = true;
-    addLog('🔧 Starting auto-OC tuning cycle...');
-
-    try {
-        let bestProfile = currentProfile;
-        let bestScore = 0;
-
-        // Test each enabled profile
-        for (const [key, profile] of Object.entries(OC_PROFILES)) {
-            const result = await benchmarkProfile(key);
-            const score = result.efficiency;
-            addLog(`📊 ${profile.name}: ${result.hashrate.toFixed(1)} H/s, ${result.power.toFixed(1)}W, eff=${score.toFixed(4)}`);
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestProfile = key;
-            }
-        }
-
-        if (bestProfile !== currentProfile) {
-            addLog(`✅ Optimal profile found: ${OC_PROFILES[bestProfile].name}. Applying...`);
-            currentProfile = bestProfile;
-            // In real implementation: write profile to disk and signal miner to reload
-            // For now: just log
-        } else {
-            addLog(`✅ Current profile (${OC_PROFILES[currentProfile].name}) is optimal.`);
-        }
-
-        lastTuneTime = Date.now();
-    } catch (e) {
-        addLog(`❌ Tuning error: ${e.message}`);
-    } finally {
-        tuningInProgress = false;
-    }
-}
-
-// Start auto-tuning interval (if enabled)
-let tuneInterval = null;
-function enableAutoTuning() {
-    if (!tuneInterval) {
-        tuneInterval = setInterval(runTuningLoop, 60 * 60 * 1000); // Check every hour
-        addLog('🤖 Auto-OC tuning enabled (checks hourly)');
-    }
-}
-function disableAutoTuning() {
-    if (tuneInterval) clearInterval(tuneInterval);
-    tuneInterval = null;
-    addLog('🛑 Auto-OC tuning disabled');
-}
-
-app.post('/start-miner', (req, res) => {
-    startMiner();
-    res.json({ success: true, status: minerStatus });
-});
-
-app.post('/stop-miner', (req, res) => {
-    killMiner();
-    minerStatus = 'OFFLINE';
-    res.json({ success: true, status: minerStatus });
-});
-
-// --- OVERCLOCK CONTROL ENDPOINTS ---
-
-// Get available OC profiles and current selection
-app.get('/oc/profiles', (req, res) => {
-    res.json({
-        profiles: OC_PROFILES,
-        currentProfile,
-        tuningEnabled: !!tuneInterval,
-        lastTuneTime,
-        tuningInProgress
-    });
-});
-
-// Apply a specific OC profile
-app.post('/oc/apply', requireAuth, (req, res) => {
-    const { profile } = req.body;
-    if (!OC_PROFILES[profile]) return res.status(400).json({ error: 'Invalid profile' });
-
-    currentProfile = profile;
-    addLog(`🎛️ OC profile set to: ${OC_PROFILES[profile].name}`);
-    // TODO: Actually apply hardware OC settings via nvidia-settings/MSI Afterburner
-    res.json({ success: true, profile: currentProfile });
-});
-
-// Enable/disable auto-tuning
-app.post('/oc/auto', requireAuth, (req, res) => {
-    const { enabled } = req.body;
-    if (enabled) {
-        enableAutoTuning();
-        res.json({ success: true, message: 'Auto-tuning enabled' });
-    } else {
-        disableAutoTuning();
-        res.json({ success: true, message: 'Auto-tuning disabled' });
-    }
-});
-
-// Run tuning cycle immediately (admin only)
-app.post('/oc/run-now', requireAuth, (req, res) => {
-    if (tuningInProgress) return res.status(429).json({ success: false, message: 'Tuning already in progress' });
-    runTuningLoop().then(() => {
-        res.json({ success: true, message: 'Tuning cycle completed', profile: currentProfile });
-    }).catch(e => {
-        res.status(500).json({ success: false, error: e.message });
-    });
-});
-
-// Jobs endpoint for Dashboard
-app.get('/jobs', (req, res) => {
-    const jobs = minerStatus === 'MINING' ? [{
-        id: 'xmrig-job',
-        title: `Mining ${config.algorithm || 'RandomX'} - ${currentCoin}`,
-        status: 'RUNNING',
-        progress: 0,
-        startTime: new Date().toISOString()
-    }] : [];
-    res.json(jobs);
-});
-
-// Wallet bulk update endpoint
-app.post('/wallet/bulk', (req, res) => {
-    const { wallets } = req.body;
-    if (!wallets || typeof wallets !== 'object') {
-        return res.status(400).json({ error: 'Invalid wallets payload' });
-    }
-    
-    // Update wallets config
-    config.wallets = { ...config.wallets, ...wallets };
-    
-    // If current coin wallet is provided, update active wallet too
-    if (wallets[currentCoin]) {
-        config.wallet = wallets[currentCoin];
-    }
-    
-    addLog(`💾 Wallets bulk-updated (${Object.keys(wallets).length} coins)`);
-    res.json({ success: true, wallets: config.wallets });
-});
-
-// --- HASHCAT / SECURITY ENDPOINTS ---
-// Hashcat process management
-let hashcatProcess = null;
-let hashcatJob = null;
-const HASHCAT_PATH = '/usr/local/bin/hashcat'; // default installed path
-
-function hasHashcat() {
-    try {
-        require('child_process').execFileSync(HASHCAT_PATH, ['--version'], { stdio: 'ignore' });
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-app.post('/hashcat/start', requireAuth, (req, res) => {
-    const { hashfile, wordlist, mask, rules, format } = req.body;
-    if (!hashfile) return res.status(400).json({ success: false, error: 'hashfile required' });
-    if (!wordlist && !mask) return res.status(400).json({ success: false, error: 'Either wordlist or mask required' });
-
-    if (!hasHashcat()) {
-        return res.status(500).json({ success: false, error: 'Hashcat binary not found on this system.' });
-    }
-
-    const jobId = crypto.randomUUID();
-    const args = ['-m', format || '0', '-a', mask ? '3' : '0', '--status', '--status-timer', '5', '--machine-readable', '--outfile', '/hashcat/progress.txt'];
-    if (wordlist) args.push('-w', wordlist);
-    if (mask) args.push(mask);
-    if (rules) args.push('-r', rules);
-    args.push(hashfile);
-
-    addLog(`🔒 Starting hashcat job ${jobId}`);
-
-    try {
-        hashcatProcess = spawn(HASHCAT_PATH, args, { cwd: '/hashcat' });
-        hashcatJob = { id: jobId, status: 'running', startTime: new Date(), recovered: 0, total: 0, progress: 0 };
-
-        hashcatProcess.stdout.on('data', (data) => {
-            const line = data.toString().trim();
-            addLog(`[HASHCAT] ${line}`);
-            // Parse status output: status, recovered/total, etc.
-            if (line.includes('progress')) {
-                const match = line.match(/progress.Essence: (\d+)\/(\d+)/);
-                if (match) {
-                    hashcatJob.recovered = parseInt(match[1]);
-                    hashcatJob.total = parseInt(match[2]);
-                    hashcatJob.progress = hashcatJob.total > 0 ? (hashcatJob.recovered / hashcatJob.total) * 100 : 0;
-                }
-            }
-        });
-
-        hashcatProcess.stderr.on('data', (data) => {
-            addLog(`[HASHCAT ERR] ${data.toString().trim()}`);
-        });
-
-        hashcatProcess.on('close', (code) => {
-            addLog(`🔒 Hashcat job ${jobId} exited with code ${code}`);
-            if (code === 0) {
-                hashcatJob.status = 'completed';
-            } else {
-                hashcatJob.status = 'failed';
-            }
-            hashcatProcess = null;
-        });
-
-        res.json({ success: true, jobId });
-    } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.post('/hashcat/stop', requireAuth, (req, res) => {
-    if (hashcatProcess) {
-        hashcatProcess.kill('SIGTERM');
-        addLog('🛑 Hashcat stop requested (waiting for exit...)');
-        res.json({ success: true, message: 'Stopping...' });
-    } else {
-        res.status(400).json({ success: false, message: 'No job running' });
-    }
-});
-
-app.get('/hashcat/status', (req, res) => {
-    if (hashcatProcess && hashcatJob) {
-        res.json({
-            status: hashcatJob.status,
-            hashrate: 0, // can parse from status line if needed
-            temp: 0,
-            recovered: hashcatJob.recovered,
-            total: hashcatJob.total,
-            progress: hashcatJob.progress,
-            logs: recentLogs.filter(l => l.includes('[HASHCAT]')).slice(0, 50)
-        });
-    } else {
-        res.json({
-            status: 'idle',
-            hashrate: 0,
-            temp: 0,
-            recovered: 0,
-            total: 0,
-            progress: 0,
-            logs: ['Hashcat idle.']
-        });
-    }
-});
-
-app.post('/hashcat/stop', (req, res) => {
-    addLog('🛑 Hashcat stop requested (stub)');
-    res.json({ success: true, message: 'Stopped (stub)' });
-});
-
-// --- WHITELISTED COMMAND EXECUTION (Admin Only) ---
-const ALLOWED_COMMANDS = [
-    'ls', 'pwd', 'cat', 'tail', 'head', 'ps', 'top', 'df', 'free',
-    'whoami', 'id', 'uname', 'uptime', 'date', 'echo', 'env',
-    'xmrig', 'xmrig --version', 'tasklist', 'netstat'
-];
-
-app.post('/execute', requireAuth, (req, res) => {
-    const { command, args } = req.body;
-    if (!command || !ALLOWED_COMMANDS.includes(command)) {
-        return res.status(400).json({ error: 'Command not allowed', allowed: ALLOWED_COMMANDS });
-    }
-
-    const fullCmd = `${command} ${args || ''}`.trim();
-    addLog(`⚡ Executing: ${fullCmd}`);
-
-    try {
-        const child = spawn(command, args ? args.split(' ') : []);
-        let stdout = '';
-        let stderr = '';
-        child.stdout.on('data', (data) => stdout += data.toString());
-        child.stderr.on('data', (data) => stderr += data.toString());
-
-        child.on('error', (err) => {
-            addLog(`❌ Command error: ${err.message}`);
-            res.json({ error: err.message, stderr: err.message });
-        });
-
-        child.on('close', (code) => {
-            addLog(`✅ Command exited with code ${code}`);
-            res.json({ code, stdout: stdout.trim(), stderr: stderr.trim() });
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// --- SOCKET.IO & HTTP SERVER SETUP ---
-
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: {
-        origin: allowedOrigins,
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-});
-
-// Socket.IO Authentication
-io.use((socket, next) => {
-    const token = socket.handshake.auth?.token || socket.handshake.headers['x-agent-secret'];
-    if (token === AGENT_SECRET) {
-        next();
-    } else {
-        next(new Error('unauthorized'));
-    }
-});
-
-io.on('connection', (socket) => {
-    console.log(`[SOCKET] Client connected: ${socket.id}`);
-
-    // Send current state immediately on connect
-    socket.emit('telemetry', telemetry);
-    socket.emit('status', minerStatus);
-    socket.emit('logs', recentLogs);
-
-    // Handle control commands from client
-    socket.on('start-miner', () => {
-        addLog('🎛️ Start command received via Socket.IO');
-        startMiner();
-    });
-
-    socket.on('stop-miner', () => {
-        addLog('🎛️ Stop command received via Socket.IO');
-        killMiner();
-        minerStatus = 'OFFLINE';
-    });
-
-    socket.on('config', (newConfig) => {
-        addLog('🎛️ Config update via Socket.IO');
-        if (newConfig.wallet) config.wallet = newConfig.wallet;
-        if (newConfig.poolUrl) config.poolUrl = newConfig.poolUrl;
-        if (newConfig.algorithm) config.algorithm = newConfig.algorithm;
-        if (newConfig.mode) config.mode = newConfig.mode;
-        if (newConfig.password !== undefined) config.password = newConfig.password;
-        startMiner();
-        socket.emit('config', config);
-    });
-
-    socket.on('switch-coin', (coin) => {
-        if (COIN_POOLS[coin]) {
-            currentCoin = coin;
-            config.poolUrl = COIN_POOLS[coin];
-            if (config.wallets[coin]) config.wallet = config.wallets[coin];
-            addLog(`💱 Switching to ${coin} via Socket.IO`);
-            startMiner();
-            socket.emit('coin-switched', { coin, config });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        console.log(`[SOCKET] Client disconnected: ${socket.id}`);
-    });
-});
-
-// Health check
-app.get('/healthz', (req, res) => {
-    res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
-});
-
-// Agent Auto-Update endpoints
-app.get('/agent/update-check', (req, res) => {
-    // In production, check GitHub releases
-    res.json({ updateAvailable: false, currentVersion: '0.1.0', latestVersion: '0.1.0' });
-});
-
-app.post('/agent/update-now', requireAuth, async (req, res) => {
-    addLog('🔄 Update triggered (stub)');
-    res.json({ success: true, message: 'Update not yet implemented' });
-});
-
-const emitTelemetry = () => {
-    io.emit('telemetry', telemetry);
-    io.emit('status', minerStatus);
-};
-
-// Start server
-httpServer.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
-    console.log(`📡 Socket.IO ready for real-time connections`);
 });
