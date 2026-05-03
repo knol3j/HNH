@@ -1,13 +1,28 @@
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// --- ENVIRONMENT VALIDATION ---
+const requiredEnv = ['AGENT_SECRET', 'PORT'];
+const missingEnv = requiredEnv.filter(k => !process.env[k]);
+if (missingEnv.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missingEnv.join(', ')}`);
+}
+const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
+if (AGENT_SECRET === 'HNH_LOCAL_AGENT_SECRET') {
+    console.warn('⚠️  Using default AGENT_SECRET. Set AGENT_SECRET env var for production security.');
+}
 
 const app = express();
 
@@ -22,7 +37,6 @@ const allowedOrigins = [
 ];
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
             return callback(new Error('CORS not allowed'), false);
@@ -32,12 +46,44 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Rate Limiting
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/telemetry', apiLimiter);
+app.use('/config', apiLimiter);
+app.use('/start-miner', apiLimiter);
+app.use('/stop-miner', apiLimiter);
+app.use('/wallet/bulk', apiLimiter);
+app.use('/switch-coin', apiLimiter);
+app.use('/agent/update-check', apiLimiter);
+app.use('/agent/update-now', apiLimiter);
+
+const execLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 10,
+    message: 'Command execution rate limit exceeded.'
+});
+app.use('/execute', execLimiter);
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    }
+}));
+
 // GUI: Serve Static Files (Public)
 const GUI_PATH = path.join(__dirname, 'gui');
 app.use(express.static(GUI_PATH));
 
 // SECURITY: Auth Middleware
-const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
     // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
     // Also skip /meta for GUI initialization
@@ -165,6 +211,8 @@ const addLog = (msg) => {
     console.log(`[AGENT] ${msg}`);
     recentLogs.unshift(`[${timestamp}] ${msg}`);
     if (recentLogs.length > 50) recentLogs.pop();
+    // Emit logs via socket
+    io.emit('log', recentLogs[0]);
 };
 
 // --- MINER MANAGER ---
@@ -277,23 +325,18 @@ const fetchXmrigStats = () => {
         res.on('end', () => {
             try {
                 const stats = JSON.parse(data);
-
-                // Hashrate (Highest of all threads)
                 telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
-
-                // Hardware Stats (GPU/CPU)
-                // XMRig puts sensors in different places depending on backend
                 const health = stats.health || [];
                 if (health.length > 0) {
-                    // Average temp/power if multiple devices
                     const avgTemp = health.reduce((acc, h) => acc + (h.temp || 0), 0) / health.length;
                     const totalPower = health.reduce((acc, h) => acc + (h.power || 0), 0);
                     const avgFan = health.reduce((acc, h) => acc + (h.fan || 0), 0) / health.length;
-
                     telemetry.temp = avgTemp;
                     telemetry.power = totalPower;
                     telemetry.fan = avgFan;
                 }
+                // Emit telemetry update to connected sockets
+                emitTelemetry();
             } catch (e) { }
         });
     });
@@ -342,12 +385,12 @@ app.get('/telemetry', (req, res) => {
         gpu_util: minerStatus === 'MINING' ? 100 : 0,
         fan_speed: telemetry.fan,
         power_draw: telemetry.power,
-        vram_used: 0, // Need external tool for this usually
+        vram_used: 0,
         hashrate: telemetry.hashrate / 1000000,
-        verified_shares: netShares, // Net after fee
+        verified_shares: netShares,
         gross_shares: grossShares,
         fee_deducted: feeDeducted,
-        fee_rate: feeRate * 100, // As percentage
+        fee_rate: feeRate * 100,
         user_tier: userTier,
         active_job: minerStatus === 'MINING' ? {
             id: 'xmrig-job',
@@ -358,7 +401,9 @@ app.get('/telemetry', (req, res) => {
         wallet: config.wallet,
         platform_wallet: PLATFORM_WALLET,
         status: minerStatus,
-        logs: recentLogs
+        logs: recentLogs,
+        coin: currentCoin,
+        mode: config.mode
     });
 });
 
@@ -553,18 +598,134 @@ app.post('/hashcat/stop', (req, res) => {
     res.json({ success: true, message: 'Stopped (stub)' });
 });
 
-app.get('/hashcat/status', (req, res) => {
-    // Return stub status
-    res.json({
-        status: 'idle',
-        hashrate: 0,
-        temp: 0,
-        recovered: 0,
-        total: 0,
-        logs: ['Hashcat module not yet integrated.']
+// --- WHITELISTED COMMAND EXECUTION (Admin Only) ---
+const ALLOWED_COMMANDS = [
+    'ls', 'pwd', 'cat', 'tail', 'head', 'ps', 'top', 'df', 'free',
+    'whoami', 'id', 'uname', 'uptime', 'date', 'echo', 'env',
+    'xmrig', 'xmrig --version', 'tasklist', 'netstat'
+];
+
+app.post('/execute', requireAuth, (req, res) => {
+    const { command, args } = req.body;
+    if (!command || !ALLOWED_COMMANDS.includes(command)) {
+        return res.status(400).json({ error: 'Command not allowed', allowed: ALLOWED_COMMANDS });
+    }
+
+    const fullCmd = `${command} ${args || ''}`.trim();
+    addLog(`⚡ Executing: ${fullCmd}`);
+
+    try {
+        const child = spawn(command, args ? args.split(' ') : []);
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (data) => stdout += data.toString());
+        child.stderr.on('data', (data) => stderr += data.toString());
+
+        child.on('error', (err) => {
+            addLog(`❌ Command error: ${err.message}`);
+            res.json({ error: err.message, stderr: err.message });
+        });
+
+        child.on('close', (code) => {
+            addLog(`✅ Command exited with code ${code}`);
+            res.json({ code, stdout: stdout.trim(), stderr: stderr.trim() });
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- SOCKET.IO & HTTP SERVER SETUP ---
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ['GET', 'POST'],
+        credentials: true
+    }
+});
+
+// Socket.IO Authentication
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers['x-agent-secret'];
+    if (token === AGENT_SECRET) {
+        next();
+    } else {
+        next(new Error('unauthorized'));
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log(`[SOCKET] Client connected: ${socket.id}`);
+
+    // Send current state immediately on connect
+    socket.emit('telemetry', telemetry);
+    socket.emit('status', minerStatus);
+    socket.emit('logs', recentLogs);
+
+    // Handle control commands from client
+    socket.on('start-miner', () => {
+        addLog('🎛️ Start command received via Socket.IO');
+        startMiner();
+    });
+
+    socket.on('stop-miner', () => {
+        addLog('🎛️ Stop command received via Socket.IO');
+        killMiner();
+        minerStatus = 'OFFLINE';
+    });
+
+    socket.on('config', (newConfig) => {
+        addLog('🎛️ Config update via Socket.IO');
+        if (newConfig.wallet) config.wallet = newConfig.wallet;
+        if (newConfig.poolUrl) config.poolUrl = newConfig.poolUrl;
+        if (newConfig.algorithm) config.algorithm = newConfig.algorithm;
+        if (newConfig.mode) config.mode = newConfig.mode;
+        if (newConfig.password !== undefined) config.password = newConfig.password;
+        startMiner();
+        socket.emit('config', config);
+    });
+
+    socket.on('switch-coin', (coin) => {
+        if (COIN_POOLS[coin]) {
+            currentCoin = coin;
+            config.poolUrl = COIN_POOLS[coin];
+            if (config.wallets[coin]) config.wallet = config.wallets[coin];
+            addLog(`💱 Switching to ${coin} via Socket.IO`);
+            startMiner();
+            socket.emit('coin-switched', { coin, config });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`[SOCKET] Client disconnected: ${socket.id}`);
     });
 });
 
-app.listen(PORT, () => {
+// Health check
+app.get('/healthz', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+// Agent Auto-Update endpoints
+app.get('/agent/update-check', (req, res) => {
+    // In production, check GitHub releases
+    res.json({ updateAvailable: false, currentVersion: '0.1.0', latestVersion: '0.1.0' });
+});
+
+app.post('/agent/update-now', requireAuth, async (req, res) => {
+    addLog('🔄 Update triggered (stub)');
+    res.json({ success: true, message: 'Update not yet implemented' });
+});
+
+const emitTelemetry = () => {
+    io.emit('telemetry', telemetry);
+    io.emit('status', minerStatus);
+};
+
+// Start server
+httpServer.listen(PORT, () => {
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
+    console.log(`📡 Socket.IO ready for real-time connections`);
 });

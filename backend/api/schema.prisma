@@ -202,3 +202,84 @@ model ForumPost {
   @@index([category])
   @@index([createdAt])
 }
+
+// Compute Marketplace: Jobs posted by users for providers to claim
+model Job {
+  id               String   @id @default(uuid())
+  title            String
+  description      String
+  coin             String?
+  algorithm        String?
+  requiredHashrate Float?  // in H/s
+  priceUsd         Float
+  durationMinutes  Int?
+  status           String   @default("open") // open, assigned, in-progress, completed, disputed, cancelled
+  posterId         String
+  poster           User     @relation(fields: [posterId], references: [id])
+  providerId       String?
+  provider         User?    @relation(fields: [providerId], references: [id])
+  startTime        DateTime?
+  endTime          DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([posterId])
+  @@index([providerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Multi-Agent Management: User can register multiple agent instances
+model Agent {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ipAddress String?
+  port      Int      @default(4343)
+  secret    String   // unique per-agent secret
+  lastSeen  DateTime @default(now())
+  status    String   @default("offline") // online, offline, error
+  meta      Json?    // arbitrary metadata (gpu info, etc)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([lastSeen])
+}
+
+// Audit Logs for security tracking
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String   // e.g., "wallet.import", "config.update", "agent.delete"
+  resource  String?  // e.g., "wallet", "agent", "user"
+  resourceId String?
+  details   Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Payouts / Withdrawals
+model Payout {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  currency  String   @default("USD")
+  type      String   // "deposit" (from mining), "withdrawal", "referral", "bonus"
+  status    String   @default("pending") // pending, confirmed, cancelled
+  txId      String?  // blockchain transaction hash
+  address   String?  // destination address for withdrawals
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}

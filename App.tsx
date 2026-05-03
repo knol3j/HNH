@@ -1,7 +1,10 @@
 import React, { lazy, Suspense } from 'react';
-import { Layout } from './components/Layout';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { Layout } from './components/Layout';
 import Auth from './views/Auth';
 import Landing from './views/Landing';
 import WalletSetupModal from './components/WalletSetupModal';
@@ -12,6 +15,7 @@ import { useAgentStatus } from './hooks/useAgentStatus';
 const Dashboard = lazy(() => import('./views/Dashboard'));
 const Marketplace = lazy(() => import('./views/Portfolio'));
 const DeployJob = lazy(() => import('./views/HedgeLab'));
+const Farm = lazy(() => import('./views/Farm'));
 const Provider = lazy(() => import('./views/Provider'));
 const Security = lazy(() => import('./views/Security'));
 const TokenCreator = lazy(() => import('./views/TokenCreator'));
@@ -26,6 +30,7 @@ const Docs = lazy(() => import('./views/Docs'));
 const Forum = lazy(() => import('./views/Forum'));
 const Diagnostics = lazy(() => import('./views/Diagnostics'));
 const Wallets = lazy(() => import('./views/Wallets'));
+const Payouts = lazy(() => import('./views/Payouts'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-screen text-gray-400">Loading...</div>
@@ -127,8 +132,9 @@ const AppContent: React.FC = () => {
       <Suspense fallback={<LoadingFallback />}>
         {currentView === 'DASHBOARD' && <Dashboard stats={stats} aiAnalysis={aiAnalysis} />}
         {currentView === 'MARKETPLACE' && <Marketplace />}
-        {currentView === 'DEPLOY' && <DeployJob />}
-        {currentView === 'DEX' && <Dex />}
+         {currentView === 'DEPLOY' && <DeployJob />}
+         {currentView === 'FARM' && <Farm />}
+         {currentView === 'DEX' && <Dex />}
         {currentView === 'PROVIDER' && <Provider />}
         {currentView === 'SECURITY' && <Security />}
         {currentView === 'TOKEN_CREATOR' && <TokenCreator />}
@@ -139,9 +145,11 @@ const AppContent: React.FC = () => {
         {currentView === 'WORKERS' && <Workers />}
         {currentView === 'OVERCLOCK' && <Overclock />}
         {currentView === 'DOCS' && <Docs onBack={() => setCurrentView('DASHBOARD')} />}
-        {currentView === 'FORUM' && <Forum />}
-        {currentView === 'DIAGNOSTICS' && <Diagnostics />}
-        {currentView === 'WALLETS' && <Wallets setCurrentView={setCurrentView} />}
+         {currentView === 'FORUM' && <Forum />}
+         {currentView === 'DIAGNOSTICS' && <Diagnostics />}
+         {currentView === 'WALLETS' && <Wallets setCurrentView={setCurrentView} />}
+         {currentView === 'FARM' && <Farm />}
+         {currentView === 'PAYOUTS' && <Payouts />}
       </Suspense>
 
       <WalletSetupModal
@@ -160,7 +168,10 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => (
   <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy_client_id'}>
     <AuthProvider>
-      <AppContent />
+      <SocketProvider>
+        <AppContent />
+      </SocketProvider>
+      <Toaster position="bottom-right" toastOptions={{ duration: 4000, style: { background: '#333', color: '#fff' }}} />
     </AuthProvider>
   </GoogleOAuthProvider>
 );

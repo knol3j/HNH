@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTelemetry } from '../services/useTelemetry';
 import { Cpu, Zap, Shield, TrendingUp, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AgentTelemetry } from '../types';
 
 interface OverclockProfile {
     id: string;

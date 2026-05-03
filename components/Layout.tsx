@@ -3,7 +3,7 @@ import { View, User } from '../types';
 import { 
   LayoutDashboard, Rocket, Server, Menu, X, Globe, Wallet, Zap, Shield, 
   Coins, Palette, ArrowLeftRight, LogOut, User as UserIcon, Users, 
-  Crown, Activity, Layers, MessageSquare 
+  Crown, Activity, Layers, MessageSquare, DollarSign, Cpu 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getWalletState, connectPhantomWallet, disconnectWallet } from '../services/walletService';
@@ -129,6 +129,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Network Overview" />
           <NavItem view="MARKETPLACE" icon={Server} label="Compute Market" />
           <NavItem view="WALLETS" icon={Wallet} label="Wallets" />
+          <NavItem view="PAYOUTS" icon={DollarSign} label="Payouts" />
           <NavItem view="DEPLOY" icon={Rocket} label="Deploy Job" />
           <NavItem view="DEX" icon={ArrowLeftRight} label="HNH Swap" badge="HOT" />
           <NavItem view="FORUM" icon={MessageSquare} label="Community" />
@@ -136,6 +137,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="mt-4 px-4 py-2 text-[10px] font-bold text-muted uppercase tracking-widest opacity-50">Supply Side</div>
           <NavItem view="PROVIDER" icon={Zap} label="Host Node" badge="EARN" />
           <NavItem view="WORKERS" icon={Server} label="Worker Manager" />
+          <NavItem view="FARM" icon={Cpu} label="Agent Farm" />
           <NavItem view="ANALYTICS" icon={Activity} label="Analytics" />
           <NavItem view="OVERCLOCK" icon={Layers} label="AI Tuner" />
           <NavItem view="REFERRALS" icon={Users} label="Referrals" />

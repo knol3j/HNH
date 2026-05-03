@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { HardwareTelemetry } from '../types';
+import { AgentTelemetry } from '../types';
 
 export const useTelemetry = (agentUrl = import.meta.env.VITE_AGENT_URL || '') => {
-    const [telemetry, setTelemetry] = useState<HardwareTelemetry | null>(null);
+    const [telemetry, setTelemetry] = useState<AgentTelemetry | null>(null);
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {

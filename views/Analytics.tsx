@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Activity, TrendingUp, Zap, DollarSign, Loader2, WifiOff } from 'lucide-react';
 import { fetchCurrentUser } from '../services/authService';
+import { useSocket } from '../context/SocketContext';
+import { AgentTelemetry } from '../types';
 
 interface TelemetryPoint {
     time: string;
@@ -16,62 +18,38 @@ interface AgentStats {
 }
 
 const Analytics: React.FC = () => {
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAgentOnline, setIsAgentOnline] = useState(false);
+    const { isConnected, telemetry, agentStatus } = useSocket();
     const [hashrateHistory, setHashrateHistory] = useState<TelemetryPoint[]>([]);
-    const [stats, setStats] = useState<AgentStats>({ hashrate: 0, power: 0, temp: 0, uptime: 0 });
     const [dailyEarnings, setDailyEarnings] = useState(0);
 
+    // Build history from incoming telemetry
     useEffect(() => {
-        const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
-        let historyBuffer: TelemetryPoint[] = [];
+        if (telemetry) {
+            const now = new Date();
+            const newPoint = {
+                time: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
+                value: telemetry.hashrate || 0
+            };
+            setHashrateHistory(prev => {
+                const updated = [...prev, newPoint];
+                return updated.slice(-24);
+            });
 
-        const fetchTelemetry = async () => {
-            try {
-                const res = await fetch(`${agentUrl}/telemetry`);
-                if (!res.ok) throw new Error('Agent offline');
-
-                const data = await res.json();
-                setIsAgentOnline(true);
-                setIsLoading(false);
-
-                setStats({
-                    hashrate: data.hashrate || 0,
-                    power: data.power_draw || 0,
-                    temp: data.gpu_temp || 0,
-                    uptime: data.uptime || 0
-                });
-
-                // Add to history buffer
-                const now = new Date();
-                historyBuffer.push({
-                    time: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
-                    value: data.hashrate || 0
-                });
-
-                // Keep last 24 points
-                if (historyBuffer.length > 24) {
-                    historyBuffer = historyBuffer.slice(-24);
-                }
-                setHashrateHistory([...historyBuffer]);
-
-                // Calculate estimated daily earnings based on hashrate
-                // This is a rough estimate - real earnings depend on many factors
-                if (data.hashrate > 0) {
-                    const estimatedDaily = (data.hashrate / 1000) * 0.5; // ~$0.50 per kH/s per day estimate
-                    setDailyEarnings(estimatedDaily);
-                }
-
-            } catch (e) {
-                setIsAgentOnline(false);
-                setIsLoading(false);
+            if (telemetry.hashrate && telemetry.hashrate > 0) {
+                const estimatedDaily = (telemetry.hashrate / 1000) * 0.5;
+                setDailyEarnings(estimatedDaily);
             }
-        };
+        }
+    }, [telemetry]);
 
-        fetchTelemetry();
-        const interval = setInterval(fetchTelemetry, 5000);
-        return () => clearInterval(interval);
-    }, []);
+    const isLoading = !isConnected && !telemetry;
+    const isAgentOnline = isConnected && agentStatus === 'MINING';
+    const stats = telemetry ? {
+        hashrate: telemetry.hashrate || 0,
+        power: telemetry.power_draw || 0,
+        temp: telemetry.gpu_temp || 0,
+        uptime: telemetry.uptime || 0
+    } : { hashrate: 0, power: 0, temp: 0, uptime: 0 };
 
     if (isLoading) {
         return (

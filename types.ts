@@ -70,25 +70,29 @@ export interface HardwareTelemetry {
    wallet?: string;
  }
 
- export interface AgentTelemetry {
-   hashrate: number;
-   gpu_temp: number;
-   power_draw: number;
-   fan_speed: number;
-   gpu_util: number;
-   status: 'MINING' | 'OFFLINE' | 'STARTING' | 'ERROR';
-   wallet?: string;
-   platform_wallet?: string;
-   verified_shares?: number;
-   gross_shares?: number;
-   fee_deducted?: number;
-   fee_rate?: number;
-   user_tier?: string;
-   active_job?: { id: string; title: string; status: string; progress: number };
-   logs?: string[];
-   vram_used?: number;
-   algo?: string;
- }
+export interface AgentTelemetry {
+    hashrate: number;
+    gpu_temp: number;
+    power_draw: number;
+    fan_speed: number;
+    gpu_util: number;
+    status: 'MINING' | 'OFFLINE' | 'STARTING' | 'ERROR';
+    wallet?: string;
+    platform_wallet?: string;
+    verified_shares?: number;
+    gross_shares?: number;
+    fee_deducted?: number;
+    fee_rate?: number;
+    user_tier?: string;
+    active_job?: { id: string; title: string; status: string; progress: number };
+    logs?: string[];
+    vram_used?: number;
+    algo?: string;
+    uptime: number;
+    coin?: string; // current coin being mined
+    mode?: 'cpu' | 'gpu'; // mining mode
+    cpu?: string; // cpu info string
+}
 
  export interface MiningJob {
    id: string;
@@ -136,7 +140,9 @@ export type View =
   | 'OVERCLOCK'
   | 'DOCS'
   | 'FORUM'
-  | 'DIAGNOSTICS';
+  | 'DIAGNOSTICS'
+  | 'FARM'
+  | 'PAYOUTS';
 
 // Algorithm types
 export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Etchash';

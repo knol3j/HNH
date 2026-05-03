@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Grid, List, Search, MoreHorizontal, Power, RefreshCw, Smartphone, Monitor } from 'lucide-react';
 import { getCurrentUser } from '../services/authService';
+import { useSocket } from '../context/SocketContext';
 import MobileConnectModal from '../components/MobileConnectModal';
+import { AgentTelemetry } from '../types';
 
 interface Worker {
     id: string;
@@ -24,50 +26,39 @@ const Workers: React.FC = () => {
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+    const { isConnected, telemetry, agentStatus } = useSocket();
 
+    // Build worker from telemetry
     useEffect(() => {
-        const fetchTelemetry = async () => {
-            try {
-                // In a real app, this might be a prop or config. 
-                // For this local agent setup, we point to localhost:4343
-                const res = await fetch('http://localhost:4343/telemetry');
-                if (!res.ok) throw new Error('Agent offline');
-                const data = await res.json();
-
-                const localWorker: Worker = {
-                    id: 'local-agent',
-                    name: 'Local Agent',
-                    type: data.mode === 'gpu' ? 'GPU' : 'CPU', // Infer from config
-                    status: data.status === 'MINING' ? 'online' : 'offline',
-                    hashrate: `${data.hashrate.toFixed(2)} MH/s`, // Adjust unit as needed
-                    temp: Math.round(data.gpu_temp || 0),
-                    power: Math.round(data.power_draw || 0),
-                    efficiency: '-', // Calculate if possible
-                    uptime: 'Active', // Could parse start time
-                    lastSeen: 'Now'
-                };
-                setWorkers([localWorker]);
-            } catch (e) {
-                // If offline, show empty or offline state
-                setWorkers([{
-                    id: 'local-agent',
-                    name: 'Local Agent',
-                    type: 'CPU',
-                    status: 'offline',
-                    hashrate: '0 MH/s',
-                    temp: 0,
-                    power: 0,
-                    efficiency: '-',
-                    uptime: '-',
-                    lastSeen: 'Offline'
-                }]);
-            }
-        };
-
-        fetchTelemetry();
-        const interval = setInterval(fetchTelemetry, 2000);
-        return () => clearInterval(interval);
-    }, []);
+        if (telemetry || isConnected) {
+            const localWorker: Worker = {
+                id: 'local-agent',
+                name: 'Local Agent',
+                type: telemetry?.mode === 'gpu' ? 'GPU' : 'CPU',
+                status: agentStatus === 'MINING' || isConnected ? 'online' : 'offline',
+                hashrate: `${(telemetry?.hashrate || 0).toFixed(2)} MH/s`,
+                temp: Math.round(telemetry?.gpu_temp || 0),
+                power: Math.round(telemetry?.power_draw || 0),
+                efficiency: '-',
+                uptime: 'Active',
+                lastSeen: 'Now'
+            };
+            setWorkers([localWorker]);
+        } else {
+            setWorkers([{
+                id: 'local-agent',
+                name: 'Local Agent',
+                type: 'CPU',
+                status: 'offline',
+                hashrate: '0 MH/s',
+                temp: 0,
+                power: 0,
+                efficiency: '-',
+                uptime: '-',
+                lastSeen: 'Offline'
+            }]);
+        }
+    }, [telemetry, isConnected, agentStatus]);
 
     // Filter workers based on search term
     const filteredWorkers = workers.filter(worker =>

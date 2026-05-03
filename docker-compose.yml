@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  hashnhedge-agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    container_name: hnh-agent
+    restart: unless-stopped
+    ports:
+      - "4343:4343"
+    volumes:
+      - agent_data:/app/data
+      - agent_logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - AGENT_SECRET=${AGENT_SECRET:-HNH_LOCAL_AGENT_SECRET}
+      - PORT=4343
+    networks:
+      - hashnhedge
+
+networks:
+  hashnhedge:
+    driver: bridge
+
+volumes:
+  agent_data:
+  agent_logs:

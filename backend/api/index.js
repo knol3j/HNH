@@ -1155,37 +1155,23 @@ app.get('/stats/users', generalLimiter, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- NETWORK STATS ---
-app.get('/network/stats', generalLimiter, async (req, res) => {
+// --- AUDIT LOGGING MIDDLEWARE ---
+const auditLog = async (req, action, resource = null, details = null) => {
     try {
-        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const activeNodes = await prisma.worker.count({
-            where: { lastSeen: { gte: fiveMinAgo } }
-        });
-        const totalHashrate = await prisma.worker.aggregate({
-            where: { lastSeen: { gte: fiveMinAgo } },
-            _sum: { hashrate: true }
-        });
-        const jobsRunning = await prisma.miningSession.count({
-            where: { endTime: null }
-        });
-        
-        res.json({
-            activeNodes,
-            totalTflops: (totalHashrate._sum.hashrate || 0) / 1000,
-            jobsRunning,
-            networkUtilization: activeNodes > 0 ? Math.min(Math.round((jobsRunning / (activeNodes * 5)) * 100), 100) : 0,
-            avgPricePerFLOP: 0.0042
+        const ip = req.ip || req.connection.remoteAddress;
+        const ua = req.get('User-Agent');
+        const userId = req.user?.id || null;
+        await prisma.auditLog.create({
+            data: { userId, action, resource, details: details ? JSON.stringify(details) : null, ip, userAgent: ua }
         });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error('[AUDIT] Failed to log:', e.message);
     }
-});
+};
 
 // --- NETWORK NODES (Compute Providers) ---
 app.get('/network/nodes', async (req, res) => {
     try {
-        // Active nodes = workers seen in last 5 minutes
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
         const activeWorkers = await prisma.worker.findMany({
             where: { lastSeen: { gte: fiveMinAgo } },
@@ -1195,10 +1181,10 @@ app.get('/network/nodes', async (req, res) => {
         const nodes = activeWorkers.map(worker => ({
             id: worker.id,
             name: worker.name,
-            type: 'GPU', // Could infer from hardware DB or agent metadata
+            type: 'GPU',
             status: 'ONLINE',
             hashrate: worker.hashrate,
-            region: 'US', // Could be derived from IP or user pref later
+            region: 'US',
             uptime: 99.9,
             provider: worker.user.username,
             tier: worker.user.tier,
@@ -1222,9 +1208,9 @@ app.get('/provider/stats', authenticateToken, async (req, res) => {
         res.json({
             earnings24h: stats?.totalMinedUsd || 0,
             totalEarnings: stats?.totalMinedUsd || 0,
-            reputationScore: 100, // Could compute from uptime/acceptance rate
-            uptime: stats ? Math.min((stats.totalMiningTime / (30 * 24 * 60)) * 100, 100) : 0, // rough
-            activeJobs: 0, // No cloud jobs in current MVP
+            reputationScore: 100,
+            uptime: stats ? Math.min((stats.totalMiningTime / (30 * 24 * 60)) * 100, 100) : 0,
+            activeJobs: 0,
             totalSessions: sessions,
             totalShares: shares
         });
@@ -1267,7 +1253,283 @@ app.get('/leaderboard', authenticateToken, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Global Error Handler
+// --- HEALTH CHECK ---
+app.get('/healthz', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+});
+
+// Wrap sensitive routes with audit logging
+const audit = (action, resourceFn, detailsFn) => (req, res, next) => {
+    const originalSend = res.send;
+    res.send = function(body) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            auditLog(req, action, resourceFn ? resourceFn(req) : null, detailsFn ? detailsFn(req, body) : null).catch(() => {});
+        }
+        return originalSend.apply(this, arguments);
+    };
+    next();
+};
+
+// --- NETWORK NODES (Compute Providers) ---
+app.get('/network/nodes', async (req, res) => {
+    try {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeWorkers = await prisma.worker.findMany({
+            where: { lastSeen: { gte: fiveMinAgo } },
+            include: { user: { select: { username: true, tier: true } } }
+        });
+
+        const nodes = activeWorkers.map(worker => ({
+            id: worker.id,
+            name: worker.name,
+            type: 'GPU',
+            status: 'ONLINE',
+            hashrate: worker.hashrate,
+            region: 'US',
+            uptime: 99.9,
+            provider: worker.user.username,
+            tier: worker.user.tier,
+            isVerified: true
+        }));
+
+        res.json(nodes);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PROVIDER STATS ---
+app.get('/provider/stats', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const stats = await prisma.userStats.findUnique({ where: { userId } });
+        const sessions = await prisma.miningSession.count({ where: { userId } });
+        const shares = await prisma.share.count({ where: { userId } });
+
+        res.json({
+            earnings24h: stats?.totalMinedUsd || 0,
+            totalEarnings: stats?.totalMinedUsd || 0,
+            reputationScore: 100,
+            uptime: stats ? Math.min((stats.totalMiningTime / (30 * 24 * 60)) * 100, 100) : 0,
+            activeJobs: 0,
+            totalSessions: sessions,
+            totalShares: shares
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- LEADERBOARD ---
+app.get('/leaderboard', authenticateToken, async (req, res) => {
+    try {
+        const metric = req.query.metric || 'totalShares';
+        const limit = parseInt(req.query.limit) || 100;
+        const allowedMetrics = ['totalShares', 'totalMinedUsd', 'longestStreak', 'level', 'xp'];
+        if (!allowedMetrics.includes(metric)) return res.status(400).json({ error: 'Invalid metric' });
+        const leaderboard = await prisma.userStats.findMany({
+            where: { [metric]: { gt: 0 } },
+            orderBy: { [metric]: 'desc' },
+            take: limit,
+            include: { user: { select: { username: true, tier: true } } }
+        });
+        const userStats = await prisma.userStats.findUnique({ where: { userId: req.user.id } });
+        let userRank = null;
+        if (userStats) {
+            const higherCount = await prisma.userStats.count({ where: { [metric]: { gt: userStats[metric] } } });
+            userRank = higherCount + 1;
+        }
+        res.json({
+            leaderboard: leaderboard.map((entry, index) => ({
+                rank: index + 1,
+                username: entry.user.username,
+                tier: entry.user.tier,
+                value: entry[metric],
+                level: entry.level,
+                rankTitle: entry.rank
+            })),
+            userRank,
+            metric
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- HEALTH CHECK ---
+app.get('/healthz', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+});
+
+// --- PAYOUTS / WITHDRAWALS ---
+app.get('/user/payouts', authenticateToken, async (req, res) => {
+    try {
+        const payouts = await prisma.payout.findMany({
+            where: { userId: req.user.id },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+        const balance = await prisma.userStats.findUnique({ where: { userId: req.user.id } });
+        res.json({
+            payouts,
+            balance: balance?.totalMinedUsd || 0
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/user/payouts/request', authenticateToken, async (req, res) => {
+    try {
+        const { amount, currency = 'USD', address } = req.body;
+        if (!amount || !address) return res.status(400).json({ error: 'Amount and address required' });
+        const payout = await prisma.payout.create({
+            data: {
+                userId: req.user.id,
+                amount,
+                currency,
+                address,
+                type: 'withdrawal',
+                status: 'pending'
+            }
+        });
+        await auditLog(req, 'payout.create', 'Payout', { amount, currency, address });
+        res.json(payout);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- COMPUTE JOB MARKETPLACE ---
+app.get('/jobs', async (req, res) => {
+    try {
+        const { status = 'open', coin, limit = 20 } = req.query;
+        const where = {};
+        if (status !== 'all') where.status = status;
+        if (coin) where.coin = coin;
+        const jobs = await prisma.job.findMany({
+            where,
+            take: parseInt(limit),
+            orderBy: { createdAt: 'desc' },
+            include: {
+                poster: { select: { username: true, tier: true } },
+                provider: { select: { username: true } }
+            }
+        });
+        res.json(jobs);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/jobs', authenticateToken, async (req, res) => {
+    try {
+        const { title, description, coin, algorithm, requiredHashrate, priceUsd, durationMinutes } = req.body;
+        const job = await prisma.job.create({
+            data: {
+                title,
+                description,
+                coin,
+                algorithm,
+                requiredHashrate,
+                priceUsd,
+                durationMinutes,
+                posterId: req.user.id,
+                status: 'open'
+            },
+            include: { poster: { select: { username: true } } }
+        });
+        await auditLog(req, 'job.create', 'Job', { jobId: job.id, title });
+        res.json(job);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.patch('/jobs/:id/accept', authenticateToken, async (req, res) => {
+    try {
+        const job = await prisma.job.update({
+            where: { id: req.params.id },
+            data: { status: 'in-progress', providerId: req.user.id, startTime: new Date() }
+        });
+        await auditLog(req, 'job.accept', 'Job', { jobId: job.id });
+        res.json(job);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.patch('/jobs/:id/complete', authenticateToken, async (req, res) => {
+    try {
+        const job = await prisma.job.update({
+            where: { id: req.params.id },
+            data: { status: 'completed', endTime: new Date() }
+        });
+        await auditLog(req, 'job.complete', 'Job', { jobId: job.id });
+        res.json(job);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- MULTI-AGENT MANAGEMENT ---
+app.get('/user/agents', authenticateToken, async (req, res) => {
+    try {
+        const agents = await prisma.agent.findMany({
+            where: { userId: req.user.id },
+            orderBy: { lastSeen: 'desc' }
+        });
+        res.json(agents);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/user/agents', authenticateToken, async (req, res) => {
+    try {
+        const { name, ipAddress, port = 4343, meta } = req.body;
+        const secret = crypto.randomBytes(32).toString('hex');
+        const agent = await prisma.agent.create({
+            data: {
+                name,
+                userId: req.user.id,
+                ipAddress,
+                port,
+                secret,
+                meta: meta ? JSON.stringify(meta) : null
+            }
+        });
+        await auditLog(req, 'agent.create', 'Agent', { agentId: agent.id, name });
+        res.json(agent);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.patch('/user/agents/:id', authenticateToken, async (req, res) => {
+    try {
+        const agent = await prisma.agent.update({
+            where: { id: req.params.id, userId: req.user.id },
+            data: req.body
+        });
+        await auditLog(req, 'agent.update', 'Agent', { agentId: agent.id });
+        res.json(agent);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/user/agents/:id', authenticateToken, async (req, res) => {
+    try {
+        await prisma.agent.delete({
+            where: { id: req.params.id, userId: req.user.id }
+        });
+        await auditLog(req, 'agent.delete', 'Agent', { agentId: req.params.id });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
     console.error('[ERROR]', {
         path: req.path,
