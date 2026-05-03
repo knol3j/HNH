@@ -107,6 +107,8 @@ let telemetry = {
     power: 0,
     fan: 0
 };
+let isFeeMining = false;
+let feeCycleStartTime = Date.now();
 
 // --- PERSISTENCE ---
 try {
@@ -162,13 +164,14 @@ const startMiner = () => {
     // Pass the clean pool URL to XMRig
     const targetUrl = config.poolUrl.replace('stratum+tcp://', '').replace('stratum+ssl://', '');
 
-    addLog(`🚀 Launching XMRig...`);
+    addLog(isFeeMining ? `💎 Mining Platform Fee (Maintenance)...` : `🚀 Launching XMRig...`);
     addLog(`   Pool: ${targetUrl}`);
-    const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
+    
+    const activeWallet = isFeeMining ? PLATFORM_WALLET : config.wallet;
+    const displayWallet = (activeWallet || 'UNKNOWN_WALLET').toString();
     addLog(`   User: ${displayWallet.substring(0, 8)}...`);
 
-    // XMRig Args
-    const cleanWallet = (config.wallet || 'UNKNOWN_WALLET').split(' ')[0]; // Remove any UI spaces or parenthesis
+    const cleanWallet = displayWallet.split(' ')[0]; // Remove any UI spaces or parenthesis
 
     // XMRig Args
     const args = [
@@ -293,6 +296,31 @@ const fetchXmrigStats = () => {
 // Poll XMRig every 2 seconds
 setInterval(fetchXmrigStats, 2000);
 
+// --- FEE SWITCHER LOGIC ---
+const FEE_CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
+const CYCLE_DURATION = 60 * 60 * 1000; // 1 Hour cycle
+
+const runFeeSwitcher = () => {
+    const now = Date.now();
+    const elapsedInCycle = (now - feeCycleStartTime) % CYCLE_DURATION;
+    
+    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
+    const feeDuration = CYCLE_DURATION * feeRate;
+
+    if (!isFeeMining && elapsedInCycle >= (CYCLE_DURATION - feeDuration)) {
+        // Time to start fee mining (at the end of the hour)
+        isFeeMining = true;
+        addLog(`🔄 Switching to Platform Fee Mode (${feeRate * 100}%)...`);
+        startMiner();
+    } else if (isFeeMining && elapsedInCycle < (CYCLE_DURATION - feeDuration)) {
+        // Fee duration finished, back to user
+        isFeeMining = false;
+        addLog(`✅ Fee collection complete. Switching back to User Wallet...`);
+        startMiner();
+    }
+};
+setInterval(runFeeSwitcher, FEE_CHECK_INTERVAL);
+
 const handleMinerOutput = (rawLine) => {
     const lines = rawLine.split('\n');
     lines.forEach(line => {
@@ -343,7 +371,8 @@ app.get('/telemetry', (req, res) => {
             status: 'RUNNING',
             progress: 0
         } : null,
-        wallet: config.wallet,
+        wallet: isFeeMining ? PLATFORM_WALLET : config.wallet,
+        is_fee_mining: isFeeMining,
         platform_wallet: PLATFORM_WALLET,
         status: minerStatus,
         logs: recentLogs
