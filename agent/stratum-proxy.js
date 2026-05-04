@@ -4,42 +4,88 @@
  * This proxy sits between miners and the upstream pool.
  * Miners connect to this proxy -> Proxy connects to the real pool.
  * 
- * Benefits:
- * 1. Aggregate hashrate under one account (better pool stats)
- * 2. Apply platform fee before forwarding shares
- * 3. Log all traffic for analytics
+ * Inspired by MinerGate's approach: simple, reliable, with automatic failover.
  */
 
 import net from 'net';
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const PROXY_PORT = 3333;
-const DEFAULT_UPSTREAM_HOST = 'xmr.2miners.com';
-const DEFAULT_UPSTREAM_PORT = 2222;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DEFAULT_PROXY_PORT = 3333;
+const STATS_FILE = path.join(__dirname, 'proxy_stats.json');
 
 class StratumProxy extends EventEmitter {
-    constructor(upstreamHost, upstreamPort, platformWallet) {
+    constructor(options = {}) {
         super();
-        this.upstreamHost = upstreamHost;
-        this.upstreamPort = upstreamPort;
-        this.platformWallet = platformWallet;
-        this.clients = new Map(); // worker_id -> { minerSocket, upstreamSocket }
+        this.proxyPort = options.proxyPort || DEFAULT_PROXY_PORT;
+        this.upstreamHost = options.upstreamHost || 'xmr.2miners.com';
+        this.upstreamPort = options.upstreamPort || 2222;
+        this.platformWallet = options.platformWallet || null;
         this.stats = {
             totalShares: 0,
             feeShares: 0,
-            activeWorkers: 0
+            activeWorkers: 0,
+            startTime: Date.now()
         };
+        this.clients = new Map();
+        this.upstreamSocket = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 10;
     }
 
     start() {
+        // Load persisted stats
+        this.loadStats();
+
         const server = net.createServer((minerSocket) => {
             this.handleMinerConnection(minerSocket);
         });
 
-        server.listen(PROXY_PORT, () => {
-            console.log(`[PROXY] Stratum Proxy listening on port ${PROXY_PORT}`);
+        server.on('error', (err) => {
+            console.error(`[PROXY] Server error: ${err.message}`);
+            this.scheduleReconnect();
+        });
+
+        server.listen(this.proxyPort, () => {
+            console.log(`[PROXY] Stratum Proxy listening on port ${this.proxyPort}`);
             console.log(`[PROXY] Forwarding to ${this.upstreamHost}:${this.upstreamPort}`);
         });
+
+        this.server = server;
+        this.saveStats();
+    }
+
+    loadStats() {
+        try {
+            if (fs.existsSync(STATS_FILE)) {
+                const data = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+                this.stats = { ...this.stats, ...data };
+            }
+        } catch (e) {
+            console.error('[PROXY] Failed to load stats:', e.message);
+        }
+    }
+
+    saveStats() {
+        try {
+            fs.writeFileSync(STATS_FILE, JSON.stringify(this.stats));
+        } catch (e) {
+            // Ignore save errors
+        }
+    }
+
+    scheduleReconnect() {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            const delay = Math.min(5000 * this.reconnectAttempts, 30000);
+            console.log(`[PROXY] Reconnecting in ${delay / 1000}s (attempt ${this.reconnectAttempts})`);
+            setTimeout(() => this.start(), delay);
+        }
     }
 
     handleMinerConnection(minerSocket) {
@@ -47,80 +93,105 @@ class StratumProxy extends EventEmitter {
         console.log(`[PROXY] New miner connected: ${workerId}`);
         this.stats.activeWorkers++;
 
-        // Connect to upstream pool
-        const upstreamSocket = new net.Socket();
-        upstreamSocket.connect(this.upstreamPort, this.upstreamHost);
+        // Connect to upstream pool with retry logic
+        this.connectUpstream((upstreamSocket) => {
+            if (!upstreamSocket) {
+                minerSocket.end();
+                return;
+            }
 
-        this.clients.set(workerId, { minerSocket, upstreamSocket });
+            this.clients.set(workerId, { minerSocket, upstreamSocket });
+            console.log(`[PROXY] Connected ${workerId} to upstream pool`);
 
-        // Miner -> Proxy -> Pool
-        minerSocket.on('data', (data) => {
-            const lines = data.toString().split('\n').filter(l => l.trim());
-            lines.forEach(line => {
-                try {
-                    const msg = JSON.parse(line);
-                    console.log(`[M->P] ${workerId}: ${msg.method || 'response'}`);
-
-                    // Rewrite wallet for authorize (optional: use platform wallet for poolside aggregation)
-                    // For now, pass through as-is
-                    upstreamSocket.write(line + '\n');
-                } catch (e) {
-                    upstreamSocket.write(line + '\n');
-                }
-            });
-        });
-
-        // Pool -> Proxy -> Miner
-        upstreamSocket.on('data', (data) => {
-            const lines = data.toString().split('\n').filter(l => l.trim());
-            lines.forEach(line => {
-                try {
-                    const msg = JSON.parse(line);
-                    console.log(`[P->M] ${workerId}: ${msg.method || 'response'}`);
-
-                    // Track accepted shares
-                    if (msg.result === true && !msg.method) {
-                        this.stats.totalShares++;
-                        this.stats.feeShares += 0.02; // 2% fee
-                        console.log(`[PROXY] Share accepted! Total: ${this.stats.totalShares}`);
+            // Miner -> Proxy -> Pool
+            minerSocket.on('data', (data) => {
+                const lines = data.toString().split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    try {
+                        const msg = JSON.parse(line);
+                        upstreamSocket.write(line + '\n');
+                    } catch (e) {
+                        upstreamSocket.write(line + '\n');
                     }
-
-                    minerSocket.write(line + '\n');
-                } catch (e) {
-                    minerSocket.write(line + '\n');
-                }
+                });
             });
-        });
 
-        // Cleanup
-        minerSocket.on('close', () => {
-            console.log(`[PROXY] Miner disconnected: ${workerId}`);
-            upstreamSocket.destroy();
-            this.clients.delete(workerId);
-            this.stats.activeWorkers--;
-        });
+            // Pool -> Proxy -> Miner
+            upstreamSocket.on('data', (data) => {
+                const lines = data.toString().split('\n').filter(l => l.trim());
+                lines.forEach(line => {
+                    try {
+                        const msg = JSON.parse(line);
+                        // Track accepted shares for telemetry
+                        if (msg.result === true && !msg.id && !msg.method) {
+                            this.stats.totalShares++;
+                            this.saveStats();
+                        }
+                        minerSocket.write(line + '\n');
+                    } catch (e) {
+                        minerSocket.write(line + '\n');
+                    }
+                });
+            });
 
-        minerSocket.on('error', (err) => {
-            console.error(`[PROXY] Miner error: ${err.message}`);
-        });
+            const cleanup = () => {
+                console.log(`[PROXY] Miner disconnected: ${workerId}`);
+                upstreamSocket.destroy();
+                this.clients.delete(workerId);
+                this.stats.activeWorkers = Math.max(0, this.stats.activeWorkers - 1);
+            };
 
-        upstreamSocket.on('error', (err) => {
-            console.error(`[PROXY] Upstream error: ${err.message}`);
-            minerSocket.end();
-        });
-
-        upstreamSocket.on('close', () => {
-            minerSocket.end();
+            minerSocket.on('close', cleanup);
+            minerSocket.on('error', cleanup);
+            upstreamSocket.on('error', cleanup);
         });
     }
 
+    connectUpstream(callback) {
+        const upstreamSocket = new net.Socket();
+        
+        upstreamSocket.setTimeout(10000);
+        
+        upstreamSocket.connect(this.upstreamPort, this.upstreamHost, () => {
+            this.reconnectAttempts = 0;
+            callback(upstreamSocket);
+        });
+
+        upstreamSocket.on('error', (err) => {
+            console.error(`[PROXY] Upstream connection error: ${err.message}`);
+            callback(null);
+        });
+
+        upstreamSocket.on('timeout', () => {
+            console.error('[PROXY] Upstream connection timeout');
+            upstreamSocket.destroy();
+            callback(null);
+        });
+    }
+
+    stop() {
+        if (this.server) {
+            this.server.close();
+        }
+        for (const { upstreamSocket } of this.clients.values()) {
+            upstreamSocket.destroy();
+        }
+        this.clients.clear();
+    }
+
     getStats() {
-        return this.stats;
+        return {
+            ...this.stats,
+            uptime: Date.now() - this.stats.startTime,
+            activeWorkers: this.stats.activeWorkers
+        };
     }
 }
 
 // Start proxy if run directly
-const proxy = new StratumProxy(DEFAULT_UPSTREAM_HOST, DEFAULT_UPSTREAM_PORT, null);
-proxy.start();
+if (import.meta.url === `file://${process.argv[1]}`) {
+    const proxy = new StratumProxy();
+    proxy.start();
+}
 
 export default StratumProxy;

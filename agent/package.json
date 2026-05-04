@@ -1,11 +1,12 @@
 {
   "name": "agent",
   "version": "1.0.0",
-  "description": "HNH Mining Agent Server",
+  "description": "HNH Mining Agent - MinerGate-style simple, reliable mining",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "server": "node server.js",
+    "health": "node health_monitor.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"

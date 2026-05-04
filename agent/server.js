@@ -1,10 +1,11 @@
-
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
+import http from 'http';
+import StratumProxy from './stratum-proxy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +22,6 @@ const allowedOrigins = [
 ];
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or local file:// requests)
         if (!origin || origin === 'null' || origin.startsWith('file://')) return callback(null, true);
         if (allowedOrigins.indexOf(origin) === -1) {
             console.error(`[CORS] Blocked origin: ${origin}`);
@@ -32,15 +32,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// GUI: Serve Static Files (Public)
+// GUI: Serve Static Files
 const GUI_PATH = path.join(__dirname, 'gui');
 app.use(express.static(GUI_PATH));
 
 // SECURITY: Auth Middleware
 const AGENT_SECRET = process.env.AGENT_SECRET || "HNH_LOCAL_AGENT_SECRET";
 const requireAuth = (req, res, next) => {
-    // Skip auth for Telemetry (read-only) to allow dashboard polling without complex handshake
-    // Also skip /meta for GUI initialization
+    // Skip auth for Telemetry and meta endpoints
     if (req.method === 'GET' && (req.path === '/telemetry' || req.path === '/meta')) return next();
 
     const authHeader = req.headers.authorization;
@@ -54,45 +53,36 @@ const requireAuth = (req, res, next) => {
     }
 };
 
-// Apply Auth to all routes (GET /telemetry is excepted inside)
 app.use(requireAuth);
 
+// --- CONFIGURATION ---
 const PORT = 4343;
-const MINER_BIN = path.join(__dirname, 'bin', process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
+const BIN_DIR = path.join(__dirname, 'bin');
+const MINER_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// --- PLATFORM FEE CONFIG ---
-const PLATFORM_FEE_TIERS = {
+// Platform fee tiers
+const PLATFORM_FEE = {
     free: 0.02,      // 2%
     pro: 0.01,       // 1%
     enterprise: 0.005 // 0.5%
 };
-const PLATFORM_WALLET = 'Rqr113e2e3...'; // Platform owner wallet (RVN example)
 
-// --- CONSTANTS ---
+// Pool configuration (MinerGate-style: reliable, well-known pools)
 const COIN_POOLS = {
-    XMR: 'stratum+tcp://xmr.2miners.com:2222',
-    RVN: 'stratum+tcp://rvn.2miners.com:6060', // GPU
-    ETC: 'stratum+tcp://etc.herominers.com:10161', // GPU
-    ERG: 'stratum+tcp://de.ergo.herominers.com:11800', // GPU
-    KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
+    XMR: 'xmr.2miners.com:2222',
+    RVN: 'rvn.2miners.com:6060',
+    ETC: 'etc.herominers.com:10161',
+    ERG: 'de.ergo.herominers.com:11800',
+    KAS: 'pool.woolypooly.com:3112'
 };
 
 // --- STATE ---
-// --- STATE ---
-let currentCoin = 'XMR'; // Defined early for usage in persistence loading
-
 let config = {
-    wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
-    wallets: {
-        XMR: 'Rqr113e2e3... (User Wallet)',
-        ETC: '0x19511e52720739f6F47E74221cBCd746BE387535',
-        ERG: '9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV',
-        KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek'
-    },
-    poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
-    algorithm: 'kawpow',
-    mode: 'cpu' // cpu or gpu
+    wallet: '',
+    wallets: { XMR: '', RVN: '', ETC: '', ERG: '', KAS: '' },
+    mode: 'cpu',
+    password: 'x'
 };
 
 let minerProcess = null;
@@ -101,376 +91,353 @@ let recentLogs = [];
 let totalShares = 0;
 let feeShares = 0;
 let userTier = 'free';
+let currentCoin = 'XMR';
+let isAutoProfitSwitch = false;
+
 let telemetry = {
     hashrate: 0,
     temp: 0,
     power: 0,
     fan: 0
 };
-let isFeeMining = false;
-let feeCycleStartTime = Date.now();
+
+let proxy = null;
 
 // --- PERSISTENCE ---
-try {
-    if (fs.existsSync(DATA_FILE)) {
-        const rawData = fs.readFileSync(DATA_FILE, 'utf8').replace(/^\uFEFF/, '');
-        const data = JSON.parse(rawData);
-        totalShares = data.totalShares || 0;
-        feeShares = data.feeShares || 0;
-
-        // Load Config from setup script
-        if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
-        if (data.miningMode) config.mode = data.miningMode;
-
-        // SMART DEFAULTS: switch coin based on mode
-        if (config.mode === 'gpu') {
-            currentCoin = 'RVN';
-            config.poolUrl = COIN_POOLS.RVN;
-            config.algorithm = 'kawpow';
-        } else {
-            currentCoin = 'XMR';
-            config.poolUrl = COIN_POOLS.XMR;
-            config.algorithm = 'rx/0';
+function loadConfig() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const raw = fs.readFileSync(DATA_FILE, 'utf8').replace(/^\uFEFF/, '');
+            const data = JSON.parse(raw);
+            totalShares = data.totalShares || 0;
+            feeShares = data.feeShares || 0;
+            
+            if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
+            if (data.miningMode) config.mode = data.miningMode;
+            if (data.password) config.password = data.password;
+            
+            // Set wallet for current coin
+            if (config.mode === 'gpu') {
+                currentCoin = 'RVN';
+            } else {
+                currentCoin = 'XMR';
+            }
+            config.wallet = config.wallets[currentCoin] || '';
         }
-
-        // Set initial wallet if available
-        if (config.wallets[currentCoin]) {
-            config.wallet = config.wallets[currentCoin];
-        } else {
-            // Fallback to first available wallet or generic placeholder
-            config.wallet = Object.values(config.wallets).find(w => w) || 'UNKNOWN_WALLET';
-        }
+    } catch (e) {
+        console.error('[CONFIG] Failed to load config:', e.message);
     }
-} catch (e) { console.error(e); }
+}
 
-const saveStats = () => {
-    try { fs.writeFileSync(DATA_FILE, JSON.stringify({ totalShares, feeShares })); } catch (e) { }
-};
+function saveStats() {
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify({ 
+            totalShares, 
+            feeShares, 
+            wallets: config.wallets,
+            miningMode: config.mode,
+            password: config.password
+        }));
+    } catch (e) {}
+}
 
 // --- LOGGING ---
-const addLog = (msg) => {
+function addLog(msg) {
     const timestamp = new Date().toLocaleTimeString();
+    const entry = `[${timestamp}] ${msg}`;
     console.log(`[AGENT] ${msg}`);
-    recentLogs.unshift(`[${timestamp}] ${msg}`);
+    recentLogs.unshift(entry);
     if (recentLogs.length > 50) recentLogs.pop();
-};
+}
 
-// --- MINER MANAGER ---
-const startMiner = () => {
-    if (minerProcess) {
-        killMiner();
-    }
+// --- MINER MANAGEMENT (MinerGate-style: simple and reliable) ---
+const STARTUP_TIMEOUT = 30000;
 
-    // Pass the clean pool URL to XMRig
-    const targetUrl = config.poolUrl.replace('stratum+tcp://', '').replace('stratum+ssl://', '');
-
-    addLog(isFeeMining ? `💎 Mining Platform Fee (Maintenance)...` : `🚀 Launching XMRig...`);
-    addLog(`   Pool: ${targetUrl}`);
+function buildXmrigConfig() {
+    const poolUrl = COIN_POOLS[currentCoin] || COIN_POOLS.XMR;
+    const poolHost = poolUrl.split(':')[0];
+    const poolPort = parseInt(poolUrl.split(':')[1]) || 2222;
     
-    const activeWallet = isFeeMining ? PLATFORM_WALLET : config.wallet;
-    const displayWallet = (activeWallet || 'UNKNOWN_WALLET').toString();
-    addLog(`   User: ${displayWallet.substring(0, 8)}...`);
+    return {
+        autosave: true,
+        cpu: {
+            enabled: config.mode === 'cpu',
+            hugePages: true
+        },
+        cuda: {
+            enabled: config.mode === 'gpu' && fs.existsSync(path.join(BIN_DIR, 'xmrig-cuda.dll'))
+        },
+        opencl: {
+            enabled: config.mode === 'gpu'
+        },
+        donateLevel: 1,
+        pools: [{
+            url: poolUrl,
+            user: config.wallet || 'MINERGATE_STYLE_MINING',
+            pass: config.password || 'x',
+            keepalive: true
+        }]
+    };
+}
 
-    const cleanWallet = displayWallet.split(' ')[0]; // Remove any UI spaces or parenthesis
+function writeXmrigConfig() {
+    const configPath = path.join(BIN_DIR, 'config.json');
+    const xmrigConfig = buildXmrigConfig();
+    fs.writeFileSync(configPath, JSON.stringify(xmrigConfig, null, 2));
+}
 
-    // XMRig Args
-    const args = [
-        '-o', targetUrl,
-        '-u', cleanWallet,
-        '-p', config.password || 'x',
-        '--no-color',
-        '--api-worker-id', 'AntigravityAgent',
-        '--http-host', '127.0.0.1', // SECURITY: Bind to localhost only
-        '--http-port', '4444', // Enable HTTP API for telemetry
-        '--http-access-token', 'antigravity_secret',
-        '--http-no-restricted',
-        '--donate-level', '1'
-    ];
-
-    // SECURITY: Input Validation
-    if (config.poolUrl && !config.poolUrl.match(/^(stratum\+tcp|ssl):\/\/[a-zA-Z0-9.:-]+$/)) {
-        addLog(`❌ Security: Invalid Pool URL detected: ${config.poolUrl}`);
-        return;
-    }
-    if (config.wallet && !config.wallet.match(/^[a-zA-Z0-9]+$/)) {
-        // Basic alphanumeric check - might need adjustment for specific coin formats
-        // but prevents obvious shell injection chars like ; | &
-        // addLog(`⚠️ Warning: Wallet contains special characters`); 
-    }
-
-    // Add Algorithm if specified (Critical for GPU switching)
-    if (config.algorithm) {
-        if ((config.algorithm === 'kawpow' || config.algorithm === 'etchash') && config.mode === 'gpu') {
-            args.push('--cuda'); // Try to enable CUDA if available (user must have plugin)
-            args.push('--opencl'); // Try OpenCL
-        }
-        args.push('-a', config.algorithm);
+function startMiner() {
+    // Kill existing miner
+    if (minerProcess) {
+        try {
+            minerProcess.kill();
+            minerProcess = null;
+        } catch (e) {}
     }
 
-    // Algorithm override if needed (XMRig auto-detects mostly)
-    // if (config.algorithm) args.push('-a', config.algorithm);
+    if (!fs.existsSync(MINER_BIN)) {
+        addLog('Miner binary not found. Run setup script first.');
+        minerStatus = 'ERROR';
+        return false;
+    }
+
+    // Write config file for xmrig (MinerGate approach)
+    writeXmrigConfig();
+
+    addLog(`Starting ${config.mode === 'gpu' ? 'GPU' : 'CPU'} miner for ${currentCoin}...`);
 
     minerStatus = 'STARTING';
-
+    
     try {
-        minerProcess = spawn(MINER_BIN, args);
+        const args = [
+            '-c', path.join(BIN_DIR, 'config.json'),
+            '--no-color',
+            '--http-host', '127.0.0.1',
+            '--http-port', '4444',
+            '--http-access-token', AGENT_SECRET,
+            '--http-no-restricted'
+        ];
+
+        minerProcess = spawn(MINER_BIN, args, {
+            cwd: BIN_DIR,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        let startupTimer = setTimeout(() => {
+            if (minerStatus === 'STARTING') {
+                addLog('Miner startup timeout - checking connection...');
+            }
+        }, STARTUP_TIMEOUT);
 
         minerProcess.stdout.on('data', (data) => {
-            const line = data.toString().trim();
-            handleMinerOutput(line);
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                addLog(line.trim());
+                
+                // Parse accepted shares
+                if (line.toLowerCase().includes('accepted')) {
+                    totalShares++;
+                    const feeRate = PLATFORM_FEE[userTier] || PLATFORM_FEE.free;
+                    feeShares += feeRate;
+                    saveStats();
+                }
+            });
         });
 
         minerProcess.stderr.on('data', (data) => {
-            console.error(`[XMRIG ERR] ${data}`);
             addLog(`ERR: ${data.toString().trim()}`);
         });
 
+        minerProcess.on('error', (err) => {
+            clearTimeout(startupTimer);
+            addLog(`Miner error: ${err.message}`);
+            minerStatus = 'ERROR';
+        });
+
         minerProcess.on('close', (code) => {
-            addLog(`⚠️ Miner exitted with code ${code}`);
+            clearTimeout(startupTimer);
+            addLog(`Miner exited with code ${code}`);
             minerStatus = 'OFFLINE';
             telemetry.hashrate = 0;
             minerProcess = null;
+            
+            // Auto-restart on unexpected exit (MinerGate behavior)
+            if (code !== 0 && code !== null) {
+                setTimeout(() => {
+                    if (minerStatus === 'OFFLINE') {
+                        addLog('Attempting miner restart...');
+                        startMiner();
+                    }
+                }, 5000);
+            }
         });
 
         minerStatus = 'MINING';
+        return true;
     } catch (e) {
-        addLog(`❌ Failed to spawn miner: ${e.message}`);
+        addLog(`Failed to start miner: ${e.message}`);
         minerStatus = 'ERROR';
+        return false;
     }
-};
+}
 
-const killMiner = () => {
+function stopMiner() {
     if (minerProcess) {
-        minerProcess.kill();
+        try {
+            minerProcess.kill('SIGTERM');
+            setTimeout(() => {
+                if (minerProcess) {
+                    minerProcess.kill('SIGKILL');
+                }
+            }, 3000);
+        } catch (e) {}
         minerProcess = null;
     }
-};
+    minerStatus = 'OFFLINE';
+}
 
 // --- TELEMETRY POLLING ---
-import http from 'http';
-
-const fetchXmrigStats = () => {
+function fetchTelemetry() {
     if (minerStatus !== 'MINING') return;
 
-    const options = {
+    const req = http.request({
         hostname: '127.0.0.1',
         port: 4444,
         path: '/2/summary',
         method: 'GET',
-        headers: {
-            'Authorization': 'Bearer antigravity_secret'
-        }
-    };
-
-    const req = http.request(options, (res) => {
+        headers: { 'Authorization': `Bearer ${AGENT_SECRET}` }
+    }, (res) => {
         let data = '';
-        res.on('data', (chunk) => data += chunk);
+        res.on('data', chunk => data += chunk);
         res.on('end', () => {
             try {
                 const stats = JSON.parse(data);
-
-                // Hashrate (Highest of all threads)
                 telemetry.hashrate = stats.hashrate?.total?.[0] || 0;
-
-                // Hardware Stats (GPU/CPU)
-                // XMRig puts sensors in different places depending on backend
+                
                 const health = stats.health || [];
                 if (health.length > 0) {
-                    // Average temp/power if multiple devices
-                    const avgTemp = health.reduce((acc, h) => acc + (h.temp || 0), 0) / health.length;
-                    const totalPower = health.reduce((acc, h) => acc + (h.power || 0), 0);
-                    const avgFan = health.reduce((acc, h) => acc + (h.fan || 0), 0) / health.length;
-
-                    telemetry.temp = avgTemp;
-                    telemetry.power = totalPower;
-                    telemetry.fan = avgFan;
+                    telemetry.temp = health.reduce((a, h) => a + (h.temp || 0), 0) / health.length;
+                    telemetry.power = health.reduce((a, h) => a + (h.power || 0), 0);
+                    telemetry.fan = health.reduce((a, h) => a + (h.fan || 0), 0) / health.length;
                 }
-            } catch (e) { }
+            } catch (e) {}
         });
     });
 
-    req.on('error', (e) => { /* Silent fail if miner busy/restarting */ });
+    req.on('error', () => {});
+    req.setTimeout(2000, () => req.destroy());
     req.end();
-};
+}
 
-// Poll XMRig every 2 seconds
-setInterval(fetchXmrigStats, 2000);
+setInterval(fetchTelemetry, 2000);
 
-// --- FEE SWITCHER LOGIC ---
-const FEE_CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
-const CYCLE_DURATION = 60 * 60 * 1000; // 1 Hour cycle
-
-const runFeeSwitcher = () => {
-    const now = Date.now();
-    const elapsedInCycle = (now - feeCycleStartTime) % CYCLE_DURATION;
-    
-    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
-    const feeDuration = CYCLE_DURATION * feeRate;
-
-    if (!isFeeMining && elapsedInCycle >= (CYCLE_DURATION - feeDuration)) {
-        // Time to start fee mining (at the end of the hour)
-        isFeeMining = true;
-        addLog(`🔄 Switching to Platform Fee Mode (${feeRate * 100}%)...`);
-        startMiner();
-    } else if (isFeeMining && elapsedInCycle < (CYCLE_DURATION - feeDuration)) {
-        // Fee duration finished, back to user
-        isFeeMining = false;
-        addLog(`✅ Fee collection complete. Switching back to User Wallet...`);
-        startMiner();
+// --- STRATUM PROXY ---
+function startProxy() {
+    if (!proxy) {
+        proxy = new StratumProxy({
+            proxyPort: 3333,
+            upstreamHost: COIN_POOLS.XMR.split(':')[0],
+            upstreamPort: parseInt(COIN_POOLS.XMR.split(':')[1])
+        });
+        proxy.start();
     }
-};
-setInterval(runFeeSwitcher, FEE_CHECK_INTERVAL);
+}
 
-const handleMinerOutput = (rawLine) => {
-    const lines = rawLine.split('\n');
-    lines.forEach(line => {
-        if (!line.trim()) return;
+// Load config and start
+loadConfig();
 
-        // Passthrough Log (Verbose - All output)
-        addLog(line);
-
-        // PARSE: Accepted Share
-        if (line.includes('accepted')) {
-            totalShares++;
-            const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
-            feeShares += feeRate;
-            saveStats();
-        }
-    });
-};
-
-// Start on Load
+// Start miner if binary exists
 if (fs.existsSync(MINER_BIN)) {
     startMiner();
 } else {
-    addLog("❌ Miner binary not found. Run 'setup_miner.sh' first.");
+    addLog('Miner binary not found. Run setup_miner.sh or setup_miner_windows.ps1 first.');
 }
 
-// --- API ---
-app.get('/telemetry', (req, res) => {
-    const feeRate = PLATFORM_FEE_TIERS[userTier] || PLATFORM_FEE_TIERS.free;
-    const grossShares = totalShares;
-    const feeDeducted = feeShares;
-    const netShares = grossShares - feeDeducted;
+// Start stratum proxy (optional: for remote miners)
+startProxy();
 
+// --- API ENDPOINTS ---
+app.get('/telemetry', (req, res) => {
+    const feeRate = PLATFORM_FEE[userTier] || PLATFORM_FEE.free;
+    
     res.json({
         gpu_temp: telemetry.temp,
         gpu_util: minerStatus === 'MINING' ? 100 : 0,
         fan_speed: telemetry.fan,
         power_draw: telemetry.power,
-        vram_used: 0, // Need external tool for this usually
-        hashrate: telemetry.hashrate / 1000000,
-        verified_shares: netShares, // Net after fee
-        gross_shares: grossShares,
-        fee_deducted: feeDeducted,
-        fee_rate: feeRate * 100, // As percentage
+        hashrate: telemetry.hashrate,
+        verified_shares: totalShares,
+        gross_shares: totalShares,
+        fee_deducted: feeShares,
+        fee_rate: feeRate * 100,
         user_tier: userTier,
         active_job: minerStatus === 'MINING' ? {
-            id: 'xmrig-job',
-            title: `Mining ${config.algorithm || 'RandomX'}`,
+            id: 'mining-job',
+            title: `Mining ${currentCoin}`,
             status: 'RUNNING',
             progress: 0
         } : null,
-        wallet: isFeeMining ? PLATFORM_WALLET : config.wallet,
-        is_fee_mining: isFeeMining,
-        platform_wallet: PLATFORM_WALLET,
+        wallet: config.wallet,
         status: minerStatus,
         logs: recentLogs
     });
 });
 
 app.post('/config', (req, res) => {
-    const { wallet, poolUrl, password, tier } = req.body;
+    const { wallet, mode, password, tier } = req.body;
     let changed = false;
 
     if (wallet && wallet !== config.wallet) {
         config.wallet = wallet;
-        // PERSISTENCE: Save to specific coin slot
-        if (currentCoin) {
-            config.wallets[currentCoin] = wallet;
+        if (currentCoin) config.wallets[currentCoin] = wallet;
+        changed = true;
+    }
+    
+    if (mode && mode !== config.mode) {
+        config.mode = mode;
+        if (mode === 'gpu') {
+            currentCoin = 'RVN';
+        } else {
+            currentCoin = 'XMR';
         }
+        config.wallet = config.wallets[currentCoin] || '';
         changed = true;
     }
-    if (poolUrl && poolUrl !== config.poolUrl) {
-        config.poolUrl = poolUrl;
-        changed = true;
-    }
+    
+    if (password) config.password = password;
+    
     if (tier && ['free', 'pro', 'enterprise'].includes(tier)) {
         userTier = tier;
-        addLog(`Tier updated to: ${tier} (${PLATFORM_FEE_TIERS[tier] * 100}% fee)`);
+        addLog(`Tier updated to: ${tier}`);
     }
 
     if (changed) {
-        addLog('🔄 Restarting miner with new config...');
+        saveStats();
         startMiner();
     }
+    
     res.json({ success: true });
-});
-
-// --- AUTO-SWITCH ---
-let autoSwitchEnabled = false;
-let autoSwitchInterval = null;
-// currentCoin moved to top state
-
-// Simplified coin->pool mapping
-// COIN_POOLS defined at top
-
-app.post('/auto-switch', (req, res) => {
-    const { enabled } = req.body;
-
-    if (enabled && !autoSwitchEnabled) {
-        autoSwitchEnabled = true;
-        addLog('🔄 Auto-Profit Switching ENABLED');
-
-        // Check profitability every 5 minutes
-        autoSwitchInterval = setInterval(async () => {
-            try {
-                // Fetch profitability from frontend service (simplified for agent)
-                // In production, this would call an API or use embedded logic
-                addLog('📊 Checking profitability...');
-                // For now, just log - actual switching handled by frontend
-            } catch (e) {
-                addLog(`Auto-switch error: ${e.message}`);
-            }
-        }, 5 * 60 * 1000);
-
-    } else if (!enabled && autoSwitchEnabled) {
-        autoSwitchEnabled = false;
-        if (autoSwitchInterval) {
-            clearInterval(autoSwitchInterval);
-            autoSwitchInterval = null;
-        }
-        addLog('⏸️ Auto-Profit Switching DISABLED');
-    }
-
-    res.json({ success: true, autoSwitchEnabled });
 });
 
 app.post('/switch-coin', (req, res) => {
     const { coin } = req.body;
-
+    
     if (!COIN_POOLS[coin]) {
         return res.status(400).json({ error: 'Unknown coin' });
     }
-
+    
     currentCoin = coin;
-    config.poolUrl = COIN_POOLS[coin];
-    // Switch wallet if available
     if (config.wallets[coin]) {
         config.wallet = config.wallets[coin];
     }
-
-    addLog(`💱 Switching to ${coin}...`);
+    
+    addLog(`Switching to ${coin}`);
     startMiner();
-
+    
     res.json({ success: true, coin });
 });
 
-app.get('/auto-switch', (req, res) => {
-    res.json({ enabled: autoSwitchEnabled, currentCoin });
-});
-
-// GUI: Metadata Endpoint
 app.get('/meta', (req, res) => {
     res.json({
         coins: Object.keys(COIN_POOLS),
@@ -481,6 +448,11 @@ app.get('/meta', (req, res) => {
     });
 });
 
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', miner: minerStatus });
+});
+
 app.listen(PORT, () => {
-    console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
+    console.log(`Native Miner Agent running on http://localhost:${PORT}`);
 });
