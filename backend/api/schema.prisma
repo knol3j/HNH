@@ -34,6 +34,10 @@ model User {
   statsSnapshots  StatsSnapshot[]
   achievements    UserAchievement[]
   userStats       UserStats?
+  postedJobs      Job[]             @relation("PostedJobs")
+  claimedJobs     Job[]             @relation("ClaimedJobs")
+  agents          Agent[]
+  payouts         Payout[]
 }
 
 model UserWallet {
@@ -215,9 +219,9 @@ model Job {
   durationMinutes  Int?
   status           String   @default("open") // open, assigned, in-progress, completed, disputed, cancelled
   posterId         String
-  poster           User     @relation(fields: [posterId], references: [id])
+  poster           User     @relation("PostedJobs", fields: [posterId], references: [id])
   providerId       String?
-  provider         User?    @relation(fields: [providerId], references: [id])
+  provider         User?    @relation("ClaimedJobs", fields: [providerId], references: [id])
   startTime        DateTime?
   endTime          DateTime?
   createdAt        DateTime @default(now())

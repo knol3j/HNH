@@ -13,3 +13,6 @@ backend/api/dist/
 backend/api/.venv/
 backend/api/env/
 backend/api/.env
+agent/node_modules/
+agent/bin/
+agent/bin_backup/

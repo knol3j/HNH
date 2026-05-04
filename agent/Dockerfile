@@ -9,25 +9,30 @@ RUN apk add --no-cache curl && \
     curl -L "$XMRIG_URL" | tar xz -C /xmrig --strip-components=1
 
 # Final image
-FROM node:20-alpine
+FROM node:20-bullseye-slim
 
 # Install dependencies for xmrig and tools
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
-    && rm -rf /var/cache/apk/*
+    libuv1 \
+    libhwloc15 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
 WORKDIR /app
 
-# Copy XMRig binary from downloader stage
-COPY --from=downloader /xmrig /app/xmrig
-
 # Copy agent source
-COPY agent/package*.json ./
+COPY package*.json ./
 RUN npm ci --only=production
 
-COPY agent/ ./
+COPY ./ ./
+
+# Copy XMRig binary from downloader stage (to /app/bin where server.js expects it)
+COPY --from=downloader /xmrig /app/bin
+
+# Debug: list files in bin to confirm binary is there
+RUN ls -la /app/bin
 
 # Create data directory for persistence
 RUN mkdir -p /app/data
