@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     libuv1 \
     libhwloc15 \
+    hwloc \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory

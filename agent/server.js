@@ -6,6 +6,13 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import StratumProxy from './stratum-proxy.js';
+import { 
+    getHardwareFingerprint, 
+    generateHardwareCommitment,
+    generateProof, 
+    verifyProof,
+    initializeHardwareId 
+} from './hardware-zkp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -360,6 +367,7 @@ startProxy();
 // --- API ENDPOINTS ---
 app.get('/telemetry', (req, res) => {
     const feeRate = PLATFORM_FEE[userTier] || PLATFORM_FEE.free;
+    const hwId = initializeHardwareId();
     
     res.json({
         gpu_temp: telemetry.temp,
@@ -380,6 +388,7 @@ app.get('/telemetry', (req, res) => {
         } : null,
         wallet: config.wallet,
         status: minerStatus,
+        hardware_id: hwId.commitment,
         logs: recentLogs
     });
 });
@@ -451,6 +460,29 @@ app.get('/meta', (req, res) => {
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', miner: minerStatus });
+});
+
+// Hardware ID endpoints
+app.get('/hardware', (req, res) => {
+    const hwId = initializeHardwareId();
+    res.json({
+        fingerprint: hwId.fingerprint,
+        commitment: hwId.commitment,
+        timestamp: hwId.timestamp,
+        components: hwId.components
+    });
+});
+
+app.get('/hardware/proof', (req, res) => {
+    const hwId = initializeHardwareId();
+    const proof = generateProof({ commitment: hwId.commitment, timestamp: hwId.timestamp });
+    res.json(proof);
+});
+
+app.post('/hardware/verify', (req, res) => {
+    const { proof, expectedFingerprint, secretKey } = req.body;
+    const isValid = verifyProof(proof, expectedFingerprint, secretKey);
+    res.json({ valid: isValid });
 });
 
 app.listen(PORT, () => {

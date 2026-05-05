@@ -1,7 +1,7 @@
 {
   "name": "agent",
   "version": "1.0.0",
-  "description": "HNH Mining Agent - MinerGate-style simple, reliable mining",
+  "description": "HNH Mining Agent - MinerGate-style simple, reliable mining with ZKP hardware ID",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",

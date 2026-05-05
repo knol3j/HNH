@@ -29,6 +29,12 @@ if [ "$MACHINE" != "Linux" ] && [ "$MACHINE" != "Mac" ]; then
     exit 1
 fi
 
+# Install dependencies for ZKP hardware ID
+if command -v apt-get &> /dev/null; then
+    echo "Installing hwloc for hardware detection..."
+    apt-get update && apt-get install -y hwloc 2>/dev/null || true
+fi
+
 # XMRig Release
 XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v${XMRIG_VERSION}/xmrig-${XMRIG_VERSION}-linux-static-x64.tar.gz"
 XMRIG_HASH="df7d249d768b5bf71b6b4399cd1061713c74c5c1fbc98c5ed9dcb4e4323b4b96"

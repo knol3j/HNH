@@ -235,21 +235,23 @@ model Job {
 
 // Multi-Agent Management: User can register multiple agent instances
 model Agent {
-  id        String   @id @default(uuid())
-  name      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  ipAddress String?
-  port      Int      @default(4343)
-  secret    String   // unique per-agent secret
-  lastSeen  DateTime @default(now())
-  status    String   @default("offline") // online, offline, error
-  meta      Json?    // arbitrary metadata (gpu info, etc)
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  ipAddress   String?
+  port        Int      @default(4343)
+  secret      String   // unique per-agent secret
+  lastSeen    DateTime @default(now())
+  status      String   @default("offline") // online, offline, error
+  meta        Json?    // arbitrary metadata (gpu info, etc)
+  hardwareId  String?  // ZKP hardware fingerprint commitment
+  createdAt   DateTime @default(now())
 
   @@unique([userId, name])
   @@index([userId])
   @@index([lastSeen])
+  @@index([hardwareId])
 }
 
 // Audit Logs for security tracking

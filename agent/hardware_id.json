@@ -1,0 +1,13 @@
+{
+  "fingerprint": "30b706671f34680fa93dcf93017bfffc7b807f32003067ae76df6b21183fa56c",
+  "commitment": "4282185e3c44406aeaa1050f1d42226a74369729c870f542ee0f4edb9248eddc",
+  "timestamp": 1777985638612,
+  "components": {
+    "platform": "win32",
+    "arch": "x64",
+    "cpuModel": "Intel(R) Core(TM) i7-14700HX",
+    "cpuSpeed": 2304,
+    "macCount": 1
+  },
+  "version": 1
+}

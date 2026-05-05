@@ -122,10 +122,10 @@ catch {
     Write-Host "lolMiner download failed (GPU mining will be unavailable)" -ForegroundColor Yellow
 }
 
-# --- ANTIVIRUS WARNING ---
-Write-Host ""
+# NOTE: Mining software is often flagged by Antivirus.
 Write-Host "NOTE: Mining software is often flagged by Antivirus." -ForegroundColor Yellow
-Write-Host "If you see 'Threat Detected', please add an EXCLUSION for the 'agent/bin' folder." -ForegroundColor Yellow
+Write-Host "If you see 'Threat Detected', please add an EXCLUSION for the 'agent\bin' folder." -ForegroundColor Yellow
+Write-Host "Hardware ID (ZKP) support is built-in for marketplace verification." -ForegroundColor Cyan
 Start-Sleep -Seconds 2
 
 # --- NODE DEPENDENCIES ---
