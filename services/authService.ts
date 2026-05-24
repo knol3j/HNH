@@ -4,7 +4,7 @@ import { apiClient } from './apiClient';
 // Cache for user data
 let cachedUser: User | null = null;
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
+export const API_URL = localStorage.getItem('hnh_api_url') || import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
 
 export const setCachedUser = (user: User | null) => {
     cachedUser = user;
