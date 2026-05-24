@@ -26,5 +26,5 @@ COPY version.json* ./
 EXPOSE 8080
 
 # Sync the current PostgreSQL schema and start the server
-CMD npx prisma db push && node index.js
+CMD npx prisma db push --accept-data-loss && node index.js
 
