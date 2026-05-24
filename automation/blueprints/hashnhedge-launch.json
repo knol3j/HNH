@@ -1,0 +1,218 @@
+{
+  "campaign": {
+    "id": "hashnhedge-launch",
+    "name": "HashNHedge Compute Launch Campaign",
+    "clientName": "HashNHedge",
+    "clientNeed": "Acquire miners and compute providers to bootstrap the decentralized compute marketplace at launch",
+    "objective": "Onboard 500 active mining nodes in first 90 days across XMR, RVN, ETC, ERG, and KAS pools",
+    "audience": "Crypto miners, PC gamers with idle GPUs, datacenter operators, AI researchers, passive-income seekers",
+    "offer": "First month at 0% platform fee + exclusive early-adopter NFT badge",
+    "channel": "linkedin",
+    "locales": ["en-US", "en-GB", "es-ES", "pt-BR", "zh-CN", "ru-RU"],
+    "markets": ["US", "United Kingdom", "Spain", "Brazil", "China", "Russia"],
+    "brandVoice": "Technical, transparent, community-first, no overpromise",
+    "successDefinition": "500 active nodes with 10 TH/s combined hashrate and <2% churn per month",
+    "successMetrics": ["active_nodes", "combined_hashrate", "miner_churn_rate", "coin_diversity_score", "referral_conversion_rate"],
+    "researchObjectives": [
+      "Identify solo miners and small mining ops dissatisfied with pool fee structures and opaque reward systems",
+      "Map PC gaming communities with high-end GPU ownership who could offset hardware costs through idle mining",
+      "Surface AI researchers and ML engineers actively seeking affordable decentralized compute alternatives to AWS/GCP",
+      "Collect evidence on competitor fee structures and payout models to position HashNHedge's advantage"
+    ],
+    "designTheme": "Compute Pulse",
+    "designPalette": ["#0a0f1a", "#00f0ff", "#7c3aed", "#22d3ee", "#fcd34d"],
+    "designGuidelines": [
+      "Dark cyberpunk base with cyan and purple accent glow for hashrate visualization",
+      "Live hashrate meters and earnings tickers as hero visual elements",
+      "Coin-specific color coding (XMR=orange, RVN=blue, ETC=green, ERG=red, KAS=purple)",
+      "Transparent fee disclosure visually prominent on every pricing card",
+      "Mobile-first card layout for dashboard density on miner phone screens"
+    ],
+    "contentAngles": [
+      "Your GPU earns more idle than most altcoins will in a year",
+      "Transparent pool payouts with zero hidden deductions — every share counted",
+      "From gaming rig to mining node: offset your hardware cost in 90 days",
+      "Decentralized compute isn't the future — it's running on your desktop right now",
+      "Multi-coin auto-switching means your hashpower always chases peak profitability"
+    ]
+  },
+  "researchRecords": [
+    {
+      "targetId": "acct-501",
+      "source": "manual-ingest",
+      "company": "CryptoMiner Collective",
+      "contactName": "Alex Voronkov",
+      "title": "Founder & Mining Pool Operator",
+      "segment": "Solo Mining Ops",
+      "region": "Russia",
+      "preferredChannel": "linkedin",
+      "channels": ["linkedin", "telegram"],
+      "fitScore": 0.96,
+      "intentScore": 0.94,
+      "recencyScore": 0.91,
+      "estimatedReach": 45000,
+      "notes": "Operates 200+ GPU mining rigs across 3 regions. Actively testing new pools.",
+      "metadata": {
+        "sourceUrl": "https://example.com/cryptominer-collective",
+        "evidence": [
+          "Published YouTube breakdown comparing 2026 pool fee structures",
+          "Recently shut down own pool due to maintenance overhead"
+        ]
+      }
+    },
+    {
+      "targetId": "acct-502",
+      "source": "manual-ingest",
+      "company": "PCMasterRace Builds",
+      "contactName": "Jake Torres",
+      "title": "Content Creator & PC Hardware Reviewer",
+      "segment": "PC Gaming Community",
+      "region": "US",
+      "preferredChannel": "linkedin",
+      "channels": ["linkedin", "discord", "youtube"],
+      "fitScore": 0.91,
+      "intentScore": 0.87,
+      "recencyScore": 0.85,
+      "estimatedReach": 280000,
+      "notes": "RTX 5090 early adopter. Audience of 120K+ gamers with high-end builds.",
+      "metadata": {
+        "sourceUrl": "https://example.com/pcmasterrace",
+        "evidence": [
+          "Video on 'offsetting GPU cost with mining' has 340K views",
+          "Active r/pcmasterrace and r/gpumining community member"
+        ]
+      }
+    },
+    {
+      "targetId": "acct-503",
+      "source": "manual-ingest",
+      "company": "Nova AI Labs",
+      "contactName": "Dr. Mei Lin",
+      "title": "Head of Compute Infrastructure",
+      "segment": "AI Research",
+      "region": "US",
+      "preferredChannel": "email",
+      "channels": ["email", "linkedin"],
+      "fitScore": 0.88,
+      "intentScore": 0.85,
+      "recencyScore": 0.82,
+      "estimatedReach": 190000,
+      "notes": "Small AI lab spending $45K/mo on AWS GPU instances. Exploring decentralized alternatives.",
+      "metadata": {
+        "sourceUrl": "https://example.com/nova-ai",
+        "evidence": [
+          "Published blog post: 'The case for decentralized AI compute'",
+          "Attending NeurIPS 2026 with distributed computing talk"
+        ]
+      }
+    },
+    {
+      "targetId": "acct-504",
+      "source": "manual-ingest",
+      "company": "MineBridge Consulting",
+      "contactName": "Carlos Silva",
+      "title": "Operations Director",
+      "segment": "Mid-Size Mining Farm",
+      "region": "Brazil",
+      "preferredChannel": "telegram",
+      "channels": ["telegram", "email"],
+      "fitScore": 0.93,
+      "intentScore": 0.89,
+      "recencyScore": 0.86,
+      "estimatedReach": 120000,
+      "notes": "Manages 500+ ASIC and GPU units in São Paulo. Low-cost hydro power.",
+      "metadata": {
+        "sourceUrl": "https://example.com/minebridge",
+        "evidence": [
+          "Expanding farm capacity by 40% with new GPU shipments",
+          "Complained publicly about pool fee opacity on Bitcointalk"
+        ]
+      }
+    },
+    {
+      "targetId": "acct-505",
+      "source": "manual-ingest",
+      "company": "BlockHeight Ventures",
+      "contactName": "Priya Nair",
+      "title": "Crypto Fund Manager & Angel Investor",
+      "segment": "Crypto Investment",
+      "region": "United Kingdom",
+      "preferredChannel": "linkedin",
+      "channels": ["linkedin", "twitter"],
+      "fitScore": 0.85,
+      "intentScore": 0.82,
+      "recencyScore": 0.8,
+      "estimatedReach": 350000,
+      "notes": "Actively seeking early-stage compute protocols for fund allocation.",
+      "metadata": {
+        "sourceUrl": "https://example.com/blockheight",
+        "evidence": [
+          "Recent podcast: 'Mining protocols are this cycle's dark horse'",
+          "Made 3 compute-protocol angel investments in the last 6 months"
+        ]
+      }
+    }
+  ],
+  "prospects": [
+    {
+      "targetId": "acct-501",
+      "company": "CryptoMiner Collective",
+      "fullName": "Alex Voronkov",
+      "title": "Founder & Mining Pool Operator",
+      "email": "alex@cryptominer.example",
+      "linkedinUrl": "https://linkedin.com/in/alex-voronkov",
+      "region": "Russia",
+      "segment": "Solo Mining Ops",
+      "preferredChannel": "linkedin",
+      "source": "manual-import"
+    },
+    {
+      "targetId": "acct-502",
+      "company": "PCMasterRace Builds",
+      "fullName": "Jake Torres",
+      "title": "Content Creator & PC Hardware Reviewer",
+      "email": "jake@pcmasterrace-builds.example",
+      "linkedinUrl": "https://linkedin.com/in/jake-torres",
+      "region": "US",
+      "segment": "PC Gaming Community",
+      "preferredChannel": "linkedin",
+      "source": "manual-import"
+    },
+    {
+      "targetId": "acct-503",
+      "company": "Nova AI Labs",
+      "fullName": "Dr. Mei Lin",
+      "title": "Head of Compute Infrastructure",
+      "email": "mei.lin@novaailabs.example",
+      "linkedinUrl": "https://linkedin.com/in/mei-lin",
+      "region": "US",
+      "segment": "AI Research",
+      "preferredChannel": "email",
+      "source": "manual-import"
+    },
+    {
+      "targetId": "acct-504",
+      "company": "MineBridge Consulting",
+      "fullName": "Carlos Silva",
+      "title": "Operations Director",
+      "email": "carlos@minebridge.example",
+      "linkedinUrl": "https://linkedin.com/in/carlos-silva",
+      "region": "Brazil",
+      "segment": "Mid-Size Mining Farm",
+      "preferredChannel": "telegram",
+      "source": "manual-import"
+    },
+    {
+      "targetId": "acct-505",
+      "company": "BlockHeight Ventures",
+      "fullName": "Priya Nair",
+      "title": "Crypto Fund Manager & Angel Investor",
+      "email": "priya@blockheight.example",
+      "linkedinUrl": "https://linkedin.com/in/priya-nair",
+      "region": "United Kingdom",
+      "segment": "Crypto Investment",
+      "preferredChannel": "linkedin",
+      "source": "manual-import"
+    }
+  ]
+}
