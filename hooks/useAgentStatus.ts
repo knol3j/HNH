@@ -26,7 +26,7 @@ export const useAgentStatus = (user: User | null) => {
             }
 
             // Wallet check
-            const apiBase = import.meta.env.VITE_API_URL || 'https://api.hashnhedge.com';
+            const apiBase = localStorage.getItem('hnh_api_url') || import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
             const token = localStorage.getItem('hnh_token');
             if (token) {
                 try {

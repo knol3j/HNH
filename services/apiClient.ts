@@ -5,7 +5,7 @@
  * for all backend service calls.
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
+export const API_BASE_URL = localStorage.getItem('hnh_api_url') || import.meta.env.VITE_API_URL || 'https://api-production-5f42.up.railway.app';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number>;
