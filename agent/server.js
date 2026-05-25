@@ -460,8 +460,22 @@ app.post('/wallet/bulk', (req, res) => {
         const coin = String(rawCoin || '').toUpperCase();
         if (!DEFAULT_COIN_POOLS[coin]) continue;
 
+        // Server-side safeguard: block explicitly non-production XMR wallets
+        // even if a client attempts to push them.
+        if (coin === 'XMR' && rawValue && typeof rawValue === 'object') {
+            const source = String(rawValue.source || '').toLowerCase();
+            const isProductionUsable = rawValue.isProductionUsable;
+            if (source === 'derived' || isProductionUsable === false) {
+                return res.status(400).json({
+                    error: 'Derived XMR wallets are not allowed for production mining. Import a manual XMR wallet first.',
+                    coin: 'XMR',
+                    code: 'XMR_MANUAL_IMPORT_REQUIRED'
+                });
+            }
+        }
+
         // Supports both shapes:
-        // { XMR: 'address' } or { XMR: { address, pool, worker } }
+        // { XMR: 'address' } or { XMR: { address, pool, worker, source, isProductionUsable } }
         if (typeof rawValue === 'string') {
             const address = rawValue.trim();
             if (address) {
