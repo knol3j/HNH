@@ -165,15 +165,24 @@ const AppContent: React.FC = () => {
   );
 };
 
+const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const isGoogleConfigured = !!googleClientId && googleClientId !== 'your_google_client_id';
+
+  if (!isGoogleConfigured) return <>{children}</>;
+
+  return <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider>;
+};
+
 const App: React.FC = () => (
-  <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy_client_id'}>
+  <AppProviders>
     <AuthProvider>
       <SocketProvider>
         <AppContent />
       </SocketProvider>
       <Toaster position="bottom-right" toastOptions={{ duration: 4000, style: { background: '#333', color: '#fff' }}} />
     </AuthProvider>
-  </GoogleOAuthProvider>
+  </AppProviders>
 );
 
 export default App;
