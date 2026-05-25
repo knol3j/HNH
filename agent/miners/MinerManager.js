@@ -123,6 +123,7 @@ export class MinerManager {
             this.activeMiner = miner;
             this.activeCoin = coin;
             this.startTelemetryPolling();
+            this.startHealthCheck();
         }
 
         return {
@@ -138,11 +139,35 @@ export class MinerManager {
      */
     stopMining() {
         this.stopTelemetryPolling();
+        this.stopHealthCheck();
 
         if (this.activeMiner) {
             this.activeMiner.stop();
             this.activeMiner = null;
             this.activeCoin = null;
+        }
+    }
+
+    /**
+     * Start periodic health check — auto-restarts if miner dies
+     */
+    startHealthCheck() {
+        this.stopHealthCheck();
+        this.healthInterval = setInterval(() => {
+            if (!this.activeMiner) return;
+            if (!this.activeMiner.isRunning()) {
+                const coin = this.activeCoin;
+                const wallet = this.activeMiner.wallet;
+                console.warn(`[HealthCheck] ${coin} miner died — restarting...`);
+                this.startMining(coin, { wallet });
+            }
+        }, 15000);
+    }
+
+    stopHealthCheck() {
+        if (this.healthInterval) {
+            clearInterval(this.healthInterval);
+            this.healthInterval = null;
         }
     }
 

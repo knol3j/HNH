@@ -42,3 +42,6 @@ dev.db
 # Agent Config
 agent/data.json
 .claude/settings.local.json
+
+# Stale sub-repo — remove after verifying nothing needed
+/HNH/

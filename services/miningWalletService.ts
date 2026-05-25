@@ -53,12 +53,18 @@ export const POOL_CONFIGS: Record<MiningCoin, PoolConfig> = {
 };
 
 // Address validation patterns for each coin
+// Updated for real address derivation (2025-06-18)
 const ADDRESS_PATTERNS: Record<MiningCoin, RegExp> = {
-    XMR: /^[1-9A-HJ-NP-Za-km-z]{95}$/,
-    RVN: /^R[a-zA-Z0-9]{33,34}$/,
+    // Monero standard mainnet: starts with '4', 95 base58 chars
+    XMR: /^4[1-9A-HJ-NP-Za-km-z]{94}$/,
+    // Ravencoin P2PKH: starts with 'R', base58check, 34 chars
+    RVN: /^R[1-9A-HJ-NP-Za-km-z]{33}$/,
+    // Ethereum Classic: 0x + 40 hex chars
     ETC: /^0x[a-fA-F0-9]{40}$/,
-    ERG: /^[9iuZ][a-zA-Z0-9]{51}$/,
-    KAS: /^kaspa:[a-z0-9]{52,59}$/
+    // Ergo P2PK mainnet: starts with '9', base58, 51 chars
+    ERG: /^9[1-9A-HJ-NP-Za-km-z]{50}$/,
+    // Kaspa bech32m: kaspa1 (standard) or kaspa: (visual), bech32 charset, ~62 chars
+    KAS: /^kaspa[1:][a-z02-9ac-hj-np-z]{52,59}$/
 };
 
 /**

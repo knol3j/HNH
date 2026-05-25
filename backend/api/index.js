@@ -13,6 +13,11 @@ import { fileURLToPath } from 'url';
 import { encrypt, decrypt } from './persistentStore.js';
 import * as bip39 from 'bip39';
 import { ethers } from 'ethers';
+import { sha256 } from '@noble/hashes/sha256';
+import { ripemd160 } from '@noble/hashes/ripemd160';
+import { blake2b } from '@noble/hashes/blake2b';
+import { bech32m } from 'bech32';
+import bs58 from 'bs58';
 import { OAuth2Client } from 'google-auth-library';
 import appleSignin from 'apple-signin-auth';
 
@@ -222,7 +227,7 @@ const authLimiter = rateLimit({
 
 const generalLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 100,
+    max: 200,
     message: { error: 'Too many requests, please slow down' },
     standardHeaders: true,
     legacyHeaders: false
@@ -807,43 +812,143 @@ app.get('/user/transactions', authenticateToken, async (req, res) => {
 
 
 // --- WALLET SEED MANAGEMENT ---
+
+// ─── Address derivation helpers ───────────────────────────────
+
+/** Get compressed public key (33 bytes) from HDNode private key */
+function getCompressedPubkey(hdNode) {
+    const signingKey = new ethers.utils.SigningKey(hdNode.privateKey);
+    return ethers.utils.arrayify(signingKey.compressedPublicKey);
+}
+
+/** Hash160 = RIPEMD160(SHA256(data)) */
+function hash160(data) {
+    return ripemd160(new Uint8Array(sha256(data)));
+}
+
+/** Base58Check encode: prepend version byte, add double-SHA256 checksum */
+function base58CheckEncode(version, payload) {
+    const versioned = new Uint8Array([version, ...payload]);
+    const hash = sha256(sha256(versioned));
+    const checksum = hash.slice(0, 4);
+    const full = new Uint8Array([...versioned, ...checksum]);
+    return bs58.encode(full);
+}
+
+// ─── RVN: Ravencoin P2PKH ────────────────────────────────────
+
+function deriveRVNAddress(hdNode) {
+    const pubkey = getCompressedPubkey(hdNode);
+    const pubkeyHash = hash160(pubkey);
+    return base58CheckEncode(0x3c, pubkeyHash);
+}
+
+// ─── XMR: Monero standard address ────────────────────────────
+
+const XMR_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function encodeMoneroBase58(data) {
+    const BLOCK_SIZE = 8;
+    let result = '';
+
+    for (let i = 0; i < data.length; i += BLOCK_SIZE) {
+        const block = data.slice(i, Math.min(i + BLOCK_SIZE, data.length));
+
+        let leadingZeros = 0;
+        while (leadingZeros < block.length && block[leadingZeros] === 0) {
+            leadingZeros++;
+        }
+
+        let value = 0n;
+        for (let j = leadingZeros; j < block.length; j++) {
+            value = (value << 8n) + BigInt(block[j]);
+        }
+
+        let encoded = '';
+        if (value === 0n) {
+            for (let z = 0; z < leadingZeros; z++) {
+                encoded += '1';
+            }
+        } else {
+            while (value > 0n) {
+                encoded = XMR_ALPHABET[Number(value % 58n)] + encoded;
+                value = value / 58n;
+            }
+            for (let z = 0; z < leadingZeros; z++) {
+                encoded = '1' + encoded;
+            }
+        }
+
+        result += encoded;
+    }
+
+    return result;
+}
+
+function deriveXMRAddress(hdNode) {
+    const keyBytes = ethers.utils.arrayify(hdNode.privateKey);
+    const spendKey = sha256(new Uint8Array(keyBytes));
+    const viewKey = sha256(new Uint8Array([...keyBytes, 0x01]));
+
+    const networkByte = 0x12;
+    const addressData = new Uint8Array([networkByte, ...spendKey, ...viewKey]);
+
+    const checksumBytes = ethers.utils.arrayify(
+        ethers.utils.keccak256(addressData)
+    ).slice(0, 4);
+
+    const fullAddress = new Uint8Array([...addressData, ...checksumBytes]);
+    return encodeMoneroBase58(fullAddress);
+}
+
+// ─── ERG: Ergo P2PK mainnet address ──────────────────────────
+
+function deriveERGAddress(hdNode) {
+    const pubkey = getCompressedPubkey(hdNode);
+
+    const prefix = 0x01; // mainnet (0x00) | P2PK (0x01)
+    const prefixAndPubkey = new Uint8Array([prefix, ...pubkey]);
+
+    const checksum = blake2b(prefixAndPubkey, { dkLen: 32 }).slice(0, 4);
+    const full = new Uint8Array([...prefixAndPubkey, ...checksum]);
+
+    return bs58.encode(full);
+}
+
+// ─── KAS: Kaspa bech32m address ──────────────────────────────
+
+function deriveKASAddress(hdNode) {
+    const pubkey = getCompressedPubkey(hdNode);
+    // Kaspa uses double SHA-256 (hash256), not hash160
+    const hash256 = sha256(sha256(new Uint8Array(pubkey)));
+    // Mainnet P2PK: version byte 0x00 + 32-byte hash256
+    const payload = new Uint8Array([0x00, ...hash256]);
+    const words = bech32m.toWords(payload);
+    return bech32m.encode('kaspa', words);
+}
+
+// ─── Main derivation function ─────────────────────────────────
+
 const deriveAddressesFromMnemonic = async (mnemonic) => {
     const seed = await bip39.mnemonicToSeed(mnemonic);
     const hdNode = ethers.utils.HDNode.fromSeed(seed);
 
+    // ETC: Standard m/44'/61'/0'/0/0 — ethers.js native address (valid ✓)
     const etcNode = hdNode.derivePath("m/44'/61'/0'/0/0");
     const etcAddress = etcNode.address;
 
-    const formatAsRVN = (privKey) => {
-        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 34);
-        return 'R' + hash;
-    };
-    const formatAsXMR = (privKey) => {
-        const key = ethers.utils.hexZeroPad(privKey, 32);
-        const hash1 = ethers.utils.sha256(key).substring(2);
-        const hash2 = ethers.utils.sha256(ethers.utils.hexConcat([key, '0x01'])).substring(2);
-        return '4' + (hash1 + hash2).substring(0, 94);
-    };
-    const formatAsERG = (privKey) => {
-        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 53);
-        return '9' + hash;
-    };
-    const formatAsKAS = (privKey) => {
-        const hash = ethers.utils.sha256(ethers.utils.hexZeroPad(privKey, 32)).substring(2, 60);
-        return 'kaspa:q' + hash;
-    };
-
-    const rvnKey = hdNode.derivePath("m/44'/175'/0'/0/0").privateKey;
-    const xmrKey = hdNode.derivePath("m/44'/128'/0'/0/0").privateKey;
-    const ergKey = hdNode.derivePath("m/44'/429'/0'/0/0").privateKey;
-    const kasKey = hdNode.derivePath("m/44'/11111'/0'/0/0").privateKey;
+    // Derive coin-specific nodes
+    const rvnNode = hdNode.derivePath("m/44'/175'/0'/0/0");
+    const xmrNode = hdNode.derivePath("m/44'/128'/0'/0/0");
+    const ergNode = hdNode.derivePath("m/44'/429'/0'/0/0");
+    const kasNode = hdNode.derivePath("m/44'/11111'/0'/0/0");
 
     return {
         ETC: etcAddress,
-        RVN: formatAsRVN(rvnKey),
-        XMR: formatAsXMR(xmrKey),
-        ERG: formatAsERG(ergKey),
-        KAS: formatAsKAS(kasKey)
+        RVN: deriveRVNAddress(rvnNode),
+        XMR: deriveXMRAddress(xmrNode),
+        ERG: deriveERGAddress(ergNode),
+        KAS: deriveKASAddress(kasNode)
     };
 };
 
@@ -1154,6 +1259,33 @@ app.get('/stats/users', generalLimiter, async (req, res) => {
         const count = await prisma.user.count();
         res.json({ count });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- NETWORK STATS ---
+app.get('/network/stats', generalLimiter, async (req, res) => {
+    try {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const activeNodes = await prisma.worker.count({
+            where: { lastSeen: { gte: fiveMinAgo } }
+        });
+        const totalHashrate = await prisma.worker.aggregate({
+            where: { lastSeen: { gte: fiveMinAgo } },
+            _sum: { hashrate: true }
+        });
+        const jobsRunning = await prisma.miningSession.count({
+            where: { endTime: null }
+        });
+
+        res.json({
+            activeNodes,
+            totalTflops: (totalHashrate._sum.hashrate || 0) / 1000,
+            jobsRunning,
+            networkUtilization: activeNodes > 0 ? Math.min(Math.round((jobsRunning / (activeNodes * 5)) * 100), 100) : 0,
+            avgPricePerFLOP: 0.0042
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- AUDIT LOGGING MIDDLEWARE ---

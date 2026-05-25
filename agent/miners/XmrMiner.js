@@ -75,7 +75,9 @@ export class XmrMiner extends BaseMiner {
         }
 
         // Parse hashrate from output (backup if API fails)
-        const hrMatch = line.match(/speed\s+[\d.]+\s+[\d.]+\s+([\d.]+)\s+H\/s/);
+        // XMRig format: "speed 10s/60s/15m 5000.0 5100.0 5200.0 H/s"
+        // We extract the 15m average (last number before H/s)
+        const hrMatch = line.match(/speed\s+\S+\s+[\d.]+\s+[\d.]+\s+([\d.]+)\s+H\/s/);
         if (hrMatch) {
             this.telemetry.hashrate = parseFloat(hrMatch[1]);
         }

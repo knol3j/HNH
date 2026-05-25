@@ -18,7 +18,11 @@ export class ErgMiner extends BaseMiner {
     }
 
     /**
-     * Build T-Rex command line arguments for Autolykos2
+     * SECURITY NOTE: T-Rex miner API is unauthenticated by design (no HTTP auth).
+     * It only listens on 127.0.0.1, so this is low risk on single-user systems.
+     * On multi-tenant or shared-infra setups, consider a local firewall rule
+     * or reverse-proxy with basic auth to protect the API endpoint.
+     * Build T-Rex arguments for Ergo (Autolykos2)
      */
     buildArgs() {
         let poolUrl = this.poolUrl;
@@ -48,19 +52,27 @@ export class ErgMiner extends BaseMiner {
     parseOutput(line) {
         this.addLog(line);
 
-        if (line.includes('OK') && line.includes('share')) {
+        // Detect accepted shares from either "accepted: N/M" or "SHARE OK" format
+        if (line.includes('accepted') || (line.includes('OK') && /share/i.test(line))) {
             this.stats.acceptedShares++;
             this.stats.totalShares++;
         }
 
-        if (line.includes('REJECTED') || line.includes('rejected')) {
+        // Detect rejected shares (uppercase REJECTED only to avoid double-counting
+        // with the 'rejected: N/M' summary line that follows the same share)
+        if (line.includes('REJECTED')) {
             this.stats.rejectedShares++;
             this.stats.totalShares++;
         }
 
-        const hrMatch = line.match(/([\d.]+)\s*MH\/s/i);
-        if (hrMatch) {
-            this.telemetry.hashrate = parseFloat(hrMatch[1]) * 1000000;
+        // Parse hashrate: sum all GPU MH/s values for total system hashrate
+        const hrMatches = line.matchAll(/([\d.]+)\s*MH\/s/gi);
+        let totalMh = 0;
+        for (const match of hrMatches) {
+            totalMh += parseFloat(match[1]);
+        }
+        if (totalMh > 0) {
+            this.telemetry.hashrate = totalMh * 1000000; // Convert to H/s
         }
     }
 
