@@ -12,7 +12,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // SECURITY: Strict CORS
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'https://app.hashnhedge.com'];
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://app.hashnhedge.com',
+    'https://hashnhedge.com',
+    'https://www.hashnhedge.com'
+];
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -71,20 +77,29 @@ const COIN_POOLS = {
     KAS: 'stratum+tcp://pool.woolypooly.com:3112' // GPU
 };
 
+const COIN_ALGOS = {
+    XMR: 'rx/0',
+    RVN: 'kawpow',
+    ETC: 'etchash',
+    ERG: 'autolykos2',
+    KAS: 'kheavyhash'
+};
+
 // --- STATE ---
 // --- STATE ---
 let currentCoin = 'XMR'; // Defined early for usage in persistence loading
 
 let config = {
-    wallet: 'Rqr113e2e3... (User Wallet)', // Default fallback
+    wallet: '',
     wallets: {
-        XMR: 'Rqr113e2e3... (User Wallet)',
-        ETC: '0x19511e52720739f6F47E74221cBCd746BE387535',
-        ERG: '9ev9ugszdQbQQUZ8gz76TuG4hNLUew8p6JmhrCeYeWNKbKAtKbV',
-        KAS: 'kaspa:qzy048jd0mx7evm4svj0yaf9mufrsxrmus3l3zax92ltnfkh4h08qptc0wdek'
+        XMR: '',
+        RVN: '',
+        ETC: '',
+        ERG: '',
+        KAS: ''
     },
-    poolUrl: 'stratum+tcp://rvn.2miners.com:6060',
-    algorithm: 'kawpow',
+    poolUrl: COIN_POOLS.XMR,
+    algorithm: COIN_ALGOS.XMR,
     mode: 'cpu' // cpu or gpu
 };
 
@@ -116,20 +131,18 @@ try {
         // SMART DEFAULTS: switch coin based on mode
         if (config.mode === 'gpu') {
             currentCoin = 'RVN';
-            config.poolUrl = COIN_POOLS.RVN;
-            config.algorithm = 'kawpow';
         } else {
             currentCoin = 'XMR';
-            config.poolUrl = COIN_POOLS.XMR;
-            config.algorithm = 'rx/0';
         }
+        config.poolUrl = COIN_POOLS[currentCoin];
+        config.algorithm = COIN_ALGOS[currentCoin];
 
         // Set initial wallet if available
         if (config.wallets[currentCoin]) {
             config.wallet = config.wallets[currentCoin];
         } else {
             // Fallback to first available wallet or generic placeholder
-            config.wallet = Object.values(config.wallets).find(w => w) || 'UNKNOWN_WALLET';
+            config.wallet = Object.values(config.wallets).find(w => w) || '';
         }
     }
 } catch (e) { console.error(e); }
@@ -155,10 +168,17 @@ const startMiner = () => {
     // Clean URL
     const cleanUrl = config.poolUrl.replace('stratum+tcp://', '');
 
+    const wallet = String(config.wallet || '').trim();
+    if (!wallet || wallet.includes('...') || wallet.includes('(')) {
+        addLog('⚠️ No valid wallet configured for current coin. Import a real wallet before starting miner.');
+        minerStatus = 'OFFLINE';
+        telemetry.hashrate = 0;
+        return;
+    }
+
     addLog(`🚀 Launching XMRig...`);
     addLog(`   Pool: ${cleanUrl}`);
-    const displayWallet = (config.wallet || 'UNKNOWN_WALLET').toString();
-    addLog(`   User: ${displayWallet.substring(0, 8)}...`);
+    addLog(`   User: ${wallet.substring(0, 8)}...`);
 
     // XMRig Args
     // XMRig Args
@@ -409,7 +429,7 @@ app.post('/auto-switch', (req, res) => {
 });
 
 app.post('/switch-coin', (req, res) => {
-    const { coin } = req.body;
+    const coin = String(req.body?.coin || '').toUpperCase();
 
     if (!COIN_POOLS[coin]) {
         return res.status(400).json({ error: 'Unknown coin' });
@@ -417,6 +437,7 @@ app.post('/switch-coin', (req, res) => {
 
     currentCoin = coin;
     config.poolUrl = COIN_POOLS[coin];
+    config.algorithm = COIN_ALGOS[coin] || config.algorithm;
     // Switch wallet if available
     if (config.wallets[coin]) {
         config.wallet = config.wallets[coin];
