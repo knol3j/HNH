@@ -6,7 +6,7 @@
  * Wallets are stored locally and validated for correctness.
  */
 
-import { MiningWallet, MiningCoin, WalletFormData, PoolConfig } from '../types';
+import { MiningWallet, MiningCoin, WalletFormData, PoolConfig, MiningWalletSource } from '../types';
 
 import { apiClient } from './apiClient';
 
@@ -100,6 +100,8 @@ export const getWalletByCoin = (coin: MiningCoin): MiningWallet | undefined => {
  * Save a new wallet or update existing one
  */
 export const saveWallet = async (data: WalletFormData): Promise<{ success: boolean; wallet?: MiningWallet; error?: string }> => {
+    const source: MiningWalletSource = data.source || 'manual';
+
     // Validate address
     const pattern = ADDRESS_PATTERNS[data.coin];
     if (!pattern.test(data.address)) {
@@ -117,6 +119,8 @@ export const saveWallet = async (data: WalletFormData): Promise<{ success: boole
     // Check if wallet for this coin already exists
     const existingIndex = wallets.findIndex(w => w.coin === data.coin);
 
+    const isDerivedXmr = data.coin === 'XMR' && source === 'derived';
+
     const wallet: MiningWallet = {
         id: existingIndex >= 0 ? wallets[existingIndex].id : `wallet_${now}_${Math.random().toString(36).substr(2, 9)}`,
         coin: data.coin,
@@ -125,7 +129,10 @@ export const saveWallet = async (data: WalletFormData): Promise<{ success: boole
         workerName: data.workerName.trim(),
         createdAt: existingIndex >= 0 ? wallets[existingIndex].createdAt : now,
         updatedAt: now,
-        isValid: true,
+        isValid: !isDerivedXmr,
+        isProductionUsable: !isDerivedXmr,
+        source,
+        warning: isDerivedXmr ? 'Derived XMR is preview-only. Import a real Monero wallet address to enable XMR mining payouts.' : undefined,
         lastValidated: now
     };
 
@@ -183,6 +190,8 @@ export const syncWithBackend = async (): Promise<void> => {
                     createdAt: now,
                     updatedAt: now,
                     isValid: true,
+                    isProductionUsable: true,
+                    source: 'backend-sync',
                     lastValidated: now
                 };
 
@@ -263,13 +272,21 @@ export const getWalletStats = () => {
     const wallets = getMiningWallets();
     const totalWallets = wallets.length;
     const coinsWithWallets = new Set(wallets.map(w => w.coin)).size;
-    const validWallets = wallets.filter(w => w.isValid).length;
+    const validWallets = wallets.filter(w => w.isValid && w.isProductionUsable !== false).length;
+
+    const requiredCoins: MiningCoin[] = ['XMR', 'RVN', 'ETC', 'ERG', 'KAS'];
+    const missingCoins = requiredCoins.filter((coin) => {
+        const wallet = wallets.find(w => w.coin === coin);
+        if (!wallet) return true;
+        if (coin === 'XMR') return wallet.isProductionUsable === false;
+        return false;
+    });
 
     return {
         totalWallets,
         coinsWithWallets,
         validWallets,
-        missingCoins: ['XMR', 'RVN', 'ETC', 'ERG', 'KAS'].filter(c => !wallets.find(w => w.coin === c))
+        missingCoins
     };
 };
 
@@ -279,7 +296,13 @@ export const getWalletStats = () => {
 export const hasAllWallets = (): boolean => {
     const wallets = getMiningWallets();
     const coins = ['XMR', 'RVN', 'ETC', 'ERG', 'KAS'] as const;
-    return coins.every(coin => wallets.some(w => w.coin === coin));
+
+    return coins.every(coin => {
+        const wallet = wallets.find(w => w.coin === coin);
+        if (!wallet) return false;
+        if (coin === 'XMR') return wallet.isProductionUsable !== false;
+        return true;
+    });
 };
 
 /**
@@ -311,7 +334,8 @@ export const exportWalletsForAgent = (): Record<MiningCoin, { address: string; p
     };
 
     wallets.forEach(w => {
-        if (w.isValid) {
+        const isUsable = w.isValid && w.isProductionUsable !== false;
+        if (isUsable) {
             result[w.coin] = {
                 address: w.address,
                 pool: w.pool,
@@ -334,7 +358,8 @@ export const applyDerivedAddresses = async (addresses: Record<MiningCoin, string
                     coin,
                     address,
                     pool: getPoolSuggestion(coin),
-                    workerName: 'HNH_Worker'
+                    workerName: 'HNH_Worker',
+                    source: 'derived'
                 })
             )
         );

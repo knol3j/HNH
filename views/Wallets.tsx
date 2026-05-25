@@ -191,7 +191,7 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
         if (result.success) {
             // Also try to push to local agent
             pushToAgent(derivedAddresses);
-            setSuccess("One-click node setup successful! All addresses configured and synced to your account.");
+            setSuccess("One-click node setup complete. RVN/ETC/ERG/KAS configured on local agent. XMR requires manual wallet import for production payouts.");
             setTimeout(() => setSuccess(null), 5000);
             loadData();
         } else {
@@ -207,7 +207,7 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
 
             const walletsPayload = Object.fromEntries(
                 (Object.entries(addresses) as [MiningCoin, string][])
-                    .filter(([, address]) => !!address?.trim())
+                    .filter(([coin, address]) => coin !== 'XMR' && !!address?.trim())
                     .map(([coin, address]) => [coin, {
                         address: address.trim(),
                         pool: getPoolSuggestion(coin),
@@ -284,7 +284,7 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
             return;
         }
 
-        const result = await saveWallet(formData);
+        const result = await saveWallet({ ...formData, source: 'manual' });
 
         if (result.success) {
             setSuccess(`Wallet for ${formData.coin} saved successfully and synced to account!`);
@@ -555,7 +555,7 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
                         </div>
 
                         <p className="text-sm text-emerald-300 mb-6 leading-relaxed">
-                            Instantly configure your local mining agent with addresses for all supported coins.
+                            Instantly configure your local mining agent with addresses for supported coins. Note: XMR auto-derived addresses are stored for reference only and are not pushed for mining payouts.
                         </p>
 
                         <button
@@ -705,15 +705,21 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
                                                     <h3 className="font-bold text-white text-lg">{POOL_CONFIGS[coinSym].name}</h3>
                                                     <span className="text-xs text-muted font-mono">{coinSym}</span>
                                                     {wallet && (
-                                                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                            <Check size={10} /> CONFIGURED
-                                                        </span>
+                                                        <>
+                                                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${wallet.isProductionUsable === false ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                                {wallet.isProductionUsable === false ? <AlertTriangle size={10} /> : <Check size={10} />}
+                                                                {wallet.isProductionUsable === false ? 'MANUAL IMPORT REQUIRED' : 'CONFIGURED'}
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
                                                 <div className="mt-1 flex items-center gap-2">
                                                     <code className="text-[11px] text-muted font-mono truncate max-w-[200px] md:max-w-md">
                                                         {wallet ? wallet.address : derived ? derived : 'No address set'}
                                                     </code>
+                                                    {wallet?.warning && (
+                                                        <span className="text-[10px] text-amber-400">{wallet.warning}</span>
+                                                    )}
                                                     <button
                                                         onClick={() => handleCopyAddress(wallet ? wallet.address : derived || '')}
                                                         className="text-muted hover:text-white transition-colors"

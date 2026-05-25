@@ -151,6 +151,8 @@ export type Algorithm = 'KawPow' | 'RandomX' | 'Autolykos2' | 'Llama3-70b' | 'Et
 export type MiningCoin = 'XMR' | 'RVN' | 'ETC' | 'ERG' | 'KAS';
 
 // Mining wallet interface
+export type MiningWalletSource = 'manual' | 'derived' | 'backend-sync';
+
 export interface MiningWallet {
   id: string;
   coin: MiningCoin;
@@ -160,6 +162,9 @@ export interface MiningWallet {
   createdAt: number;
   updatedAt: number;
   isValid: boolean;
+  isProductionUsable?: boolean;
+  source?: MiningWalletSource;
+  warning?: string;
   lastValidated?: number;
 }
 
@@ -169,6 +174,7 @@ export interface WalletFormData {
   address: string;
   pool: string;
   workerName: string;
+  source?: MiningWalletSource;
 }
 
 // Pool configuration for each coin
