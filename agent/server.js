@@ -64,6 +64,7 @@ app.use(requireAuth);
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 4343;
+const CLOUD_MODE = process.env.HNH_CLOUD_MODE === 'true';
 const BIN_DIR = path.join(__dirname, 'bin');
 const MINER_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -194,6 +195,10 @@ function writeXmrigConfig() {
 }
 
 function startMiner() {
+    if (CLOUD_MODE) {
+        minerStatus = 'CLOUD_API';
+        return false;
+    }
     // Kill existing miner
     if (minerProcess) {
         try {
@@ -354,8 +359,11 @@ function startProxy() {
 // Load config and start
 loadConfig();
 
-// Start miner if binary exists
-if (fs.existsSync(MINER_BIN)) {
+// Start miner if binary exists (disabled in cloud mode)
+if (CLOUD_MODE) {
+    addLog('Cloud mode: mining disabled. Running API/coordination services only.');
+    minerStatus = 'CLOUD_API';
+} else if (fs.existsSync(MINER_BIN)) {
     startMiner();
 } else {
     addLog('Miner binary not found. Run setup_miner.sh or setup_miner_windows.ps1 first.');
@@ -370,24 +378,30 @@ app.get('/telemetry', (req, res) => {
     const hwId = initializeHardwareId();
     
     res.json({
-        gpu_temp: telemetry.temp,
-        gpu_util: minerStatus === 'MINING' ? 100 : 0,
-        fan_speed: telemetry.fan,
-        power_draw: telemetry.power,
-        hashrate: telemetry.hashrate,
-        verified_shares: totalShares,
-        gross_shares: totalShares,
-        fee_deducted: feeShares,
+        mode: CLOUD_MODE ? 'cloud_api' : 'mining',
+        status: minerStatus,
+        gpu_temp: CLOUD_MODE ? null : telemetry.temp,
+        gpu_util: CLOUD_MODE ? 0 : (minerStatus === 'MINING' ? 100 : 0),
+        fan_speed: CLOUD_MODE ? null : telemetry.fan,
+        power_draw: CLOUD_MODE ? null : telemetry.power,
+        hashrate: CLOUD_MODE ? 0 : telemetry.hashrate,
+        verified_shares: CLOUD_MODE ? 0 : totalShares,
+        gross_shares: CLOUD_MODE ? 0 : totalShares,
+        fee_deducted: CLOUD_MODE ? 0 : feeShares,
         fee_rate: feeRate * 100,
         user_tier: userTier,
-        active_job: minerStatus === 'MINING' ? {
+        active_job: CLOUD_MODE ? {
+            id: 'cloud-agent',
+            title: 'API Coordination Service',
+            status: 'RUNNING',
+            progress: 0
+        } : (minerStatus === 'MINING' ? {
             id: 'mining-job',
             title: `Mining ${currentCoin}`,
             status: 'RUNNING',
             progress: 0
-        } : null,
+        } : null),
         wallet: config.wallet,
-        status: minerStatus,
         hardware_id: hwId.commitment,
         logs: recentLogs
     });
@@ -423,7 +437,7 @@ app.post('/config', (req, res) => {
 
     if (changed) {
         saveStats();
-        startMiner();
+        if (!CLOUD_MODE) startMiner();
     }
     
     res.json({ success: true });
@@ -442,7 +456,7 @@ app.post('/switch-coin', (req, res) => {
     }
     
     addLog(`Switching to ${coin}`);
-    startMiner();
+    if (!CLOUD_MODE) startMiner();
     
     res.json({ success: true, coin });
 });
@@ -486,5 +500,5 @@ app.post('/hardware/verify', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Native Miner Agent running on http://localhost:${PORT}`);
+    console.log(`HNH Agent running on http://localhost:${PORT} [${CLOUD_MODE ? 'API/Cloud' : 'Mining'} mode]`);
 });
