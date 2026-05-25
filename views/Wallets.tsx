@@ -205,13 +205,27 @@ const Wallets: React.FC<{ setCurrentView?: (view: View) => void }> = ({ setCurre
             const agentUrl = localStorage.getItem('hnh_agent_url') || 'http://localhost:4343';
             const secret = localStorage.getItem('agent_secret') || 'HNH_LOCAL_AGENT_SECRET';
 
+            const walletsPayload = Object.fromEntries(
+                (Object.entries(addresses) as [MiningCoin, string][])
+                    .filter(([, address]) => !!address?.trim())
+                    .map(([coin, address]) => [coin, {
+                        address: address.trim(),
+                        pool: getPoolSuggestion(coin),
+                        worker: 'HNH_Worker'
+                    }])
+            );
+
             await fetch(`${agentUrl}/wallet/bulk`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${secret}`
                 },
-                body: JSON.stringify({ wallets: addresses })
+                body: JSON.stringify({
+                    wallets: walletsPayload,
+                    activeCoin: 'RVN',
+                    workerName: 'HNH_Worker'
+                })
             });
         } catch (e) {
             console.warn("Could not sync with local agent automatically. Please sync manually.");

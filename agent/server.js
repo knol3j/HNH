@@ -76,8 +76,8 @@ const PLATFORM_FEE = {
     enterprise: 0.005 // 0.5%
 };
 
-// Pool configuration (MinerGate-style: reliable, well-known pools)
-const COIN_POOLS = {
+// Default pool configuration (can be overridden per wallet/coin)
+const DEFAULT_COIN_POOLS = {
     XMR: 'xmr.2miners.com:2222',
     RVN: 'rvn.2miners.com:6060',
     ETC: 'etc.herominers.com:10161',
@@ -89,6 +89,7 @@ const COIN_POOLS = {
 let config = {
     wallet: '',
     wallets: { XMR: '', RVN: '', ETC: '', ERG: '', KAS: '' },
+    pools: { ...DEFAULT_COIN_POOLS },
     mode: 'cpu',
     password: 'x'
 };
@@ -121,6 +122,7 @@ function loadConfig() {
             feeShares = data.feeShares || 0;
             
             if (data.wallets) config.wallets = { ...config.wallets, ...data.wallets };
+            if (data.pools) config.pools = { ...config.pools, ...data.pools };
             if (data.miningMode) config.mode = data.miningMode;
             if (data.password) config.password = data.password;
             
@@ -143,6 +145,7 @@ function saveStats() {
             totalShares, 
             feeShares, 
             wallets: config.wallets,
+            pools: config.pools,
             miningMode: config.mode,
             password: config.password
         }));
@@ -162,7 +165,7 @@ function addLog(msg) {
 const STARTUP_TIMEOUT = 30000;
 
 function buildXmrigConfig() {
-    const poolUrl = COIN_POOLS[currentCoin] || COIN_POOLS.XMR;
+    const poolUrl = config.pools[currentCoin] || DEFAULT_COIN_POOLS[currentCoin] || DEFAULT_COIN_POOLS.XMR;
     const poolHost = poolUrl.split(':')[0];
     const poolPort = parseInt(poolUrl.split(':')[1]) || 2222;
     
@@ -349,8 +352,8 @@ function startProxy() {
     if (!proxy) {
         proxy = new StratumProxy({
             proxyPort: 3333,
-            upstreamHost: COIN_POOLS.XMR.split(':')[0],
-            upstreamPort: parseInt(COIN_POOLS.XMR.split(':')[1])
+            upstreamHost: DEFAULT_COIN_POOLS.XMR.split(':')[0],
+            upstreamPort: parseInt(DEFAULT_COIN_POOLS.XMR.split(':')[1])
         });
         proxy.start();
     }
@@ -443,10 +446,87 @@ app.post('/config', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/wallet/bulk', (req, res) => {
+    const { wallets, pools, workerName, activeCoin } = req.body || {};
+
+    if (!wallets || typeof wallets !== 'object') {
+        return res.status(400).json({ error: 'wallets object is required' });
+    }
+
+    const updatedWallets = {};
+    const updatedPools = {};
+
+    for (const [rawCoin, rawValue] of Object.entries(wallets)) {
+        const coin = String(rawCoin || '').toUpperCase();
+        if (!DEFAULT_COIN_POOLS[coin]) continue;
+
+        // Supports both shapes:
+        // { XMR: 'address' } or { XMR: { address, pool, worker } }
+        if (typeof rawValue === 'string') {
+            const address = rawValue.trim();
+            if (address) {
+                config.wallets[coin] = address;
+                updatedWallets[coin] = address;
+            }
+        } else if (rawValue && typeof rawValue === 'object') {
+            const address = String(rawValue.address || '').trim();
+            const pool = String(rawValue.pool || '').trim();
+
+            if (address) {
+                config.wallets[coin] = address;
+                updatedWallets[coin] = address;
+            }
+            if (pool) {
+                config.pools[coin] = pool;
+                updatedPools[coin] = pool;
+            }
+        }
+    }
+
+    if (pools && typeof pools === 'object') {
+        for (const [rawCoin, rawPool] of Object.entries(pools)) {
+            const coin = String(rawCoin || '').toUpperCase();
+            if (!DEFAULT_COIN_POOLS[coin]) continue;
+            const pool = String(rawPool || '').trim();
+            if (pool) {
+                config.pools[coin] = pool;
+                updatedPools[coin] = pool;
+            }
+        }
+    }
+
+    let nextCoin = String(activeCoin || '').toUpperCase();
+    if (!DEFAULT_COIN_POOLS[nextCoin] || !config.wallets[nextCoin]) {
+        nextCoin = Object.keys(config.wallets).find(c => config.wallets[c]) || currentCoin;
+    }
+
+    currentCoin = nextCoin;
+    config.wallet = config.wallets[currentCoin] || '';
+
+    if (workerName && typeof workerName === 'string') {
+        config.password = workerName.trim() || config.password;
+    }
+
+    saveStats();
+    addLog(`Bulk wallet sync: ${Object.keys(updatedWallets).length} wallets, ${Object.keys(updatedPools).length} pools`);
+
+    if (!CLOUD_MODE && config.wallet) {
+        startMiner();
+    }
+
+    res.json({
+        success: true,
+        currentCoin,
+        wallet: config.wallet,
+        updatedWallets,
+        updatedPools
+    });
+});
+
 app.post('/switch-coin', (req, res) => {
-    const { coin } = req.body;
+    const coin = String(req.body?.coin || '').toUpperCase();
     
-    if (!COIN_POOLS[coin]) {
+    if (!DEFAULT_COIN_POOLS[coin]) {
         return res.status(400).json({ error: 'Unknown coin' });
     }
     
@@ -463,8 +543,8 @@ app.post('/switch-coin', (req, res) => {
 
 app.get('/meta', (req, res) => {
     res.json({
-        coins: Object.keys(COIN_POOLS),
-        pools: COIN_POOLS,
+        coins: Object.keys(DEFAULT_COIN_POOLS),
+        pools: config.pools,
         wallet: config.wallet,
         currentCoin: currentCoin,
         config: config
