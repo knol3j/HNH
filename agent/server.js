@@ -63,7 +63,7 @@ const requireAuth = (req, res, next) => {
 app.use(requireAuth);
 
 // --- CONFIGURATION ---
-const PORT = 4343;
+const PORT = process.env.PORT || 4343;
 const BIN_DIR = path.join(__dirname, 'bin');
 const MINER_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
