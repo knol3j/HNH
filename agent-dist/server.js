@@ -466,4 +466,11 @@ app.get('/meta', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Native XMRig Agent running on http://localhost:${PORT}`);
+    console.log(`[AGENT] Runtime script: ${__filename}`);
+
+    const normalizedPath = (__filename || '').replace(/\\/g, '/').toLowerCase();
+    if (normalizedPath.includes('/downloads/server.js')) {
+        console.warn('[AGENT] ⚠️ Legacy runtime detected: running from Downloads/server.js');
+        console.warn('[AGENT] ⚠️ Prefer packaged/repo runtime to avoid stale config drift.');
+    }
 });
