@@ -3,17 +3,21 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/database/prisma.service';
 
 describe('Health endpoint', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret-that-is-long-enough';
-    process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://user:password@localhost:5432/hashnhedge';
+    process.env.JWT_SECRET = 'test-secret-that-is-long-enough';
+    process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/hashnhedge';
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue({ $connect: jest.fn(), $disconnect: jest.fn() })
+      .compile();
 
     app = moduleRef.createNestApplication();
     await app.init();
