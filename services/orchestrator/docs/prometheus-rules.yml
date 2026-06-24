@@ -1,0 +1,31 @@
+groups:
+  - name: hashnhedge-orchestrator
+    rules:
+      - alert: HNHOpenCircuitBreaker
+        expr: hnh_circuit_breakers_open > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: HashNHedge orchestrator circuit breaker open
+      - alert: HNHApiErrorRateHigh
+        expr: sum(rate(hnh_http_requests_total{status=~"5.."}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: HashNHedge orchestrator API error rate is elevated
+      - alert: HNHQueuedJobsHigh
+        expr: hnh_jobs_queued > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: HashNHedge orchestrator job queue is elevated
+      - alert: HNHNoActiveWorkers
+        expr: hnh_workers_active == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: HashNHedge has no active workers
