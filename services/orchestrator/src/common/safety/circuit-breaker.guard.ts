@@ -11,7 +11,7 @@ export class CircuitBreakerGuard implements CanActivate {
     private readonly store: CircuitBreakerStore,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const breakerName = this.reflector.getAllAndOverride<CircuitBreakerName>(circuitBreakerMetadataKey, [
       context.getHandler(),
       context.getClass(),
@@ -21,7 +21,7 @@ export class CircuitBreakerGuard implements CanActivate {
       return true;
     }
 
-    const state = this.store.get(breakerName);
+    const state = await this.store.get(breakerName);
 
     if (state.open) {
       throw new ServiceUnavailableException({
