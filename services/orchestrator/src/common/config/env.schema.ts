@@ -10,9 +10,9 @@ export const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
   JWT_SECRET: z.string().min(24, 'JWT_SECRET must be at least 24 characters'),
   DATABASE_URL: z.string().url().or(z.string().startsWith('postgresql://')),
-  ADMIN_API_KEY: secretSchema,
-  WORKER_API_KEY: secretSchema,
-  VENDOR_API_KEY: secretSchema,
+  ADMIN_API_KEY: secretSchema.default('local-admin-api-key-change-me'),
+  WORKER_API_KEY: secretSchema.default('local-worker-api-key-change-me'),
+  VENDOR_API_KEY: secretSchema.default('local-vendor-api-key-change-me'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
