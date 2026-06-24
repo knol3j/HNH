@@ -6,9 +6,7 @@ import { HealthModule } from './health/health.module';
 import { JobsModule } from './jobs/jobs.module';
 import { WorkersModule } from './workers/workers.module';
 
-class AppModuleBase {}
-
-export const AppModule = Module({
+@Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -18,4 +16,5 @@ export const AppModule = Module({
     WorkersModule,
     JobsModule,
   ],
-})(AppModuleBase) as typeof AppModuleBase;
+})
+export class AppModule {}
