@@ -19,7 +19,7 @@ export class AdminController {
   @Get('circuit-breakers')
   @Roles(Role.Admin)
   @ApiOkResponse({ description: 'Circuit breaker states' })
-  listBreakers(): CircuitBreakerState[] {
+  listBreakers(): Promise<CircuitBreakerState[]> {
     return this.breakers.list();
   }
 
@@ -27,7 +27,7 @@ export class AdminController {
   @SignedRoute()
   @Roles(Role.Admin)
   @ApiOkResponse({ description: 'Circuit breaker state updated' })
-  updateBreaker(@Param('name') name: CircuitBreakerName, @Body() dto: UpdateBreakerDto): CircuitBreakerState {
+  updateBreaker(@Param('name') name: CircuitBreakerName, @Body() dto: UpdateBreakerDto): Promise<CircuitBreakerState> {
     if (!breakerNames.includes(name)) {
       throw new Error(`Unknown circuit breaker: ${name}`);
     }
