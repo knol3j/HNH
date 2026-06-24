@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { AuditLoggerService } from './common/audit/audit-logger.service';
 import { EnvConfig } from './common/config/env.schema';
 
 async function bootstrap(): Promise<void> {
@@ -13,12 +15,9 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService<EnvConfig, true>);
 
   app.use(helmet());
+  app.useGlobalInterceptors(new AuditInterceptor(app.get(AuditLoggerService)));
   app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
   const allowedOrigins = config
@@ -33,7 +32,6 @@ async function bootstrap(): Promise<void> {
         callback(null, true);
         return;
       }
-
       callback(new Error('Origin not allowed by HashNHedge orchestrator CORS policy'));
     },
     credentials: true,
