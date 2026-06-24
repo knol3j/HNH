@@ -1,14 +1,30 @@
+import { createHmac } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import { apiKeyHeaderName, roleHeaderName, Role } from '../src/auth/roles';
+import { nonceHeaderName, signatureHeaderName, timestampHeaderName } from '../src/auth/signature.headers';
 import { PrismaService } from '../src/database/prisma.service';
 
 const adminKey = 'test-admin-api-key-that-is-long';
 const workerKey = 'test-worker-api-key-that-is-long';
 const vendorKey = 'test-vendor-api-key-that-is-long';
+
+function signedHeaders(method: string, path: string, role: Role, key: string, body: unknown, nonce: string) {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const payload = [method, path, timestamp, nonce, JSON.stringify(body ?? {})].join('|');
+  const signature = createHmac('sha256', key).update(payload).digest('hex');
+
+  return {
+    [roleHeaderName]: role,
+    [apiKeyHeaderName]: key,
+    [timestampHeaderName]: timestamp,
+    [nonceHeaderName]: nonce,
+    [signatureHeaderName]: signature,
+  };
+}
 
 function createMockPrisma() {
   const workers = new Map<string, any>();
@@ -85,32 +101,33 @@ describe('Worker and job loop', () => {
   });
 
   it('registers a worker, queues a job, and leases the job', async () => {
+    const workerBody = {
+      workerName: 'worker-rig-001',
+      walletAddress: 'GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc',
+      capabilities: ['mining', 'ai-inference'],
+      gpuCount: 2,
+    };
+
     await request(app.getHttpServer())
       .post('/workers')
-      .set(roleHeaderName, Role.Worker)
-      .set(apiKeyHeaderName, workerKey)
-      .send({
-        workerName: 'worker-rig-001',
-        walletAddress: 'GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc',
-        capabilities: ['mining', 'ai-inference'],
-        gpuCount: 2,
-      })
+      .set(signedHeaders('POST', '/workers', Role.Worker, workerKey, workerBody, 'nonce-worker-register'))
+      .send(workerBody)
       .expect(201);
 
+    const jobBody = { jobType: 'ai-inference', description: 'Inference batch' };
     const jobResponse = await request(app.getHttpServer())
       .post('/jobs')
-      .set(roleHeaderName, Role.Vendor)
-      .set(apiKeyHeaderName, vendorKey)
-      .send({ jobType: 'ai-inference', description: 'Inference batch' })
+      .set(signedHeaders('POST', '/jobs', Role.Vendor, vendorKey, jobBody, 'nonce-job-create'))
+      .send(jobBody)
       .expect(201);
 
     expect(jobResponse.body.status).toBe('QUEUED');
 
+    const leaseBody = { workerId: 'worker-rig-001' };
     const leaseResponse = await request(app.getHttpServer())
       .post('/jobs/lease-next')
-      .set(roleHeaderName, Role.Worker)
-      .set(apiKeyHeaderName, workerKey)
-      .send({ workerId: 'worker-rig-001' })
+      .set(signedHeaders('POST', '/jobs/lease-next', Role.Worker, workerKey, leaseBody, 'nonce-job-lease'))
+      .send(leaseBody)
       .expect(201);
 
     expect(leaseResponse.body.status).toBe('ASSIGNED');
