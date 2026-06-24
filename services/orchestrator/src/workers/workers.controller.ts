@@ -12,25 +12,25 @@ export class WorkersController {
 
   @Post()
   @ApiCreatedResponse({ description: 'Worker registered or refreshed' })
-  registerWorker(@Body() dto: RegisterWorkerDto): WorkerRecord {
+  registerWorker(@Body() dto: RegisterWorkerDto): Promise<WorkerRecord> {
     return this.workersService.registerWorker(dto);
   }
 
   @Get()
   @ApiOkResponse({ description: 'Registered workers' })
-  listWorkers(): WorkerRecord[] {
+  listWorkers(): Promise<WorkerRecord[]> {
     return this.workersService.listWorkers();
   }
 
   @Get(':workerId')
   @ApiOkResponse({ description: 'Worker details' })
-  getWorker(@Param('workerId') workerId: string): WorkerRecord {
+  getWorker(@Param('workerId') workerId: string): Promise<WorkerRecord> {
     return this.workersService.getWorker(workerId);
   }
 
   @Post(':workerId/heartbeat')
   @ApiOkResponse({ description: 'Worker heartbeat accepted' })
-  heartbeat(@Param('workerId') workerId: string, @Body() dto: HeartbeatDto): WorkerRecord {
+  heartbeat(@Param('workerId') workerId: string, @Body() dto: HeartbeatDto): Promise<WorkerRecord> {
     return this.workersService.heartbeat(workerId, dto);
   }
 }

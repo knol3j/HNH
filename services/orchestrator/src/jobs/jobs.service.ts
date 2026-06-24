@@ -1,50 +1,50 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Job, JobStatus, Prisma } from '@prisma/client';
 
+import { PrismaService } from '../database/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
-import { JobStatus } from './job-status';
 
-export interface JobRecord {
-  id: string;
-  jobType: string;
-  description: string;
-  status: JobStatus;
-  assignedWorkerId?: string;
-  leaseId?: string;
-  leaseExpiresAt?: string;
-  retryCount: number;
-  maxRetries: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type JobRecord = Job;
 
 @Injectable()
 export class JobsService {
-  private readonly jobs = new Map<string, JobRecord>();
   private sequence = 0;
 
-  createJob(dto: CreateJobDto): JobRecord {
-    const now = new Date().toISOString();
-    const job: JobRecord = {
-      id: this.nextId('job'),
-      jobType: dto.jobType,
-      description: dto.description,
-      status: JobStatus.Queued,
-      retryCount: 0,
-      maxRetries: dto.maxRetries ?? 3,
-      createdAt: now,
-      updatedAt: now,
-    };
+  constructor(private readonly prisma: PrismaService) {}
 
-    this.jobs.set(job.id, job);
+  async createJob(dto: CreateJobDto): Promise<JobRecord> {
+    const id = this.nextId('job');
+
+    const job = await this.prisma.job.create({
+      data: {
+        id,
+        jobType: dto.jobType,
+        description: dto.description,
+        requesterId: dto.requesterId,
+        requirements: this.toJson(dto.requirements ?? {}),
+        payload: this.toJson(dto.payload ?? {}),
+        status: JobStatus.QUEUED,
+        maxRetries: dto.maxRetries ?? 3,
+        events: {
+          create: {
+            id: this.nextId('event'),
+            toStatus: JobStatus.QUEUED,
+            actorId: dto.requesterId,
+            metadata: this.toJson({ reason: 'job_created' }),
+          },
+        },
+      },
+    });
+
     return job;
   }
 
-  listJobs(): JobRecord[] {
-    return Array.from(this.jobs.values());
+  async listJobs(): Promise<JobRecord[]> {
+    return this.prisma.job.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  getJob(jobId: string): JobRecord {
-    const job = this.jobs.get(jobId);
+  async getJob(jobId: string): Promise<JobRecord> {
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
 
     if (!job) {
       throw new NotFoundException(`Job ${jobId} not found`);
@@ -53,36 +53,75 @@ export class JobsService {
     return job;
   }
 
-  leaseNextJob(workerId: string): JobRecord {
-    const job = this.listJobs().find((candidate) => candidate.status === JobStatus.Queued);
+  async leaseNextJob(workerId: string): Promise<JobRecord> {
+    const job = await this.prisma.job.findFirst({
+      where: { status: JobStatus.QUEUED },
+      orderBy: { createdAt: 'asc' },
+    });
 
     if (!job) {
       throw new NotFoundException('No queued jobs are available');
     }
 
     const now = new Date();
-    const updated: JobRecord = {
-      ...job,
-      status: JobStatus.Assigned,
-      assignedWorkerId: workerId,
-      leaseId: this.nextId('lease'),
-      leaseExpiresAt: new Date(now.getTime() + 300000).toISOString(),
-      updatedAt: now.toISOString(),
-    };
+    const leaseExpiresAt = new Date(now.getTime() + 300000);
 
-    this.jobs.set(job.id, updated);
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id: job.id },
+        data: {
+          status: JobStatus.ASSIGNED,
+          assignedWorkerId: workerId,
+          leaseId: this.nextId('lease'),
+          leaseExpiresAt,
+        },
+      });
+
+      await tx.jobEvent.create({
+        data: {
+          id: this.nextId('event'),
+          jobId: job.id,
+          fromStatus: job.status,
+          toStatus: JobStatus.ASSIGNED,
+          actorId: workerId,
+          metadata: this.toJson({ reason: 'job_leased' }),
+        },
+      });
+
+      return updated;
+    });
   }
 
-  markRunning(jobId: string): JobRecord {
-    const job = this.getJob(jobId);
-    const updated = { ...job, status: JobStatus.Running, updatedAt: new Date().toISOString() };
-    this.jobs.set(job.id, updated);
-    return updated;
+  async markRunning(jobId: string): Promise<JobRecord> {
+    const job = await this.getJob(jobId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.RUNNING },
+      });
+
+      await tx.jobEvent.create({
+        data: {
+          id: this.nextId('event'),
+          jobId,
+          fromStatus: job.status,
+          toStatus: JobStatus.RUNNING,
+          actorId: job.assignedWorkerId,
+          metadata: this.toJson({ reason: 'worker_started' }),
+        },
+      });
+
+      return updated;
+    });
   }
 
   private nextId(prefix: string): string {
     this.sequence += 1;
     return `${prefix}_${Date.now()}_${this.sequence}`;
+  }
+
+  private toJson(value: Record<string, unknown>): Prisma.InputJsonObject {
+    return value as Prisma.InputJsonObject;
   }
 }
