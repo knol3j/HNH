@@ -32,15 +32,22 @@ Requests are accepted only when the timestamp is within five minutes of server t
 
 Each nonce can be used once per role/API-key scope during the replay window.
 
+## Nonce store modes
+
+`NONCE_STORE=memory` uses the local in-process nonce store and is appropriate for local development or single-instance test environments.
+
+`NONCE_STORE=redis` uses Redis so replay protection works across multiple orchestrator instances. `REDIS_URL` is required in this mode.
+
 ## Current implementation
 
-This PR adds:
+This implementation includes:
 
 - signature header constants
 - signature service
-- nonce store
+- memory nonce store
+- Redis nonce store mode
 - request signing guard
 - route decorator for signed endpoints
 - unit tests for HMAC signing
 
-The nonce store is in-memory for the first pass. It should be replaced with Redis before multi-instance production deployment.
+Use Redis before multi-instance production deployment.
