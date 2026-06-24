@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Job, JobStatus, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 
 export type JobRecord = Job;
+
+export interface RecoverySummary {
+  recovered: number;
+  deadLettered: number;
+}
 
 @Injectable()
 export class JobsService {
@@ -77,16 +82,7 @@ export class JobsService {
         },
       });
 
-      await tx.jobEvent.create({
-        data: {
-          id: this.nextId('event'),
-          jobId: job.id,
-          fromStatus: job.status,
-          toStatus: JobStatus.ASSIGNED,
-          actorId: workerId,
-          metadata: this.toJson({ reason: 'job_leased' }),
-        },
-      });
+      await this.createEvent(tx, job.id, job.status, JobStatus.ASSIGNED, workerId, { reason: 'job_leased' });
 
       return updated;
     });
@@ -95,24 +91,146 @@ export class JobsService {
   async markRunning(jobId: string): Promise<JobRecord> {
     const job = await this.getJob(jobId);
 
+    if (job.status !== JobStatus.ASSIGNED) {
+      throw new ConflictException(`Job ${jobId} must be ASSIGNED before it can run`);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.job.update({
         where: { id: jobId },
         data: { status: JobStatus.RUNNING },
       });
 
-      await tx.jobEvent.create({
+      await this.createEvent(tx, jobId, job.status, JobStatus.RUNNING, job.assignedWorkerId, { reason: 'worker_started' });
+
+      return updated;
+    });
+  }
+
+  async submitProof(jobId: string, proofHash: string, resultUri?: string): Promise<JobRecord> {
+    const job = await this.getJob(jobId);
+
+    if (job.status !== JobStatus.RUNNING) {
+      throw new ConflictException(`Job ${jobId} must be RUNNING before proof submission`);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id: jobId },
         data: {
-          id: this.nextId('event'),
-          jobId,
-          fromStatus: job.status,
-          toStatus: JobStatus.RUNNING,
-          actorId: job.assignedWorkerId,
-          metadata: this.toJson({ reason: 'worker_started' }),
+          status: JobStatus.PROOF_SUBMITTED,
+          proofHash,
+          resultUri,
         },
       });
 
+      await this.createEvent(tx, jobId, job.status, JobStatus.PROOF_SUBMITTED, job.assignedWorkerId, {
+        reason: 'proof_submitted',
+        proofHash,
+      });
+
       return updated;
+    });
+  }
+
+  async failJob(jobId: string, reason: string): Promise<JobRecord> {
+    const job = await this.getJob(jobId);
+    const retryCount = job.retryCount + 1;
+    const nextStatus = retryCount <= job.maxRetries ? JobStatus.RETRY_QUEUED : JobStatus.DEAD_LETTERED;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id: jobId },
+        data: {
+          status: nextStatus,
+          retryCount,
+          assignedWorkerId: null,
+          leaseId: null,
+          leaseExpiresAt: null,
+        },
+      });
+
+      await this.createEvent(tx, jobId, job.status, nextStatus, job.assignedWorkerId, { reason });
+
+      if (nextStatus === JobStatus.RETRY_QUEUED) {
+        const requeued = await tx.job.update({
+          where: { id: jobId },
+          data: { status: JobStatus.QUEUED },
+        });
+
+        await this.createEvent(tx, jobId, nextStatus, JobStatus.QUEUED, job.assignedWorkerId, {
+          reason: 'retry_requeued',
+          retryCount,
+        });
+
+        return requeued;
+      }
+
+      return updated;
+    });
+  }
+
+  async recoverExpiredLeases(now = new Date()): Promise<RecoverySummary> {
+    const expiredJobs = await this.prisma.job.findMany({
+      where: {
+        status: { in: [JobStatus.ASSIGNED, JobStatus.RUNNING] },
+        leaseExpiresAt: { lt: now },
+      },
+      orderBy: { leaseExpiresAt: 'asc' },
+    });
+
+    let recovered = 0;
+    let deadLettered = 0;
+
+    for (const job of expiredJobs) {
+      const retryCount = job.retryCount + 1;
+      const nextStatus = retryCount <= job.maxRetries ? JobStatus.QUEUED : JobStatus.DEAD_LETTERED;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.job.update({
+          where: { id: job.id },
+          data: {
+            status: nextStatus,
+            retryCount,
+            assignedWorkerId: null,
+            leaseId: null,
+            leaseExpiresAt: null,
+          },
+        });
+
+        await this.createEvent(tx, job.id, job.status, nextStatus, job.assignedWorkerId, {
+          reason: 'lease_expired',
+          retryCount,
+        });
+      });
+
+      if (nextStatus === JobStatus.QUEUED) {
+        recovered += 1;
+      } else {
+        deadLettered += 1;
+      }
+    }
+
+    return { recovered, deadLettered };
+  }
+
+  private async createEvent(
+    tx: Prisma.TransactionClient,
+    jobId: string,
+    fromStatus: JobStatus | null,
+    toStatus: JobStatus,
+    actorId: string | null | undefined,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await tx.jobEvent.create({
+      data: {
+        id: this.nextId('event'),
+        jobId,
+        fromStatus,
+        toStatus,
+        actorId,
+        metadata: this.toJson(metadata),
+      },
     });
   }
 
