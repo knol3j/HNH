@@ -1,57 +1,53 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, Worker, WorkerStatus } from '@prisma/client';
 
+import { PrismaService } from '../database/prisma.service';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { RegisterWorkerDto } from './dto/register-worker.dto';
 
-export interface WorkerRecord {
-  id: string;
-  workerName: string;
-  walletAddress: string;
-  capabilities: string[];
-  gpuCount: number;
-  gpuModel?: string;
-  acceptsLeasedJobs: boolean;
-  status: string;
-  metadata: Record<string, unknown>;
-  lastHeartbeatAt: string;
-  createdAt: string;
-  telemetry?: Record<string, unknown>;
-}
+export type WorkerRecord = Worker;
 
 @Injectable()
 export class WorkersService {
-  private readonly workers = new Map<string, WorkerRecord>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  registerWorker(dto: RegisterWorkerDto): WorkerRecord {
-    const now = new Date().toISOString();
+  async registerWorker(dto: RegisterWorkerDto): Promise<WorkerRecord> {
     const id = this.normalizeWorkerId(dto.workerName);
-    const existing = this.workers.get(id);
+    const now = new Date();
 
-    const worker: WorkerRecord = {
-      id,
-      workerName: dto.workerName,
-      walletAddress: dto.walletAddress,
-      capabilities: dto.capabilities ?? ['mining'],
-      gpuCount: dto.gpuCount ?? 0,
-      gpuModel: dto.gpuModel,
-      acceptsLeasedJobs: dto.acceptsLeasedJobs ?? true,
-      status: existing?.status ?? 'registered',
-      metadata: dto.metadata ?? {},
-      createdAt: existing?.createdAt ?? now,
-      lastHeartbeatAt: now,
-      telemetry: existing?.telemetry,
-    };
-
-    this.workers.set(id, worker);
-    return worker;
+    return this.prisma.worker.upsert({
+      where: { id },
+      create: {
+        id,
+        workerName: dto.workerName,
+        walletAddress: dto.walletAddress,
+        capabilities: dto.capabilities ?? ['mining'],
+        gpuCount: dto.gpuCount ?? 0,
+        gpuModel: dto.gpuModel,
+        acceptsLeasedJobs: dto.acceptsLeasedJobs ?? true,
+        status: WorkerStatus.REGISTERED,
+        metadata: this.toJson(dto.metadata ?? {}),
+        lastHeartbeatAt: now,
+      },
+      update: {
+        workerName: dto.workerName,
+        walletAddress: dto.walletAddress,
+        capabilities: dto.capabilities ?? ['mining'],
+        gpuCount: dto.gpuCount ?? 0,
+        gpuModel: dto.gpuModel,
+        acceptsLeasedJobs: dto.acceptsLeasedJobs ?? true,
+        metadata: this.toJson(dto.metadata ?? {}),
+        lastHeartbeatAt: now,
+      },
+    });
   }
 
-  listWorkers(): WorkerRecord[] {
-    return Array.from(this.workers.values()).sort((a, b) => a.workerName.localeCompare(b.workerName));
+  async listWorkers(): Promise<WorkerRecord[]> {
+    return this.prisma.worker.findMany({ orderBy: { workerName: 'asc' } });
   }
 
-  getWorker(workerId: string): WorkerRecord {
-    const worker = this.workers.get(workerId);
+  async getWorker(workerId: string): Promise<WorkerRecord> {
+    const worker = await this.prisma.worker.findUnique({ where: { id: workerId } });
 
     if (!worker) {
       throw new NotFoundException(`Worker ${workerId} not found`);
@@ -60,27 +56,30 @@ export class WorkersService {
     return worker;
   }
 
-  heartbeat(workerId: string, dto: HeartbeatDto): WorkerRecord {
-    const worker = this.getWorker(workerId);
+  async heartbeat(workerId: string, dto: HeartbeatDto): Promise<WorkerRecord> {
+    await this.getWorker(workerId);
 
-    const updated: WorkerRecord = {
-      ...worker,
-      status: dto.status ?? 'active',
-      lastHeartbeatAt: new Date().toISOString(),
-      telemetry: {
-        ...(worker.telemetry ?? {}),
-        ...(dto.telemetry ?? {}),
-        gpuUtilizationPercent: dto.gpuUtilizationPercent,
-        hashrate: dto.hashrate,
-        activeJobs: dto.activeJobs,
+    return this.prisma.worker.update({
+      where: { id: workerId },
+      data: {
+        status: WorkerStatus.ACTIVE,
+        lastHeartbeatAt: new Date(),
+        telemetry: this.toJson({
+          ...(dto.telemetry ?? {}),
+          gpuUtilizationPercent: dto.gpuUtilizationPercent,
+          hashrate: dto.hashrate,
+          activeJobs: dto.activeJobs,
+          status: dto.status,
+        }),
       },
-    };
-
-    this.workers.set(workerId, updated);
-    return updated;
+    });
   }
 
   private normalizeWorkerId(workerName: string): string {
     return workerName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  }
+
+  private toJson(value: Record<string, unknown>): Prisma.InputJsonObject {
+    return value as Prisma.InputJsonObject;
   }
 }
