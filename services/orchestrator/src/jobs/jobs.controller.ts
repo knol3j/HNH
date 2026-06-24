@@ -12,31 +12,31 @@ export class JobsController {
 
   @Post()
   @ApiCreatedResponse({ description: 'Job queued' })
-  createJob(@Body() dto: CreateJobDto): JobRecord {
+  createJob(@Body() dto: CreateJobDto): Promise<JobRecord> {
     return this.jobsService.createJob(dto);
   }
 
   @Get()
   @ApiOkResponse({ description: 'Jobs' })
-  listJobs(): JobRecord[] {
+  listJobs(): Promise<JobRecord[]> {
     return this.jobsService.listJobs();
   }
 
   @Get(':jobId')
   @ApiOkResponse({ description: 'Job details' })
-  getJob(@Param('jobId') jobId: string): JobRecord {
+  getJob(@Param('jobId') jobId: string): Promise<JobRecord> {
     return this.jobsService.getJob(jobId);
   }
 
   @Post('lease-next')
   @ApiOkResponse({ description: 'Next queued job leased to worker' })
-  leaseNextJob(@Body() dto: LeaseJobDto): JobRecord {
+  leaseNextJob(@Body() dto: LeaseJobDto): Promise<JobRecord> {
     return this.jobsService.leaseNextJob(dto.workerId);
   }
 
   @Post(':jobId/running')
   @ApiOkResponse({ description: 'Job marked running' })
-  markRunning(@Param('jobId') jobId: string): JobRecord {
+  markRunning(@Param('jobId') jobId: string): Promise<JobRecord> {
     return this.jobsService.markRunning(jobId);
   }
 }
