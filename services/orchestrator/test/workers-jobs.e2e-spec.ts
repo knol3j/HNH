@@ -3,7 +3,12 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
+import { apiKeyHeaderName, roleHeaderName, Role } from '../src/auth/roles';
 import { PrismaService } from '../src/database/prisma.service';
+
+const adminKey = 'test-admin-api-key-that-is-long';
+const workerKey = 'test-worker-api-key-that-is-long';
+const vendorKey = 'test-vendor-api-key-that-is-long';
 
 function createMockPrisma() {
   const workers = new Map<string, any>();
@@ -17,9 +22,7 @@ function createMockPrisma() {
     worker: {
       upsert: jest.fn(async ({ where, create, update }: any) => {
         const existing = workers.get(where.id);
-        const value = existing
-          ? { ...existing, ...update, updatedAt: new Date() }
-          : { ...create, createdAt: new Date(), updatedAt: new Date() };
+        const value = existing ? { ...existing, ...update, updatedAt: new Date() } : { ...create, createdAt: new Date(), updatedAt: new Date() };
         workers.set(where.id, value);
         return value;
       }),
@@ -63,6 +66,9 @@ describe('Worker and job loop', () => {
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret-that-is-long-enough';
+    process.env.ADMIN_API_KEY = adminKey;
+    process.env.WORKER_API_KEY = workerKey;
+    process.env.VENDOR_API_KEY = vendorKey;
     process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/hashnhedge';
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -81,6 +87,8 @@ describe('Worker and job loop', () => {
   it('registers a worker, queues a job, and leases the job', async () => {
     await request(app.getHttpServer())
       .post('/workers')
+      .set(roleHeaderName, Role.Worker)
+      .set(apiKeyHeaderName, workerKey)
       .send({
         workerName: 'worker-rig-001',
         walletAddress: 'GCKbEgD4VSLtkwt57At7pWscaxaQ2gBZtTQE2hqr3Yrc',
@@ -91,6 +99,8 @@ describe('Worker and job loop', () => {
 
     const jobResponse = await request(app.getHttpServer())
       .post('/jobs')
+      .set(roleHeaderName, Role.Vendor)
+      .set(apiKeyHeaderName, vendorKey)
       .send({ jobType: 'ai-inference', description: 'Inference batch' })
       .expect(201);
 
@@ -98,6 +108,8 @@ describe('Worker and job loop', () => {
 
     const leaseResponse = await request(app.getHttpServer())
       .post('/jobs/lease-next')
+      .set(roleHeaderName, Role.Worker)
+      .set(apiKeyHeaderName, workerKey)
       .send({ workerId: 'worker-rig-001' })
       .expect(201);
 
