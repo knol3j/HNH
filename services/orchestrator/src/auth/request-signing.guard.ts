@@ -19,7 +19,7 @@ export class RequestSigningGuard implements CanActivate {
     private readonly signatures: SignatureService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiresSignature = this.reflector.getAllAndOverride<boolean>(signedRouteMetadataKey, [
       context.getHandler(),
       context.getClass(),
@@ -42,7 +42,9 @@ export class RequestSigningGuard implements CanActivate {
 
     this.assertFreshTimestamp(timestamp);
 
-    if (!this.nonceStore.remember(`${role}:${apiKey}`, nonce, maxSignatureAgeSeconds)) {
+    const nonceAccepted = await this.nonceStore.remember(`${role}:${apiKey}`, nonce, maxSignatureAgeSeconds);
+
+    if (!nonceAccepted) {
       throw new UnauthorizedException('Replay detected for HashNHedge signed request');
     }
 
