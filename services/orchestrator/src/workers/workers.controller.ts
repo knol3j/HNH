@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '../auth/auth.guard';
+import { RequestSigningGuard } from '../auth/request-signing.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../auth/roles';
 import { HeartbeatDto } from './dto/heartbeat.dto';
@@ -11,7 +12,7 @@ import { WorkerRecord, WorkersService } from './workers.service';
 @ApiTags('workers')
 @ApiSecurity('x-hnh-api-key')
 @Controller('workers')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RequestSigningGuard)
 export class WorkersController {
   constructor(private readonly workersService: WorkersService) {}
 
