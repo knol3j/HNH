@@ -38,6 +38,19 @@ Initial persisted models:
 
 `JobEvent` records lifecycle transitions for auditability.
 
+## Job reliability behavior
+
+The scheduler now has service-level support for:
+
+- lease expiry detection
+- retry counters
+- requeueing retryable jobs
+- dead-lettering exhausted jobs
+- proof/result metadata submission
+- failure transition auditing
+
+The next API layer should expose these controls through admin/worker-scoped routes after auth and RBAC land.
+
 ## Endpoints
 
 - `GET /health`
