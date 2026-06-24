@@ -12,7 +12,8 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-class HealthServiceBase {
+@Injectable()
+export class HealthService {
   constructor(private readonly config: ConfigService<EnvConfig, true>) {}
 
   getHealth(): HealthResponse {
@@ -26,5 +27,3 @@ class HealthServiceBase {
     };
   }
 }
-
-export const HealthService = Injectable()(HealthServiceBase) as typeof HealthServiceBase;
