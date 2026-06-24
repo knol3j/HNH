@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkerStatus {
+  REGISTERED
+  ACTIVE
+  IDLE
+  OFFLINE
+  DRAINING
+}
+
+enum JobStatus {
+  QUEUED
+  ASSIGNED
+  RUNNING
+  PROOF_SUBMITTED
+  VERIFIED
+  PAID
+  FAILED
+  RETRY_QUEUED
+  DEAD_LETTERED
+  LEASE_EXPIRED
+}
+
+model Worker {
+  id                String       @id
+  workerName        String
+  walletAddress     String
+  capabilities      String[]     @default([])
+  gpuCount          Int          @default(0)
+  gpuModel          String?
+  acceptsLeasedJobs Boolean      @default(true)
+  status            WorkerStatus @default(REGISTERED)
+  metadata          Json         @default("{}")
+  telemetry         Json?
+  lastHeartbeatAt   DateTime
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  jobs              Job[]
+
+  @@index([walletAddress])
+  @@index([status])
+  @@index([lastHeartbeatAt])
+}
+
+model Job {
+  id               String    @id
+  jobType          String
+  description      String
+  requesterId      String?
+  requirements     Json      @default("{}")
+  payload          Json      @default("{}")
+  status           JobStatus @default(QUEUED)
+  assignedWorkerId String?
+  assignedWorker   Worker?   @relation(fields: [assignedWorkerId], references: [id])
+  leaseId          String?
+  leaseExpiresAt   DateTime?
+  retryCount       Int       @default(0)
+  maxRetries       Int       @default(3)
+  proofHash        String?
+  resultUri        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  completedAt      DateTime?
+  events           JobEvent[]
+
+  @@index([status])
+  @@index([jobType])
+  @@index([assignedWorkerId])
+  @@index([leaseExpiresAt])
+}
+
+model JobEvent {
+  id        String    @id
+  jobId     String
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fromStatus JobStatus?
+  toStatus  JobStatus
+  actorId   String?
+  metadata  Json      @default("{}")
+  createdAt DateTime  @default(now())
+
+  @@index([jobId])
+  @@index([toStatus])
+  @@index([createdAt])
+}
