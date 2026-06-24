@@ -5,6 +5,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { RequestSigningGuard } from '../auth/request-signing.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../auth/roles';
+import { SignedRoute } from '../auth/signed.decorator';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { RegisterWorkerDto } from './dto/register-worker.dto';
 import { WorkerRecord, WorkersService } from './workers.service';
@@ -17,6 +18,7 @@ export class WorkersController {
   constructor(private readonly workersService: WorkersService) {}
 
   @Post()
+  @SignedRoute()
   @Roles(Role.Worker, Role.Admin)
   @ApiCreatedResponse({ description: 'Worker registered or refreshed' })
   registerWorker(@Body() dto: RegisterWorkerDto): Promise<WorkerRecord> {
@@ -38,6 +40,7 @@ export class WorkersController {
   }
 
   @Post(':workerId/heartbeat')
+  @SignedRoute()
   @Roles(Role.Worker, Role.Admin)
   @ApiOkResponse({ description: 'Worker heartbeat accepted' })
   heartbeat(@Param('workerId') workerId: string, @Body() dto: HeartbeatDto): Promise<WorkerRecord> {
