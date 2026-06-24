@@ -30,8 +30,14 @@ The admin controller exposes circuit breaker state management:
 
 Admin writes must be signed and authenticated.
 
+## Store modes
+
+`BREAKER_STORE=memory` keeps breaker state in-process and is suitable for local development or single-instance testing.
+
+`BREAKER_STORE=redis` stores breaker state in Redis so all orchestrator instances share the same safety state. `REDIS_URL` is required in this mode.
+
 ## Production notes
 
-The first implementation uses an in-process store. Before multi-instance production deployment, move breaker state to Redis/PostgreSQL so all orchestrator instances share the same safety state.
+Use Redis-backed breaker state before running multiple orchestrator instances.
 
 Circuit breaker state changes should also be mirrored to alerting and audit systems.
