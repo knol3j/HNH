@@ -1,10 +1,8 @@
 # HashNHedge Orchestrator Service
 
-This directory is the target home for the NestJS control-plane backend.
+NestJS control-plane backend for HashNHedge production orchestration.
 
-## Responsibility
-
-The orchestrator coordinates off-chain workflows:
+## Responsibilities
 
 - authentication and RBAC
 - worker registration and heartbeats
@@ -15,36 +13,43 @@ The orchestrator coordinates off-chain workflows:
 - observability and audit logging
 - circuit breakers for high-risk actions
 
-## Initial module layout
+## Local setup
 
-```text
-services/orchestrator/
-├── src/
-│   ├── auth/
-│   ├── workers/
-│   ├── jobs/
-│   ├── vendors/
-│   ├── payments/
-│   ├── solana/
-│   ├── monitoring/
-│   ├── admin/
-│   └── common/
-├── prisma/
-├── test/
-└── README.md
+```bash
+cd services/orchestrator
+cp .env.example .env
+npm install
+npm run start:dev
 ```
 
-## First build target
+The API listens on `ORCHESTRATOR_PORT`, defaulting to `4100`.
 
-Milestone 1 should produce:
+## Endpoints in this foundation PR
 
-- NestJS application skeleton
-- health endpoint
-- config validation
-- auth module starter
-- worker registry module starter
-- job lifecycle types
-- integration test harness
+- `GET /health`
+- `POST /workers`
+- `GET /workers`
+- `GET /workers/:workerId`
+- `POST /workers/:workerId/heartbeat`
+- `POST /jobs`
+- `GET /jobs`
+- `GET /jobs/:jobId`
+- `POST /jobs/lease-next`
+- `POST /jobs/:jobId/running`
+
+## API docs
+
+Swagger docs are exposed at `/docs` when the service is running.
+
+## Testing
+
+```bash
+npm test
+```
+
+## Notes
+
+This is a first implementation pass. The worker and job stores are intentionally in-memory so the API contract, validation, and lifecycle can be hardened before wiring in PostgreSQL/Prisma persistence.
 
 ## Framework decision
 
