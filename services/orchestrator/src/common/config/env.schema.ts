@@ -12,6 +12,7 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url().or(z.string().startsWith('postgresql://')),
   REDIS_URL: z.string().url().optional(),
   NONCE_STORE: z.enum(['memory', 'redis']).default('memory'),
+  BREAKER_STORE: z.enum(['memory', 'redis']).default('memory'),
   ADMIN_API_KEY: secretSchema.default('local-admin-api-key-change-me'),
   WORKER_API_KEY: secretSchema.default('local-worker-api-key-change-me'),
   VENDOR_API_KEY: secretSchema.default('local-vendor-api-key-change-me'),
@@ -32,6 +33,10 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
 
   if (parsed.data.NONCE_STORE === 'redis' && !parsed.data.REDIS_URL) {
     throw new Error('Invalid orchestrator environment: REDIS_URL is required when NONCE_STORE=redis');
+  }
+
+  if (parsed.data.BREAKER_STORE === 'redis' && !parsed.data.REDIS_URL) {
+    throw new Error('Invalid orchestrator environment: REDIS_URL is required when BREAKER_STORE=redis');
   }
 
   return parsed.data;
