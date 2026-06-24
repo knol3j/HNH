@@ -10,6 +10,8 @@ export const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
   JWT_SECRET: z.string().min(24, 'JWT_SECRET must be at least 24 characters'),
   DATABASE_URL: z.string().url().or(z.string().startsWith('postgresql://')),
+  REDIS_URL: z.string().url().optional(),
+  NONCE_STORE: z.enum(['memory', 'redis']).default('memory'),
   ADMIN_API_KEY: secretSchema.default('local-admin-api-key-change-me'),
   WORKER_API_KEY: secretSchema.default('local-worker-api-key-change-me'),
   VENDOR_API_KEY: secretSchema.default('local-vendor-api-key-change-me'),
@@ -26,6 +28,10 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
       .join('; ');
 
     throw new Error(`Invalid orchestrator environment: ${errors}`);
+  }
+
+  if (parsed.data.NONCE_STORE === 'redis' && !parsed.data.REDIS_URL) {
+    throw new Error('Invalid orchestrator environment: REDIS_URL is required when NONCE_STORE=redis');
   }
 
   return parsed.data;
