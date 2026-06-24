@@ -6,6 +6,8 @@ import { RequestSigningGuard } from '../auth/request-signing.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../auth/roles';
 import { SignedRoute } from '../auth/signed.decorator';
+import { CircuitBreaker } from '../common/safety/circuit-breaker.decorator';
+import { CircuitBreakerGuard } from '../common/safety/circuit-breaker.guard';
 import { CreateJobDto } from './dto/create-job.dto';
 import { LeaseJobDto } from './dto/lease-job.dto';
 import { JobRecord, JobsService, RecoverySummary } from './jobs.service';
@@ -13,12 +15,13 @@ import { JobRecord, JobsService, RecoverySummary } from './jobs.service';
 @ApiTags('jobs')
 @ApiSecurity('x-hnh-api-key')
 @Controller('jobs')
-@UseGuards(AuthGuard, RequestSigningGuard)
+@UseGuards(AuthGuard, RequestSigningGuard, CircuitBreakerGuard)
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
   @SignedRoute()
+  @CircuitBreaker('job-creation')
   @Roles(Role.Vendor, Role.Admin)
   @ApiCreatedResponse({ description: 'Job queued' })
   createJob(@Body() dto: CreateJobDto): Promise<JobRecord> {
@@ -41,6 +44,7 @@ export class JobsController {
 
   @Post('lease-next')
   @SignedRoute()
+  @CircuitBreaker('job-leasing')
   @Roles(Role.Worker, Role.Admin)
   @ApiOkResponse({ description: 'Next queued job leased to worker' })
   leaseNextJob(@Body() dto: LeaseJobDto): Promise<JobRecord> {
@@ -49,6 +53,7 @@ export class JobsController {
 
   @Post('recover-expired-leases')
   @SignedRoute()
+  @CircuitBreaker('lease-recovery')
   @Roles(Role.Admin)
   @ApiOkResponse({ description: 'Expired leases processed' })
   recoverExpiredLeases(): Promise<RecoverySummary> {
@@ -57,6 +62,7 @@ export class JobsController {
 
   @Post(':jobId/running')
   @SignedRoute()
+  @CircuitBreaker('job-leasing')
   @Roles(Role.Worker, Role.Admin)
   @ApiOkResponse({ description: 'Job marked running' })
   markRunning(@Param('jobId') jobId: string): Promise<JobRecord> {

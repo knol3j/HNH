@@ -6,6 +6,8 @@ import { RequestSigningGuard } from '../auth/request-signing.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../auth/roles';
 import { SignedRoute } from '../auth/signed.decorator';
+import { CircuitBreaker } from '../common/safety/circuit-breaker.decorator';
+import { CircuitBreakerGuard } from '../common/safety/circuit-breaker.guard';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { RegisterWorkerDto } from './dto/register-worker.dto';
 import { WorkerRecord, WorkersService } from './workers.service';
@@ -13,12 +15,13 @@ import { WorkerRecord, WorkersService } from './workers.service';
 @ApiTags('workers')
 @ApiSecurity('x-hnh-api-key')
 @Controller('workers')
-@UseGuards(AuthGuard, RequestSigningGuard)
+@UseGuards(AuthGuard, RequestSigningGuard, CircuitBreakerGuard)
 export class WorkersController {
   constructor(private readonly workersService: WorkersService) {}
 
   @Post()
   @SignedRoute()
+  @CircuitBreaker('worker-registration')
   @Roles(Role.Worker, Role.Admin)
   @ApiCreatedResponse({ description: 'Worker registered or refreshed' })
   registerWorker(@Body() dto: RegisterWorkerDto): Promise<WorkerRecord> {
