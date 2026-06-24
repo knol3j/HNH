@@ -19,12 +19,26 @@ NestJS control-plane backend for HashNHedge production orchestration.
 cd services/orchestrator
 cp .env.example .env
 npm install
+npm run prisma:generate
+npm run prisma:migrate
 npm run start:dev
 ```
 
 The API listens on `ORCHESTRATOR_PORT`, defaulting to `4100`.
 
-## Endpoints in this foundation PR
+## Persistence
+
+This service uses Prisma with PostgreSQL.
+
+Initial persisted models:
+
+- `Worker`
+- `Job`
+- `JobEvent`
+
+`JobEvent` records lifecycle transitions for auditability.
+
+## Endpoints
 
 - `GET /health`
 - `POST /workers`
@@ -47,9 +61,7 @@ Swagger docs are exposed at `/docs` when the service is running.
 npm test
 ```
 
-## Notes
-
-This is a first implementation pass. The worker and job stores are intentionally in-memory so the API contract, validation, and lifecycle can be hardened before wiring in PostgreSQL/Prisma persistence.
+The e2e tests mock Prisma so they can run without a live database. Database-backed integration tests should be added once CI has a PostgreSQL service.
 
 ## Framework decision
 
