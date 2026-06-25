@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { JobStatus, WorkerStatus } from '@prisma/client';
 import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
+
+import { CircuitBreakerStore } from '../common/safety/circuit-breaker.store';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class MetricsService {
@@ -32,17 +36,36 @@ export class MetricsService {
     registers: [this.registry],
   });
 
+  readonly runningJobs = new Gauge({
+    name: 'hnh_jobs_running',
+    help: 'Running job count',
+    registers: [this.registry],
+  });
+
   readonly openBreakers = new Gauge({
     name: 'hnh_circuit_breakers_open',
     help: 'Open circuit breaker count',
     registers: [this.registry],
   });
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService, private readonly breakers: CircuitBreakerStore) {
     collectDefaultMetrics({ register: this.registry, prefix: 'hnh_' });
   }
 
+  async updateGauges(): Promise<void> {
+    const activeWorkerCount = await this.prisma.worker.count({ where: { status: WorkerStatus.ACTIVE } });
+    const queuedJobCount = await this.prisma.job.count({ where: { status: JobStatus.QUEUED } });
+    const runningJobCount = await this.prisma.job.count({ where: { status: JobStatus.RUNNING } });
+    const breakerStates = await this.breakers.list();
+
+    this.activeWorkers.set(activeWorkerCount);
+    this.queuedJobs.set(queuedJobCount);
+    this.runningJobs.set(runningJobCount);
+    this.openBreakers.set(breakerStates.filter((breaker) => breaker.open).length);
+  }
+
   async render(): Promise<string> {
+    await this.updateGauges();
     return this.registry.metrics();
   }
 
