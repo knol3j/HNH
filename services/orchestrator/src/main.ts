@@ -8,6 +8,8 @@ import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
 import { AuditLoggerService } from './common/audit/audit-logger.service';
 import { EnvConfig } from './common/config/env.schema';
+import { MetricsInterceptor } from './monitoring/metrics.interceptor';
+import { MetricsService } from './monitoring/metrics.service';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -15,10 +17,9 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService<EnvConfig, true>);
 
   app.use(helmet());
+  app.useGlobalInterceptors(new MetricsInterceptor(app.get(MetricsService)));
   app.useGlobalInterceptors(new AuditInterceptor(app.get(AuditLoggerService)));
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
   const allowedOrigins = config
     .get('ALLOWED_ORIGINS', { infer: true })

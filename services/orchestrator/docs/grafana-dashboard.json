@@ -1,0 +1,43 @@
+{
+  "title": "HashNHedge Orchestrator Baseline",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "API request rate",
+      "targets": [
+        { "expr": "sum by (route, status) (rate(hnh_http_requests_total[5m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API p95 latency",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, route) (rate(hnh_http_request_duration_seconds_bucket[5m])))" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Active workers",
+      "targets": [
+        { "expr": "hnh_workers_active" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Queued jobs",
+      "targets": [
+        { "expr": "hnh_jobs_queued" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Open breakers",
+      "targets": [
+        { "expr": "hnh_circuit_breakers_open" }
+      ]
+    }
+  ]
+}
