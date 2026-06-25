@@ -1,0 +1,36 @@
+// Merge this fragment into schema.prisma when enabling the vendor marketplace persistence layer.
+
+model Vendor {
+  id            String         @id
+  name          String
+  contactEmail  String
+  walletAddress String?
+  metadata      Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  quotes        ComputeQuote[]
+
+  @@index([contactEmail])
+  @@index([walletAddress])
+}
+
+model ComputeQuote {
+  id                       String   @id
+  vendorId                 String?
+  vendor                   Vendor?  @relation(fields: [vendorId], references: [id])
+  jobType                  String
+  gpuCount                 Int
+  estimatedMinutes         Float
+  gpuModel                 String?
+  priority                 String   @default("standard")
+  subtotalUsd              Float
+  platformFeeUsd           Float
+  totalUsd                 Float
+  estimatedWorkerPayoutUsd Float
+  escrowReserveUsd         Float
+  createdAt                DateTime @default(now())
+
+  @@index([vendorId])
+  @@index([jobType])
+  @@index([createdAt])
+}
