@@ -36,6 +36,7 @@ router.post('/vendor/:vendorId/offering', vendorController.addVendorOffering);
 // ============================================================
 router.post('/worker/register', workerController.registerWorker);
 router.post('/worker/:workerId/heartbeat', workerController.workerHeartbeat);
+router.put('/worker/:workerId/capabilities', workerController.updateWorkerCapabilities);
 router.get('/worker/:workerId/stats', workerController.getWorkerStats);
 router.get('/worker/:workerId/jobs', workerController.getAvailableJobs);
 router.post('/worker/:workerId/jobs/:jobId/claim', workerController.claimJob);

@@ -402,6 +402,14 @@ app.use((err, req, res, next) => {
 const StratumWebSocketServer = require('./stratum-websocket');
 let stratumServer = null;
 
+// Optional: Hybrid pool orchestrator for AI/Mining job routing
+let orchestrator = null;
+if (process.env.ENABLE_ORCHESTRATOR === 'true') {
+  const JobOrchestrator = require('../hybrid-pool/orchestrator');
+  orchestrator = new JobOrchestrator();
+  console.log('[ORCHESTRATOR] Enabled AI/Mining job routing');
+}
+
 // ============================================================
 // START SERVER
 // ============================================================
@@ -427,9 +435,9 @@ CORS: ${allowedOrigins.join(', ')}
   // Initialize Stratum server after HTTP server is ready
   try {
     stratumServer = new StratumWebSocketServer(server, {
-      port: process.env.STRATUM_PORT || 3333
+      port: process.env.STRATUM_PORT || 3333,
+      orchestrator
     });
-
     console.log(`
 ⛏️  Stratum Mining Protocol:
   📡 WebSocket: ws://0.0.0.0:${API_PORT}/stratum

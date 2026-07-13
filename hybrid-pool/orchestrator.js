@@ -52,6 +52,9 @@ class JobOrchestrator extends EventEmitter {
             gpu: workerInfo.gpu || 'unknown',
             hashrate: workerInfo.hashrate || 0,
             capabilities: workerInfo.capabilities || [],
+            vram: workerInfo.vram || 0,
+            cpuCores: workerInfo.cpuCores || 0,
+            rawCapabilities: workerInfo.rawCapabilities || {},
             status: 'idle',
             lastSwitch: Date.now(),
             switchCount: 0,
@@ -160,12 +163,18 @@ class JobOrchestrator extends EventEmitter {
         return null;
     }
 
+    /* ── Job routing ───────────────────────────────────────────────────── */
+
     /**
-     * Find mining job (simple - any worker can mine)
+     * Find mining job matching worker capabilities
      */
     findMatchingMiningJob(worker) {
-        // For now, return first mining job
-        // In production, match algorithm to GPU capability
+        // Return first compatible mining job
+        for (const job of this.miningJobs) {
+            if (this.workerMeetsRequirements(worker, job.requirements)) {
+                return job;
+            }
+        }
         return this.miningJobs[0] || null;
     }
 
@@ -181,7 +190,7 @@ class JobOrchestrator extends EventEmitter {
         }
 
         // Check GPU type
-        if (requirements.gpuType && !worker.gpu.includes(requirements.gpuType)) {
+        if (requirements.gpuType && worker.gpu && !worker.gpu.includes(requirements.gpuType)) {
             return false;
         }
 
@@ -191,6 +200,19 @@ class JobOrchestrator extends EventEmitter {
                 if (!worker.capabilities.includes(cap)) {
                     return false;
                 }
+            }
+        }
+
+        // Check CPU cores
+        if (requirements.minCpuCores && worker.cpuCores < requirements.minCpuCores) {
+            return false;
+        }
+
+        // Check job type capability (e.g., ai, mining, rendering)
+        if (requirements.jobType && worker.capabilities) {
+            const hasJobType = worker.capabilities.includes(requirements.jobType);
+            if (!hasJobType) {
+                return false;
             }
         }
 
