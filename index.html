@@ -1,431 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HashNHedge - Decentralized GPU Computing Network</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HashNHedge AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
-        .gradient-animate {
-            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
-            background-size: 400% 400%;
-            animation: gradient 15s ease infinite;
-        }
-        
-        .hamburger-menu {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-        
-        .side-menu {
-            position: fixed;
-            top: 0;
-            right: -300px;
-            width: 300px;
-            height: 100vh;
-            background: rgba(17, 24, 39, 0.95);
-            backdrop-filter: blur(10px);
-            transition: right 0.3s ease;
-            z-index: 999;
-            padding: 80px 20px 20px;
-            overflow-y: auto;
-        }
-        
-        .side-menu.active {
-            right: 0;
-        }
-        
-        .menu-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            z-index: 998;
-        }
-        
-        .menu-overlay.active {
-            display: block;
-        }
-        
-        .hero-glow {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-            filter: blur(100px);
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(30px, -30px) scale(1.1); }
-        }
-        
-        .feature-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
-            border-color: rgba(99, 102, 241, 0.5);
-        }
-    </style>
     <script>
-        // HashNHedge Configuration - Wallet addresses fetched from secure API
-        // NEVER store private keys or secrets in frontend code
-        let OFFICIAL_WALLET = null;
-
-        // Fetch wallet address from secure backend
-        async function initializeWallet() {
-            try {
-                const response = await fetch('/api/config/wallet');
-                const data = await response.json();
-                if (data.success) {
-                    OFFICIAL_WALLET = data.walletAddress;
-                }
-            } catch (error) {
-                console.error('Failed to fetch wallet configuration');
+      // GitHub Pages SPA redirect handler
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('p');
+        if (redirect) {
+          params.delete('p');
+          const remaining = params.toString();
+          const newUrl = decodeURIComponent(redirect) + (remaining ? '?' + remaining : '');
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: '#09090b',
+              surface: '#18181b',
+              primary: '#10b981', // Emerald 500
+              'primary-hover': '#059669',
+              accent: '#3b82f6', // Blue 500
+              danger: '#ef4444',
+              warning: '#f59e0b',
+              text: '#e4e4e7',
+              muted: '#a1a1aa',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
             }
+          }
         }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', initializeWallet);
+      }
     </script>
-</head>
-<body class="bg-gray-900 text-white overflow-x-hidden">
-    <!-- Pre-Launch Banner -->
-    <div class="bg-gradient-to-r from-yellow-600 to-orange-600 text-center py-3 text-black font-semibold">
-        🚀 PRE-LAUNCH PHASE | Token Not Yet Released | Testnet Active |
-        <a href="docs/solana-token-creator.html" class="underline hover:no-underline">Create Your Token Now!</a>
-    </div>
-
-    <!-- Hamburger Menu Button -->
-    <button class="hamburger-menu bg-gray-800 p-3 rounded-lg hover:bg-gray-700 transition" onclick="toggleMenu()">
-        <i class="fas fa-bars text-2xl"></i>
-    </button>
-    
-    <!-- Side Menu -->
-    <div class="side-menu" id="sideMenu">
-        <button class="absolute top-4 right-4 text-gray-400 hover:text-white" onclick="toggleMenu()">
-            <i class="fas fa-times text-2xl"></i>
-        </button>
-        
-        <h3 class="text-2xl font-bold mb-8 gradient-animate bg-clip-text text-transparent">HashNHedge</h3>
-        
-        <nav class="space-y-4">
-            <a href="#home" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition" onclick="toggleMenu()">
-                <i class="fas fa-home mr-3"></i> Home
-            </a>
-            <a href="docs/gpu-farm-dashboard.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-indigo-600 hover:bg-indigo-700">
-                <i class="fas fa-server mr-3"></i> GPU Farm Dashboard
-            </a>
-            <a href="docs/security-platform.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-orange-600 hover:bg-orange-700">
-                <i class="fas fa-shield-alt mr-3"></i> Security & Hashcat Platform
-            </a>
-            <a href="pages/whitepaper.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-purple-600 hover:bg-purple-700">
-                <i class="fas fa-file-alt mr-3"></i> Whitepaper
-            </a>
-            <a href="downloads/index.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-blue-600 hover:bg-blue-700">
-                <i class="fas fa-download mr-3"></i> Windows Miner Download
-            </a>
-            <a href="HNH-pool/pool-dashboard.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-cyan-600 hover:bg-cyan-700">
-                <i class="fas fa-swimming-pool mr-3"></i> Mining Pool Dashboard
-            </a>
-            <a href="mobile-proof-pool/dashboard/index.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600">
-                <i class="fas fa-mobile-alt mr-3"></i> 📱 Mobile Pool Dashboard
-            </a>
-            <a href="docs/revenue-calculator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-green-600 hover:bg-green-700">
-                <i class="fas fa-calculator mr-3"></i> Revenue Calculator
-            </a>
-            <a href="docs/solana-token-creator.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-yellow-600 hover:bg-yellow-700">
-                <i class="fas fa-coins mr-3"></i> Token Creator
-            </a>
-            <a href="armageddon/index.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-red-600 hover:bg-red-700">
-                <i class="fas fa-mobile-alt mr-3"></i> ARMgeddon - Mobile Mining
-            </a>
-            <a href="downloads/mobile.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-indigo-600 hover:bg-indigo-700">
-                <i class="fas fa-mobile mr-3"></i> Mobile App Downloads
-            </a>
-            <a href="https://github.com/knol3j/hashnhedge" target="_blank" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition">
-                <i class="fab fa-github mr-3"></i> GitHub
-            </a>
-            <a href="pages/community-support.html" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700">
-                <i class="fas fa-users mr-3"></i> Community Support
-            </a>
-            <a href="#contact" class="block py-3 px-4 rounded-lg hover:bg-gray-800 transition" onclick="toggleMenu()">
-                <i class="fas fa-envelope mr-3"></i> Contact
-            </a>
-        </nav>
-        
-        <div class="mt-12 p-4 bg-gray-800 rounded-lg">
-            <p class="text-sm text-gray-400 mb-3">Ready to start?</p>
-            <button class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 py-2 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition">
-                Connect Wallet
-            </button>
-        </div>
-    </div>
-    
-    <!-- Menu Overlay -->
-    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
-    
-    <!-- Hero Section -->
-    <section id="home" class="min-h-screen flex items-center justify-center relative">
-        <div class="hero-glow top-20 left-20"></div>
-        <div class="hero-glow bottom-20 right-20" style="animation-delay: 3s;"></div>
-        
-        <div class="container mx-auto px-6 text-center relative z-10">
-            <h1 class="text-6xl md:text-8xl font-bold mb-6 gradient-animate bg-clip-text text-transparent">
-                HashNHedge
-            </h1>
-            <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-                Building the future of distributed GPU computing. Join our testnet and be ready for launch!
-                <span class="text-yellow-400 font-semibold">Pre-Launch Phase</span>
-            </p>
-            <div class="flex flex-wrap gap-4 justify-center">
-                <a href="downloads/index.html" class="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105 shadow-lg">
-                    <i class="fas fa-download mr-2"></i> Download Miner
-                </a>
-                <a href="pages/community-support.html" class="bg-pink-600 hover:bg-pink-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
-                    <i class="fas fa-users mr-2"></i> Community Support
-                </a>
-                <a href="docs/gpu-farm-dashboard.html" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
-                    <i class="fas fa-rocket mr-2"></i> Launch Dashboard
-                </a>
-                <a href="pages/whitepaper.html" class="border border-gray-600 hover:border-purple-500 px-8 py-4 rounded-lg font-semibold text-lg transition">
-                    <i class="fas fa-book mr-2"></i> Read Whitepaper
-                </a>
-                <a href="docs/revenue-calculator.html" class="bg-green-600 hover:bg-green-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
-                    <i class="fas fa-calculator mr-2"></i> Revenue Calculator
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Features Section -->
-    <section class="py-20 px-6">
-        <div class="container mx-auto">
-            <h2 class="text-4xl font-bold text-center mb-16">Why HashNHedge?</h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div class="feature-card p-8 rounded-xl">
-                    <div class="text-5xl mb-6 text-indigo-400">
-                        <i class="fas fa-network-wired"></i>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">Federated GPU Network</h3>
-                    <p class="text-gray-400">
-                        Connect your GPU farm to our decentralized network and start earning immediately. 
-                        Seamless integration with existing infrastructure.
-                    </p>
-                </div>
-                
-                <div class="feature-card p-8 rounded-xl">
-                    <div class="text-5xl mb-6 text-purple-400">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">Dual Revenue Streams</h3>
-                    <p class="text-gray-400">
-                        Mine cryptocurrency or provide compute power for AI/ML tasks. 
-                        Smart switching maximizes your earnings 24/7.
-                    </p>
-                </div>
-                
-                <div class="feature-card p-8 rounded-xl">
-                    <div class="text-5xl mb-6 text-pink-400">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">70% Revenue Share</h3>
-                    <p class="text-gray-400">
-                        Industry-leading revenue sharing for node operators.
-                        Transparent, fair, and automatically distributed via smart contracts.
-                    </p>
-                </div>
-
-                <div class="feature-card p-8 rounded-xl border-2 border-red-500">
-                    <div class="text-5xl mb-6 text-red-400">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">ARMgeddon 📱</h3>
-                    <p class="text-gray-400">
-                        Revolutionary mobile-only cryptocurrency mining.
-                        PhoneProof algorithm optimized for ARM processors - mine on your phone without draining battery!
-                    </p>
-                    <a href="armageddon/index.html" class="mt-4 inline-block bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg transition">
-                        Learn More →
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Mining Features Section -->
-    <section class="py-20 px-6 bg-gradient-to-r from-purple-900 to-indigo-900">
-        <div class="container mx-auto text-center">
-            <h2 class="text-4xl font-bold mb-6">⚡ Next-Generation Mining Pool</h2>
-            <p class="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-                Join the most advanced hybrid mining pool. Maximize your earnings with intelligent workload routing and automated optimization.
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                <div class="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-                    <div class="text-4xl mb-4">🖥️</div>
-                    <h3 class="text-xl font-semibold mb-2">Smart Routing</h3>
-                    <p class="text-gray-300">AI-powered workload optimization for max profit</p>
-                </div>
-                <div class="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-                    <div class="text-4xl mb-4">💰</div>
-                    <h3 class="text-xl font-semibold mb-2">Higher Earnings</h3>
-                    <p class="text-gray-300">Advanced pool technology increases revenue</p>
-                </div>
-                <div class="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
-                    <div class="text-4xl mb-4">🔒</div>
-                    <h3 class="text-xl font-semibold mb-2">Secure & Reliable</h3>
-                    <p class="text-gray-300">Enterprise security with automated payouts</p>
-                </div>
-            </div>
-            <a href="HNH-pool/pool-dashboard.html" class="bg-white text-purple-900 px-12 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transition transform hover:scale-105 shadow-2xl">
-                <i class="fas fa-swimming-pool mr-3"></i> Join Mining Pool
-            </a>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="py-20 px-6 bg-gray-800">
-        <div class="container mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12">Unified Computing Network</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div>
-                    <div class="text-4xl font-bold text-indigo-400" id="gpu-nodes">0</div>
-                    <p class="text-gray-400 mt-2">GPU Nodes</p>
-                    <div class="text-lg text-blue-300 mt-1" id="gpu-hashrate">0 TH/s</div>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold text-red-400" id="mobile-miners">0</div>
-                    <p class="text-gray-400 mt-2">Mobile Miners</p>
-                    <div class="text-lg text-red-300 mt-1" id="mobile-hashrate">0 MH/s</div>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold text-green-400" id="daily-revenue">$0</div>
-                    <p class="text-gray-400 mt-2">Daily Pool Revenue</p>
-                    <div class="text-lg text-green-300 mt-1" id="utilization">0% Utilization</div>
-                </div>
-                <div>
-                    <div class="text-4xl font-bold text-yellow-400">23</div>
-                    <p class="text-gray-400 mt-2">Active Miners</p>
-                    <div class="text-lg text-yellow-300 mt-1">99.2% Uptime</div>
-                </div>
-            </div>
-
-            <div class="mt-12 text-center">
-                <a href="docs/revenue-calculator.html" class="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-4 rounded-lg font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition transform hover:scale-105">
-                    <i class="fas fa-calculator mr-2"></i> Calculate Your Earnings
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- CTA Section -->
-    <section class="py-20 px-6">
-        <div class="container mx-auto text-center">
-            <h2 class="text-4xl font-bold mb-6">Ready to Join the Testnet?</h2>
-            <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-                Join our development testnet and be among the first when we launch!
-                <span class="text-yellow-400">Token launching soon.</span>
-            </p>
-            <div class="flex flex-wrap gap-4 justify-center">
-                <a href="downloads/index.html" class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-4 rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition transform hover:scale-105">
-                    <i class="fas fa-download mr-2"></i> Download Windows Miner
-                </a>
-                <a href="docs/gpu-farm-dashboard.html" class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-4 rounded-lg font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transition transform hover:scale-105">
-                    Join Testnet
-                </a>
-                <a href="docs/solana-token-creator.html" class="bg-yellow-600 hover:bg-yellow-700 px-8 py-4 rounded-lg font-semibold text-lg transition">
-                    Token Creator (Ready!)
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer id="contact" class="bg-gray-800 py-12 px-6">
-        <div class="container mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div>
-                    <h3 class="text-2xl font-bold mb-4 gradient-animate bg-clip-text text-transparent">HashNHedge</h3>
-                    <p class="text-gray-400">Decentralized GPU computing for the future.</p>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Quick Links</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="docs/gpu-farm-dashboard.html" class="hover:text-white transition">Dashboard</a></li>
-                        <li><a href="pages/whitepaper.html" class="hover:text-white transition">Whitepaper</a></li>
-                        <li><a href="https://github.com/knol3j/hashnhedge" class="hover:text-white transition">GitHub</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Resources</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="downloads/index.html" class="hover:text-white transition">Windows Miner</a></li>
-                        <li><a href="docs/gpu-farm-dashboard.html#contracts" class="hover:text-white transition">API Reference</a></li>
-                        <li><a href="docs/node_setup_downloads.html" class="hover:text-white transition">Node Setup</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Connect</h4>
-                    <div class="space-y-2 text-gray-400 mb-4">
-                        <div><a href="mailto:ugbuni@proton.me" class="hover:text-white transition"><i class="fas fa-envelope mr-2"></i>ugbuni@proton.me</a></div>
-                        <div><a href="mailto:nolij@ik.me" class="hover:text-white transition"><i class="fas fa-cog mr-2"></i>nolij@ik.me</a></div>
-                    </div>
-                    <div class="flex space-x-4 text-2xl mb-6">
-                        <a href="https://twitter.com/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
-                        <a href="https://discord.gg/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-discord"></i></a>
-                        <a href="https://t.me/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-telegram"></i></a>
-                        <a href="https://github.com/knol3j/hashnhedge" class="text-gray-400 hover:text-white transition"><i class="fab fa-github"></i></a>
-                    </div>
-                    <div class="discord-widget">
-                        <iframe src="https://discordapp.com/widget?id=1421983088338272370&theme=dark" width="350" height="500" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
-                    </div>
-                </div>
-            </div>
-            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-                <p>&copy; 2024 HashNHedge. All rights reserved. |
-                <a href="hnh-vendor-portal/vendor-registration.html" class="hover:text-white transition text-xs">Enterprise Solutions</a></p>
-            </div>
-        </div>
-    </footer>
-    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <script>
-        function toggleMenu() {
-            const menu = document.getElementById('sideMenu');
-            const overlay = document.getElementById('menuOverlay');
-            menu.classList.toggle('active');
-            overlay.classList.toggle('active');
-        }
-        
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
     </script>
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4626165154390205" crossorigin="anonymous"></script>
+    <style>
+      body {
+        background-color: #09090b;
+        color: #e4e4e7;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #18181b; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #52525b; 
+      }
+    </style>
+
+  <!-- New HNH app build: assets served from the gh-pages deployment (pinned commit) via jsDelivr CDN -->
+  <script type="module" crossorigin src="https://cdn.jsdelivr.net/gh/knol3j/HNH@39233726d912b074889a397a0f69088d02a249cb/assets/index-BGTrs7Fb.js"></script>
+  <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/gh/knol3j/HNH@39233726d912b074889a397a0f69088d02a249cb/assets/ethers-CWB2S2BP.js">
+  <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/gh/knol3j/HNH@39233726d912b074889a397a0f69088d02a249cb/assets/react-vendor-DgNrbZRn.js">
+  <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/gh/knol3j/HNH@39233726d912b074889a397a0f69088d02a249cb/assets/genai-B8rL7Oeq.js">
+  <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/knol3j/HNH@39233726d912b074889a397a0f69088d02a249cb/assets/index-jkYbVWxN.css">
+</head>
+  <body>
+    <div id="root"></div>
 </body>
 </html>
