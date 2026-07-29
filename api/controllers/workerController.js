@@ -1,5 +1,54 @@
 const prisma = require('../../lib/prisma');
 const crypto = require('crypto');
+const GPUDetector = require('../../hybrid-pool/gpu-detector');
+
+const gpuDetector = new GPUDetector();
+
+/**
+ * Enrich hardware info from whatever data the client provided.
+ * Uses GPUDetector to infer GPU model from hashrate or user agent.
+ */
+function enrichHardwareInfo(raw) {
+  const info = typeof raw === 'object' && raw !== null ? raw : {};
+
+  // If client already sent rich GPU info, use it
+  if (info.gpu && info.gpu.model) {
+    return {
+      ...info,
+      gpuCount: info.gpu.count || info.gpuCount || 1,
+      gpuModel: info.gpu.model || info.gpuModel || 'Unknown',
+      cpuCores: info.cpu?.cores || info.cpuCores || 0,
+      ramGb: info.ram?.gb || info.ramGb || 0,
+      capabilities: info.capabilities || []
+    };
+  }
+
+  // Try to infer from user agent
+  const ua = info.userAgent || info.miner || '';
+  const uaInfo = gpuDetector.detectFromUserAgent(ua);
+
+  // Try to infer from hashrate
+  const hashrate = info.hashrate || info.estimatedHashrate || 0;
+  const algorithm = info.algorithm || 'ethash';
+  const estimate = hashrate ? gpuDetector.estimateGPUFromHashrate(hashrate, algorithm) : null;
+
+  // Build profile
+  const profile = gpuDetector.buildWorkerProfile({
+    model: estimate?.model,
+    hashrate,
+    userAgent: ua,
+    firstShare: null
+  });
+
+  return {
+    ...info,
+    gpuCount: info.gpuCount || (uaInfo?.platform === 'nvidia' || uaInfo?.platform === 'amd' ? 1 : 0),
+    gpuModel: profile.gpu || info.gpuModel || 'Unknown',
+    cpuCores: info.cpuCores || (typeof info.cores === 'number' ? info.cores : 0),
+    ramGb: info.ramGb || 0,
+    capabilities: Array.isArray(info.capabilities) ? info.capabilities : profile.capabilities || []
+  };
+}
 
 /**
  * Register a new worker/miner
@@ -32,12 +81,19 @@ async function registerWorker(req, res) {
       });
     }
 
-    // Create new worker
+    // Enrich hardware info with GPU detection
+    const enrichedInfo = enrichHardwareInfo(hardwareInfo);
+
+    // Create new worker with structured hardware fields
     const worker = await prisma.worker.create({
       data: {
         workerId,
         walletAddress,
-        hardwareInfo: hardwareInfo || {},
+        hardwareInfo: enrichedInfo,
+        gpuCount: enrichedInfo.gpuCount || null,
+        gpuModel: enrichedInfo.gpuModel || null,
+        cpuCores: enrichedInfo.cpuCores || null,
+        ramGb: enrichedInfo.ramGb || null,
         status: 'active',
         lastSeen: new Date()
       }
@@ -50,6 +106,7 @@ async function registerWorker(req, res) {
         workerId: worker.workerId,
         walletAddress: worker.walletAddress,
         status: worker.status,
+        hardwareInfo: worker.hardwareInfo,
         createdAt: worker.createdAt
       },
       message: 'Worker registered successfully'
@@ -69,18 +126,33 @@ async function registerWorker(req, res) {
  * Update worker status and heartbeat
  * POST /api/worker/:workerId/heartbeat
  */
+/**
+ * Update worker status and heartbeat
+ * POST /api/worker/:workerId/heartbeat
+ */
 async function workerHeartbeat(req, res) {
   try {
     const { workerId } = req.params;
     const { hardwareInfo, status } = req.body;
 
+    const updateData = {
+      lastSeen: new Date(),
+      status: status || 'active'
+    };
+
+    // If client sent updated hardware info, enrich and store it
+    if (hardwareInfo) {
+      const enriched = enrichHardwareInfo(hardwareInfo);
+      updateData.hardwareInfo = enriched;
+      updateData.gpuCount = enriched.gpuCount || null;
+      updateData.gpuModel = enriched.gpuModel || null;
+      updateData.cpuCores = enriched.cpuCores || null;
+      updateData.ramGb = enriched.ramGb || null;
+    }
+
     const worker = await prisma.worker.update({
       where: { workerId },
-      data: {
-        lastSeen: new Date(),
-        status: status || 'active',
-        ...(hardwareInfo && { hardwareInfo })
-      }
+      data: updateData
     });
 
     res.json({
@@ -88,6 +160,7 @@ async function workerHeartbeat(req, res) {
       data: {
         workerId: worker.workerId,
         status: worker.status,
+        hardwareInfo: worker.hardwareInfo,
         lastSeen: worker.lastSeen
       }
     });
@@ -424,6 +497,11 @@ async function listWorkers(req, res) {
           walletAddress: true,
           status: true,
           lastSeen: true,
+          gpuCount: true,
+          gpuModel: true,
+          cpuCores: true,
+          ramGb: true,
+          hardwareInfo: true,
           totalShares: true,
           validShares: true,
           invalidShares: true,
@@ -518,9 +596,60 @@ function validateShare(hash, difficulty, nonce) {
   return hashStart === '0'.repeat(leadingZeros);
 }
 
+/**
+ * Update worker capabilities (GPU, AI support, etc.)
+ * PUT /api/worker/:workerId/capabilities
+ */
+async function updateWorkerCapabilities(req, res) {
+  try {
+    const { workerId } = req.params;
+    const { hardwareInfo } = req.body;
+
+    const enriched = enrichHardwareInfo(hardwareInfo);
+
+    const worker = await prisma.worker.update({
+      where: { workerId },
+      data: {
+        hardwareInfo: enriched,
+        gpuCount: enriched.gpuCount || null,
+        gpuModel: enriched.gpuModel || null,
+        cpuCores: enriched.cpuCores || null,
+        ramGb: enriched.ramGb || null,
+        lastSeen: new Date()
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        workerId: worker.workerId,
+        hardwareInfo: worker.hardwareInfo,
+        capabilities: enriched.capabilities
+      },
+      message: 'Worker capabilities updated'
+    });
+
+  } catch (error) {
+    console.error('Update capabilities error:', error);
+
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        error: 'Worker not found'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update worker capabilities'
+    });
+  }
+}
+
 module.exports = {
   registerWorker,
   workerHeartbeat,
+  updateWorkerCapabilities,
   getWorkerStats,
   getAvailableJobs,
   getAvailableTasks,

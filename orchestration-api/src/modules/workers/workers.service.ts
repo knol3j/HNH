@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
+import { RegisterWorkerDto, UpdateWorkerGpuDto } from './dto';
 
 interface WorkerRegistrationData {
   walletAddress: string;
@@ -22,7 +23,7 @@ export class WorkersService {
 
   constructor(private prisma: PrismaService) {}
 
-  async register(data: WorkerRegistrationData) {
+  async register(data: RegisterWorkerDto) {
     this.logger.log(`Registering new worker for wallet: ${data.walletAddress}`);
 
     // Validate wallet address
@@ -39,6 +40,31 @@ export class WorkersService {
       // Generate unique worker ID
       const workerId = this.generateWorkerId(data.walletAddress);
 
+      // Build hardware info from structured DTO fields
+      const hardwareInfo: Record<string, any> = {};
+      if (data.gpuInfo) {
+        hardwareInfo.gpuModel = data.gpuInfo.model;
+        hardwareInfo.gpuCount = data.gpuInfo.count;
+        hardwareInfo.gpuMemoryMb = data.gpuInfo.memoryMb;
+        hardwareInfo.gpuUtilization = data.gpuInfo.utilization;
+        hardwareInfo.gpuTemperature = data.gpuInfo.temperature;
+        hardwareInfo.gpuPowerDrawW = data.gpuInfo.powerDrawW;
+      }
+      if (data.cpuInfo) {
+        hardwareInfo.cpuModel = data.cpuInfo.model;
+        hardwareInfo.cpuCores = data.cpuInfo.cores;
+        hardwareInfo.cpuThreads = data.cpuInfo.threads;
+      }
+      if (data.ramMb) {
+        hardwareInfo.ramGb = Math.round(data.ramMb / 1024);
+      }
+      if (data.osType) {
+        hardwareInfo.osType = data.osType;
+      }
+      if (data.osVersion) {
+        hardwareInfo.osVersion = data.osVersion;
+      }
+
       // Check if worker already exists
       const existingWorker = await this.prisma.worker.findUnique({
         where: { workerId },
@@ -51,7 +77,14 @@ export class WorkersService {
           where: { workerId },
           data: {
             lastSeen: new Date(),
-            hardwareInfo: data.hardwareInfo as Prisma.JsonValue || existingWorker.hardwareInfo,
+            hardwareInfo: {
+              ...(existingWorker.hardwareInfo as Record<string, any> || {}),
+              ...hardwareInfo,
+            } as Prisma.JsonValue,
+            gpuCount: data.gpuInfo?.count ?? (existingWorker.hardwareInfo as Record<string, any>)?.gpuCount ?? null,
+            gpuModel: data.gpuInfo?.model ?? (existingWorker.hardwareInfo as Record<string, any>)?.gpuModel ?? null,
+            cpuCores: data.cpuInfo?.cores ?? (existingWorker.hardwareInfo as Record<string, any>)?.cpuCores ?? null,
+            ramGb: hardwareInfo.ramGb ?? (existingWorker.hardwareInfo as Record<string, any>)?.ramGb ?? null,
             status: 'active',
           },
         });
@@ -62,7 +95,11 @@ export class WorkersService {
         data: {
           workerId,
           walletAddress: data.walletAddress,
-          hardwareInfo: data.hardwareInfo as Prisma.JsonValue || {},
+          hardwareInfo: hardwareInfo as Prisma.JsonValue || {},
+          gpuCount: data.gpuInfo?.count ?? null,
+          gpuModel: data.gpuInfo?.model ?? null,
+          cpuCores: data.cpuInfo?.cores ?? null,
+          ramGb: hardwareInfo.ramGb ?? null,
           status: 'active',
           lastSeen: new Date(),
         },
@@ -79,6 +116,111 @@ export class WorkersService {
       this.logger.error(`Failed to register worker: ${error.message}`, error.stack);
       throw new BadRequestException('Failed to register worker. Please try again.');
     }
+  }
+
+  async updateGpuInfo(workerId: string, gpuDto: UpdateWorkerGpuDto) {
+    this.logger.log(`Updating GPU info for worker ${workerId}`);
+
+    const worker = await this.prisma.worker.findUnique({
+      where: { workerId },
+    });
+
+    if (!worker) {
+      throw new NotFoundException(`Worker ${workerId} not found`);
+    }
+
+    const existingHardware = (worker.hardwareInfo as Record<string, any>) || {};
+
+    const updatedHardware = {
+      ...existingHardware,
+      gpuModel: gpuDto.model ?? existingHardware.gpuModel,
+      gpuCount: gpuDto.count,
+      gpuMemoryMb: gpuDto.memoryMb ?? existingHardware.gpuMemoryMb,
+      gpuUtilization: gpuDto.utilization ?? existingHardware.gpuUtilization,
+      gpuTemperature: gpuDto.temperature ?? existingHardware.gpuTemperature,
+      gpuPowerDrawW: gpuDto.powerDrawW ?? existingHardware.gpuPowerDrawW,
+    };
+
+    return this.prisma.worker.update({
+      where: { workerId },
+      data: {
+        hardwareInfo: updatedHardware as Prisma.JsonValue,
+        gpuCount: gpuDto.count,
+        gpuModel: gpuDto.model ?? existingHardware.gpuModel ?? null,
+        lastSeen: new Date(),
+      },
+    });
+  }
+
+  async getGpuStats() {
+    this.logger.log('Aggregating GPU stats across all workers');
+
+    const workers = await this.prisma.worker.findMany({
+      where: {
+        status: 'active',
+      },
+      select: {
+        workerId: true,
+        walletAddress: true,
+        hardwareInfo: true,
+        gpuCount: true,
+        gpuModel: true,
+        status: true,
+        lastSeen: true,
+      },
+    });
+
+    const gpuWorkers = workers.filter((w) => {
+      const hw = w.hardwareInfo as Record<string, any>;
+      return w.gpuCount && w.gpuCount > 0 || w.gpuModel || (hw && (hw.gpuCount > 0 || hw.gpuModel));
+    });
+
+    const modelCounts: Record<string, number> = {};
+    let totalGpus = 0;
+    let totalMemoryMb = 0;
+    let avgUtilization = 0;
+    let avgTemperature = 0;
+    let utilCount = 0;
+    let tempCount = 0;
+
+    for (const w of gpuWorkers) {
+      const hw = w.hardwareInfo as Record<string, any>;
+      const count = w.gpuCount || hw?.gpuCount || 0;
+      totalGpus += count;
+
+      const model = w.gpuModel || hw?.gpuModel;
+      if (model) {
+        modelCounts[model] = (modelCounts[model] || 0) + count;
+      }
+      if (hw?.gpuMemoryMb) {
+        totalMemoryMb += hw.gpuMemoryMb * count;
+      }
+      if (typeof hw?.gpuUtilization === 'number') {
+        avgUtilization += hw.gpuUtilization * count;
+        utilCount += count;
+      }
+      if (typeof hw?.gpuTemperature === 'number') {
+        avgTemperature += hw.gpuTemperature * count;
+        tempCount += count;
+      }
+    }
+
+    return {
+      totalWorkers: workers.length,
+      gpuWorkers: gpuWorkers.length,
+      totalGpus,
+      models: modelCounts,
+      totalMemoryMb,
+      avgUtilization: utilCount > 0 ? parseFloat((avgUtilization / utilCount).toFixed(2)) : 0,
+      avgTemperature: tempCount > 0 ? parseFloat((avgTemperature / tempCount).toFixed(2)) : 0,
+      workers: gpuWorkers.map((w) => ({
+        workerId: w.workerId,
+        walletAddress: w.walletAddress,
+        status: w.status,
+        lastSeen: w.lastSeen,
+        gpuInfo: w.hardwareInfo,
+      })),
+    };
   }
 
   async findOne(workerId: string) {
@@ -119,6 +261,10 @@ export class WorkersService {
         invalidShares: true,
         totalEarnings: true,
         hardwareInfo: true,
+        gpuCount: true,
+        gpuModel: true,
+        cpuCores: true,
+        ramGb: true,
       },
     });
   }
@@ -186,6 +332,11 @@ export class WorkersService {
         : '0%',
       lastSeen: worker.lastSeen,
       createdAt: worker.createdAt,
+      hardwareInfo: worker.hardwareInfo,
+      gpuCount: worker.gpuCount,
+      gpuModel: worker.gpuModel,
+      cpuCores: worker.cpuCores,
+      ramGb: worker.ramGb,
     };
   }
 

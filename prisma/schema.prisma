@@ -19,6 +19,13 @@ model Worker {
   lastSeen       DateTime  @default(now()) @map("last_seen")
   status         String    @default("active")
   hardwareInfo   Json?     @map("hardware_info")
+
+  // Structured hardware specs (extracted from hardwareInfo for querying)
+  gpuCount       Int?      @map("gpu_count")
+  gpuModel       String?   @map("gpu_model")
+  cpuCores       Int?      @map("cpu_cores")
+  ramGb          Int?      @map("ram_gb")
+
   totalShares    BigInt    @default(0) @map("total_shares")
   validShares    BigInt    @default(0) @map("valid_shares")
   invalidShares  BigInt    @default(0) @map("invalid_shares")
@@ -34,6 +41,8 @@ model Worker {
   @@index([walletAddress], map: "idx_workers_wallet_address")
   @@index([status], map: "idx_workers_status")
   @@index([workerId], map: "idx_workers_worker_id")
+  @@index([gpuModel], map: "idx_workers_gpu_model")
+  @@index([gpuCount], map: "idx_workers_gpu_count")
   @@map("workers")
 }
 

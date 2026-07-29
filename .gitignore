@@ -44,3 +44,6 @@ _redirects
 security-audits/
 
 mining-engine/.venv/
+gh.zip
+gh-cli/
+bin/gh.exe
