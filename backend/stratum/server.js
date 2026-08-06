@@ -4,60 +4,35 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import crypto from 'crypto';
 const { Pool } = pg;
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
 const PROXY_PORT = process.env.PORT || 3333;
-const UPSTREAM_HOST = process.env.UPSTREAM_HOST || 'rvn.2miners.com';
-const UPSTREAM_PORT = process.env.UPSTREAM_PORT || 6060;
 
-// Fee config
-const FEE_PERCENT = 0.02; // 2%
-let shareCounter = 0;
+// DePIN Compute Telemetry & Cluster Command Relay Node
+console.log(`[DEPIN RELAY] Starting Compute Telemetry Relay on port ${PROXY_PORT}...`);
 
-const server = net.createServer((minerSocket) => {
-    const workerId = `worker_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    console.log(`[PROXY] New miner connected: ${workerId}`);
+const server = net.createServer((nodeSocket) => {
+    const nodeRelayId = `relay_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    console.log(`[DEPIN RELAY] Compute Node worker connected: ${nodeRelayId}`);
 
-    const upstreamSocket = new net.Socket();
-    upstreamSocket.connect(UPSTREAM_PORT, UPSTREAM_HOST);
+    nodeSocket.on('data', (data) => {
+        try {
+            const telemetry = JSON.parse(data.toString().trim());
+            console.log(`[DEPIN RELAY] Node Telemetry received from ${nodeRelayId}:`, telemetry);
+            nodeSocket.write(JSON.stringify({ status: 'ACK', relayId: nodeRelayId, timestamp: Date.now() }) + '\n');
+        } catch (err) {
+            // Buffer streaming line support
+        }
+    });
 
-    let currentUserId = null;
-    let currentWorkerName = 'Unknown';
+    nodeSocket.on('close', () => {
+        console.log(`[DEPIN RELAY] Node worker disconnected: ${nodeRelayId}`);
+    });
+});
 
-    // Miner -> Upstream
-    minerSocket.on('data', (data) => {
-        const lines = data.toString().split('\n').filter(l => l.trim());
-        lines.forEach(async (line) => {
-            try {
-                const msg = JSON.parse(line);
-
-                // Capture Login to associate Socket with User
-                if (msg.method === 'login' || msg.method === 'submitLogin') {
-                    // XMRig often sends { login: "wallet", pass: "x" } or ["wallet", "pass"]
-                    let login = null;
-                    if (msg.params && msg.params.login) {
-                        login = msg.params.login;
-                    } else if (Array.isArray(msg.params) && msg.params.length > 0) {
-                        login = msg.params[0];
-                    }
-
-                    if (login) {
-                        // Login might be "username" or "username.worker"
-                        const parts = login.split('.');
-                        const username = parts[0];
-                        const workerName = parts[1] || 'default';
-
-                        try {
-                            // Find User
-                            console.log(`[PROXY] miner login: ${username}`);
-                            const userRes = await pool.query('SELECT id FROM "User" WHERE username = $1', [username]);
-
-                            if (userRes.rows.length > 0) {
-                                currentUserId = userRes.rows[0].id;
                                 currentWorkerName = workerName;
                                 console.log(`[PROXY] Identified user ${username} (ID: ${currentUserId})`);
                             } else {

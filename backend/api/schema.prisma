@@ -289,3 +289,102 @@ model Payout {
   @@index([status])
   @@index([createdAt])
 }
+
+// ==========================================
+// DePIN Clustered Compute Marketplace Models
+// ==========================================
+
+model ComputeNode {
+  id           String   @id @default(uuid())
+  name         String
+  userId       String
+  cpuCores     Int      @default(4)
+  cpuModel     String   @default("Generic CPU")
+  gpuModel     String   @default("None")
+  gpuVramGb    Float    @default(0.0)
+  ramGb        Float    @default(8.0)
+  storageGb    Float    @default(100.0)
+  tflops       Float    @default(0.0)
+  status       String   @default("idle") // idle, active, reserved, offline
+  hourlyRateUsd Float   @default(0.50)
+  clusterId    String?
+  ipAddress    String?
+  hardwareId   String?
+  lastSeen     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  cluster      ComputeCluster? @relation(fields: [clusterId], references: [id])
+  workloadJobs WorkloadJob[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([clusterId])
+}
+
+model ComputeCluster {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  totalNodes  Int      @default(0)
+  totalTflops Float    @default(0.0)
+  totalVram   Float    @default(0.0)
+  status      String   @default("active") // active, degraded, offline
+  region      String   @default("US-East")
+  pricePerHr  Float    @default(2.50)
+  createdAt   DateTime @default(now())
+
+  nodes        ComputeNode[]
+  workloadJobs WorkloadJob[]
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model WorkloadJob {
+  id           String   @id @default(uuid())
+  title        String
+  containerImg String   @default("ubuntu:latest")
+  command      String?
+  reqGpuModel  String?
+  reqVramGb    Float    @default(0.0)
+  reqCpuCores  Int      @default(2)
+  reqRamGb     Float    @default(4.0)
+  status       String   @default("queued") // queued, running, completed, failed, cancelled
+  buyerId      String
+  nodeId       String?
+  clusterId    String?
+  escrowUsd    Float    @default(0.0)
+  spentUsd     Float    @default(0.0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  logs         String?
+  createdAt    DateTime @default(now())
+
+  node         ComputeNode?    @relation(fields: [nodeId], references: [id])
+  cluster      ComputeCluster? @relation(fields: [clusterId], references: [id])
+  billings     ComputeBilling[]
+
+  @@index([buyerId])
+  @@index([nodeId])
+  @@index([clusterId])
+  @@index([status])
+}
+
+model ComputeBilling {
+  id          String   @id @default(uuid())
+  workloadId  String
+  workload    WorkloadJob @relation(fields: [workloadId], references: [id])
+  providerId  String
+  buyerId     String
+  durationHrs Float
+  grossUsd    Float
+  platformFeeUsd Float // 20% marketplace fee
+  netProviderUsd Float // 80% payout to provider
+  createdAt   DateTime @default(now())
+
+  @@index([workloadId])
+  @@index([providerId])
+  @@index([buyerId])
+}
+

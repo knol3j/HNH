@@ -1662,7 +1662,169 @@ app.delete('/user/agents/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// --- DEPIN CLUSTERED COMPUTE MARKETPLACE ---
+
+// 1. Register / Heartbeat Compute Node
+app.post('/api/compute/nodes/register', authenticateToken, async (req, res) => {
+    try {
+        const { name, cpuCores, cpuModel, gpuModel, gpuVramGb, ramGb, storageGb, tflops, hourlyRateUsd, hardwareId, ipAddress } = req.body;
+        const node = await prisma.computeNode.create({
+            data: {
+                name: name || `Node-${Math.floor(Math.random() * 1000)}`,
+                userId: req.user.id,
+                cpuCores: cpuCores || 4,
+                cpuModel: cpuModel || 'Generic CPU',
+                gpuModel: gpuModel || 'None',
+                gpuVramGb: gpuVramGb || 0,
+                ramGb: ramGb || 8,
+                storageGb: storageGb || 100,
+                tflops: tflops || 0,
+                status: 'idle',
+                hourlyRateUsd: hourlyRateUsd || 0.45,
+                hardwareId,
+                ipAddress: ipAddress || req.ip,
+                lastSeen: new Date()
+            }
+        });
+        await auditLog(req, 'compute.node.register', 'ComputeNode', { nodeId: node.id });
+        res.json(node);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// List Compute Nodes
+app.get('/api/compute/nodes', async (req, res) => {
+    try {
+        const nodes = await prisma.computeNode.findMany({
+            orderBy: { lastSeen: 'desc' }
+        });
+        res.json(nodes);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Compute Clusters
+app.post('/api/compute/clusters', authenticateToken, async (req, res) => {
+    try {
+        const { name, description, region, pricePerHr } = req.body;
+        const cluster = await prisma.computeCluster.create({
+            data: {
+                name,
+                description,
+                ownerId: req.user.id,
+                region: region || 'US-East',
+                pricePerHr: pricePerHr || 2.50,
+                status: 'active'
+            }
+        });
+        res.json(cluster);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/compute/clusters', async (req, res) => {
+    try {
+        const clusters = await prisma.computeCluster.findMany({
+            include: { nodes: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(clusters);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. Workload Deployment & Dispatch
+app.post('/api/compute/workloads', authenticateToken, async (req, res) => {
+    try {
+        const { title, containerImg, command, reqGpuModel, reqVramGb, reqCpuCores, reqRamGb, clusterId, durationHrs = 1 } = req.body;
+        
+        // Find matching idle compute node or cluster
+        const idleNode = await prisma.computeNode.findFirst({
+            where: {
+                status: 'idle',
+                ...(reqGpuModel && { gpuModel: { contains: reqGpuModel, mode: 'insensitive' } })
+            }
+        });
+
+        const hourlyCost = idleNode ? idleNode.hourlyRateUsd : 0.50;
+        const grossUsd = hourlyCost * durationHrs;
+
+        const workload = await prisma.workloadJob.create({
+            data: {
+                title,
+                containerImg: containerImg || 'ubuntu:latest',
+                command,
+                reqGpuModel,
+                reqVramGb: reqVramGb || 0,
+                reqCpuCores: reqCpuCores || 2,
+                reqRamGb: reqRamGb || 4,
+                status: idleNode ? 'running' : 'queued',
+                buyerId: req.user.id,
+                nodeId: idleNode ? idleNode.id : null,
+                clusterId,
+                escrowUsd: grossUsd,
+                startedAt: idleNode ? new Date() : null
+            }
+        });
+
+        if (idleNode) {
+            await prisma.computeNode.update({
+                where: { id: idleNode.id },
+                data: { status: 'active' }
+            });
+        }
+
+        res.json(workload);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/compute/workloads', authenticateToken, async (req, res) => {
+    try {
+        const workloads = await prisma.workloadJob.findMany({
+            where: {
+                OR: [
+                    { buyerId: req.user.id },
+                    { node: { userId: req.user.id } }
+                ]
+            },
+            include: { node: true, cluster: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(workloads);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. Billing Cost Estimate (Compare HashNHedge vs AWS/GCP)
+app.post('/api/compute/billing/estimate', (req, res) => {
+    const { gpus = 1, gpuModel = 'RTX 4090', durationHrs = 24 } = req.body;
+    const hnhRatePerHour = gpuModel.includes('A100') ? 1.20 : 0.45;
+    const awsRatePerHour = gpuModel.includes('A100') ? 4.10 : 2.20;
+
+    const totalHnh = gpus * hnhRatePerHour * durationHrs;
+    const totalAws = gpus * awsRatePerHour * durationHrs;
+    const savingsPercent = Math.round(((totalAws - totalHnh) / totalAws) * 100);
+
+    res.json({
+        gpus,
+        gpuModel,
+        durationHrs,
+        hnhTotalUsd: totalHnh,
+        awsTotalUsd: totalAws,
+        savingsUsd: totalAws - totalHnh,
+        savingsPercent
+    });
+});
+
 // --- GLOBAL ERROR HANDLER ---
+
 app.use((err, req, res, next) => {
     console.error('[ERROR]', {
         path: req.path,

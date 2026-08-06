@@ -13,7 +13,7 @@ import { useNetworkStats } from './hooks/useNetworkStats';
 import { useAgentStatus } from './hooks/useAgentStatus';
 
 const Dashboard = lazy(() => import('./views/Dashboard'));
-const Marketplace = lazy(() => import('./views/Portfolio'));
+const Marketplace = lazy(() => import('./views/Marketplace'));
 const DeployJob = lazy(() => import('./views/HedgeLab'));
 const Farm = lazy(() => import('./views/Farm'));
 const Provider = lazy(() => import('./views/Provider'));

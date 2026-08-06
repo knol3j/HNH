@@ -62,37 +62,26 @@ const requireAuth = (req, res, next) => {
 
 app.use(requireAuth);
 
-// --- CONFIGURATION ---
+// --- DEPIN COMPUTE NODE AGENT CONFIGURATION ---
 const PORT = process.env.PORT || 4343;
-const CLOUD_MODE = process.env.HNH_CLOUD_MODE === 'true';
-const BIN_DIR = path.join(__dirname, 'bin');
-const MINER_BIN = path.join(BIN_DIR, process.platform === 'win32' ? 'xmrig.exe' : 'xmrig');
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Platform fee tiers
-const PLATFORM_FEE = {
-    free: 0.02,      // 2%
-    pro: 0.01,       // 1%
-    enterprise: 0.005 // 0.5%
+// --- STATE & HARDWARE CAPABILITIES ---
+let nodeSpecs = {
+    cpuCores: Math.max(1, (process.env.CPU_CORES || 8)),
+    cpuModel: process.env.CPU_MODEL || "Intel/AMD High Performance Processor",
+    gpuModel: process.env.GPU_MODEL || "NVIDIA GeForce RTX 4090 / AMD Equivalent",
+    gpuVramGb: parseFloat(process.env.GPU_VRAM || "24.0"),
+    ramGb: parseFloat(process.env.SYSTEM_RAM || "32.0"),
+    storageGb: parseFloat(process.env.AVAILABLE_STORAGE || "500.0"),
+    tflops: parseFloat(process.env.COMPUTE_TFLOPS || "82.5"),
+    hourlyRateUsd: parseFloat(process.env.HOURLY_RATE || "0.45")
 };
 
-// Default pool configuration (can be overridden per wallet/coin)
-const DEFAULT_COIN_POOLS = {
-    XMR: 'xmr.2miners.com:2222',
-    RVN: 'rvn.2miners.com:6060',
-    ETC: 'etc.herominers.com:10161',
-    ERG: 'de.ergo.herominers.com:11800',
-    KAS: 'pool.woolypooly.com:3112'
-};
+let activeWorkload = null;
+let nodeStatus = 'IDLE';
+let recentLogs = ["[INIT] DePIN Compute Node Worker initialized and ready for cluster jobs."];
 
-// --- STATE ---
-let config = {
-    wallet: '',
-    wallets: { XMR: '', RVN: '', ETC: '', ERG: '', KAS: '' },
-    pools: { ...DEFAULT_COIN_POOLS },
-    mode: 'cpu',
-    password: 'x'
-};
 
 let minerProcess = null;
 let minerStatus = 'OFFLINE';
